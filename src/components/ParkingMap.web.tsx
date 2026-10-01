@@ -70,6 +70,11 @@ export default function ParkingMap(props: ParkingMapProps) {
     };
   }, []);
   useEffect(() => {
+    const handler = map.current?.doubleClickZoom;
+    if (props.drawing) handler?.disable();
+    else handler?.enable();
+  }, [props.drawing]);
+  useEffect(() => {
     const group = layers.current,
       instance = map.current;
     if (!group || !instance) return;

@@ -9,12 +9,17 @@ function bridge() {
   const mapEvents = new Map<string, Callback>(), windowEvents = new Map<string, Callback>();
   const markers: { options: Record<string, unknown>; events: Map<string, Callback> }[] = [];
   const invalidations: unknown[] = [];
-  let userDots = 0, moves = 0, clears = 0;
+  let userDots = 0, moves = 0, clears = 0, doubleClickZoomEnabled = true;
+  const doubleClickZoom = {
+    enable() { doubleClickZoomEnabled = true; },
+    disable() { doubleClickZoomEnabled = false; },
+    enabled: () => doubleClickZoomEnabled,
+  };
   const layer = () => {
     const events = new Map<string, Callback>();
     return { events, on(name: string, fn: Callback) { events.set(name, fn); return this; }, off() {}, addTo() { return this; }, remove() {}, bringToFront() {}, setLatLng() { moves++; return this; }, setRadius() { return this; }, setLatLngs() {}, bindTooltip() { return this; } };
   };
-  const map = { on(name: string, fn: Callback) { mapEvents.set(name, fn); return this; }, setView() { return this; }, getZoom: () => 15, getCenter: () => ({ lat: 42, lng: 21 }), latLngToContainerPoint: (p: number[]) => ({ x: p[1] * 10, y: p[0] * 10 }), invalidateSize(options: unknown) { invalidations.push(options); }, getBounds: () => ({ intersects: () => true }) };
+  const map = { doubleClickZoom, on(name: string, fn: Callback) { mapEvents.set(name, fn); return this; }, setView() { return this; }, getZoom: () => 15, getCenter: () => ({ lat: 42, lng: 21 }), latLngToContainerPoint: (p: number[]) => ({ x: p[1] * 10, y: p[0] * 10 }), invalidateSize(options: unknown) { invalidations.push(options); }, getBounds: () => ({ intersects: () => true }) };
   const window = { ReactNativeWebView: { postMessage: (value: string) => messages.push(JSON.parse(value)) }, addEventListener: (name: string, fn: Callback) => windowEvents.set(name, fn) } as unknown as { renderParking: (next: object) => void; updateUserLocation: (point: number[] | null, accuracy: number | null) => void };
   const L = {
     map: () => map, tileLayer: layer, layerGroup: () => ({ ...layer(), getLayers: () => [], clearLayers() { clears++; } }),
@@ -24,7 +29,7 @@ function bridge() {
   const document = { getElementById: () => ({ classList: { toggle() {} } }), createElement: () => ({ textContent: "", style: { cssText: "" } }) };
   const script = mapHtml.split("</script><script>")[1].split("</script>")[0];
   vm.runInNewContext(script, { window, document, L });
-  return { window, messages, markers, mapEvents, windowEvents, invalidations, counts: () => ({ userDots, moves, clears }) };
+  return { window, messages, markers, mapEvents, windowEvents, invalidations, doubleClickZoom, counts: () => ({ userDots, moves, clears }) };
 }
 const payload = { pins: [{ id: "one", point: [42, 21], title: "Parking", html: "<span>?</span>", selected: true }], zones: [], destination: [42, 21], selectedId: "one", selectedAnchor: [42, 21], picking: false, draft: [] };
 
@@ -67,4 +72,23 @@ test("cluster and destination taps send explicit interaction events, while progr
   assert.ok(Number.isFinite(view.messages.at(-1)?.sentAt));
   view.markers[1].events.get("click")?.();
   assert.equal(view.messages.filter(message => message.type === "interaction").length, 2);
+});
+
+test("boundary drawing disables double-click zoom across corner updates and restores it when finished", () => {
+  const view = bridge();
+  view.window.renderParking(payload);
+  assert.equal(view.doubleClickZoom.enabled(), true);
+  view.window.renderParking({ ...payload, drawing: true, picking: true });
+  assert.equal(view.doubleClickZoom.enabled(), false);
+  const corners = [[42, 21], [42, 21.001], [42.001, 21.001], [42.001, 21]];
+  corners.forEach((point, index) => {
+    view.mapEvents.get("click")?.({ latlng: { lat: point[0], lng: point[1] } });
+    assert.equal(view.messages.at(-1)?.type, "pick", "rapid corner clicks still dispatch picks");
+    view.window.renderParking({ ...payload, drawing: true, picking: true, draft: corners.slice(0, index + 1) });
+    assert.equal(view.doubleClickZoom.enabled(), false);
+  });
+  view.window.renderParking({ ...payload, drawing: false, picking: false });
+  assert.equal(view.doubleClickZoom.enabled(), true);
+  view.mapEvents.get("click")?.({ latlng: { lat: 42, lng: 21 } });
+  assert.equal(view.messages.at(-1)?.type, "blank");
 });

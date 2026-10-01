@@ -29,7 +29,7 @@ test("map keyboard dismissal reaches Android's native guard even when RN no long
   }
 });
 
-test("only current Leaflet interactions dismiss the keyboard and forward actions after native acceptance", async () => {
+test("current Leaflet taps wait for native acceptance but pan intent is immediate and independent of keyboard focus", async () => {
   type Element = { type: string; props: Record<string, any>; children: Element[] };
   const calls: string[] = [];
   const pending: ((accepted: boolean) => void)[] = [];
@@ -58,18 +58,23 @@ test("only current Leaflet interactions dismiss the keyboard and forward actions
   send({ type: "position", point: { x: 1, y: 2 } }); send({ type: "select", id: "missing" });
   send({ type: "pick", latitude: 200, longitude: 21 });
   assert.deepEqual(calls, []);
-  send({ type: "blank" }); send({ type: "select", id: "p" }); send({ type: "pan" });
+  send({ type: "blank" }); send({ type: "select", id: "p" });
   send({ type: "pick", latitude: 42, longitude: 21 }); send({ type: "vertex", index: 0, latitude: 42, longitude: 21 });
-  assert.deepEqual(calls, ["dismiss", "dismiss", "dismiss", "dismiss", "dismiss"], "parent callbacks wait for the native focus guard");
+  assert.deepEqual(calls, ["dismiss", "dismiss", "dismiss", "dismiss"], "tap callbacks wait for the native focus guard");
   pending.splice(0).forEach(resolve => resolve(true)); await new Promise<void>(resolve => setImmediate(resolve));
-  assert.deepEqual(calls.slice(5), ["blank", "select", "pan", "pick", "vertex"]);
+  assert.deepEqual(calls.slice(4), ["blank", "select", "pick", "vertex"]);
   calls.length = 0;
   send({ type: "blank" }); pending.shift()!(false); await new Promise<void>(resolve => setImmediate(resolve));
   assert.deepEqual(calls, ["dismiss"], "native text field/modal focus rejection never reaches parent blur");
   calls.length = 0;
+  send({ type: "pan" });
+  assert.deepEqual(calls, ["pan"], "a legitimate drag records camera intent even when RN search retains focus and native dismissal would reject");
+  assert.equal(pending.length, 0, "pan must not wait for native focus acceptance or issue a keyboard mutation");
+  calls.length = 0;
   send({ type: "blank" }); currentInteraction = false; pending.shift()!(true); await new Promise<void>(resolve => setImmediate(resolve));
   assert.deepEqual(calls, ["dismiss"], "search refocus or a new sheet during native dispatch cancels parent callback");
-  calls.length = 0; send({ type: "blank" }); assert.deepEqual(calls, [], "stale events are rejected before any dismissal");
+  calls.length = 0; send({ type: "blank" }); send({ type: "pan" });
+  assert.deepEqual(calls, [], "stale taps and drags remain blocked after new focus or a sheet opens");
   assert.equal(web.props.onStartShouldSetResponderCapture, undefined, "keyboard handling must not capture WebView gestures");
 });
 

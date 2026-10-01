@@ -24,3 +24,19 @@ Reviewer: entry-v3 agent. Read-only critique; implementation belongs to parking_
 - Independently ran keyboard/Leaflet/appearance/Google interaction tests: 15 passing, including real component async-acceptance/refocus rejection and actual Leaflet cluster/destination behavior. Native guard checks are static source tests; autolinking was independently resolved.
 
 No remaining source blocker found. Approval is for local compile/device verification; it does not claim Samsung IME correctness. Parent will locally rebuild and repeat keyboard/pan/selection/drawing and form-refocus checks. Kotlin compilation and actual OEM behavior remain required evidence.
+
+## Final pan critic loop
+
+Parent's subsequent physical tests confirmed blank-map/pin taps hide the IME and search can refocus/type. They also found map drag can retain the RN search focus, so requiring native IME acceptance for onPan would discard intentional camera movement and permit a late initial GPS recenter.
+
+Reviewed owner's narrow source-only correction: current pan records onPan synchronously after mounted/timestamp/sheet guards; it performs no keyboard mutation and waits for no native Promise. Tap callbacks retain native acceptance and post-resolution current-focus guards. Native module scope is unchanged.
+
+Independently executed six keyboard/Leaflet bridge tests: all pass. The actual component regression asserts pan intent fires synchronously despite an IME rejection path, creates no pending keyboard work, and remains suppressed for stale focus/sheet events. Source review approved for parent's incremental build/retest; no remaining blocker found.
+
+## Final boundary drawing critic loop
+
+Parent physically observed two rapid corner taps triggering Leaflet double-click zoom and moving the first vertex on screen. Reviewed the narrow fix against the official Leaflet 1.9.4 handler reference: the bundled native script disables the actual doubleClickZoom handler while drawing and enables it when drawing ends; the web renderer applies the same handler change when its drawing prop changes. Updating map options alone would not disable the live handler; this implementation correctly uses disable/enable.
+
+Map dragging, touchZoom/pinch, individual vertex dragging, camera intent and native keyboard code are unchanged. Normal exploration restores double-click zoom. Independently ran seven keyboard/Leaflet bridge tests; all pass. The new actual-script test cycles into drawing, dispatches four corner clicks with intervening redraws, confirms double-click zoom remains disabled, then confirms the handler is enabled again and normal blank taps resume.
+
+No remaining source blocker found. Owner reports all 16 focused map tests, lint and typecheck pass. Approved for parent's final incremental build and physical rapid-corner drawing check; the source regression is not a claim of a completed device retest.

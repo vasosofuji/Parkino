@@ -50,6 +50,8 @@ function select(id,latlng) {
 window.renderParking = function(next) {
   if(dragging){pending=next;return;}
   current = next;
+  // Two quick corner taps must not be interpreted as a zoom around that point.
+  if(next.drawing)map.doubleClickZoom.disable();else map.doubleClickZoom.enable();
   document.getElementById("map").classList.toggle("dark",Boolean(next.dark));
   const oldLayers=group.getLayers();
   group.clearLayers();

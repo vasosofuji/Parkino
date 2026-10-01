@@ -142,9 +142,9 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       return;
     }
     if (!message || typeof message !== "object") return;
+    const sentAt = message.sentAt;
+    const isCurrent = () => mounted.current && Number.isFinite(sentAt) && callbacks.current.isInteractionCurrent?.(sentAt) !== false;
     const interact = (action: (current: ParkingMapProps) => void) => {
-      const sentAt = message.sentAt;
-      const isCurrent = () => mounted.current && Number.isFinite(sentAt) && callbacks.current.isInteractionCurrent?.(sentAt) !== false;
       if (!isCurrent()) return;
       void dismissMapKeyboard().then(accepted => {
         // Search can regain focus while the native guard is in flight. Keep its
@@ -160,7 +160,9 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       message.zoom <= 19
     )
       setZoom(message.zoom);
-    if (message.type === "pan") interact(current => current.onPan?.());
+    // Dragging can retain RN search focus. Record camera intent immediately so
+    // a late initial GPS fix cannot recenter; a drag need not dismiss that IME.
+    if (message.type === "pan" && isCurrent()) callbacks.current.onPan?.();
     if (message.type === "blank") interact(current => current.onBlankPress?.());
     if (message.type === "interaction") interact(() => {});
     if (message.type === "position") {
