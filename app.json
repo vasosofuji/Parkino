@@ -34,6 +34,14 @@
       ],
       "expo-font"
     ],
-    "scheme": "parkskopje"
+    "scheme": "parkskopje",
+    "extra": {
+      "androidNativeMapsEnabled": false,
+      "router": {},
+      "eas": {
+        "projectId": "1db9c740-4542-43bb-8c08-b919e51febdf"
+      }
+    },
+    "owner": "parkino"
   }
 }

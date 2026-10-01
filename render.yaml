@@ -22,6 +22,6 @@ services:
       - key: DATABASE_CA_FILE
         value: certs/supabase-ca.crt
       - key: ALLOWED_ORIGINS
-        value: https://vasojevich.com
+        value: https://vasojevich.com,http://localhost:8081,http://127.0.0.1:8081
       - key: TRUSTED_PROXIES
         value: loopback,uniquelocal
