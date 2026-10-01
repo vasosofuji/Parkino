@@ -1,3 +1,20 @@
+# Connected progressive-entry update — 2026-10-01
+
+Implemented with native subagents and independent review loops. Per-task plans and resolved findings are in `docs/plans/`. The reviewed source is commit `7412660`, pushed to `main` and deployed successfully to the existing Render API. All three new migrations are applied to the shared private Supabase schema; security advisors returned no findings.
+
+Validation completed:
+
+- **134/134 tests pass** locally and again on Render, including SQLite/PostgreSQL parity, guest upgrades, login recovery, Terms renewal, security budgets, step persistence, stale-report prevention, GPS traffic, and earned cosmetic entitlement.
+- Final Expo lint/typecheck pass. Expo Doctor passes 21/21. Web, Android and iOS bundle exports succeed. Clean npm installation succeeds, and the final audit reports zero known vulnerabilities.
+- Public HTTPS smoke test passed guest consent, idempotent partial creation, subsequent free pricing/capacity/free-count/perimeter saves, shared catalog readback, earned Ocean unlock, rejection of locked Gold, guest upgrade retaining identity/points/style, and password login recovery. Removed the synthetic account and parking afterward; the shared catalog returned to its original 914 records.
+- Built the connected release-mode **Parking Test** APK using the original test signing key, installed it as an update on the Samsung, and launched successfully. It uses the hosted HTTPS endpoint with cleartext disabled. No USB 3002 forwarding exists. Exercised language, dark appearance, guest choice and, after explicit user approval, Terms acceptance. The map loaded with a live location dot. Details & update opened the photo/manual choices directly, with no Navigate button. The custom popup displayed enabled Take photo / Open gallery actions, and Take photo launched the Samsung camera after a one-time permission grant. No personal photo was taken or uploaded. The phone disconnected before gallery and manual-form device checks could finish. The app process had no crash-buffer entries during the checked startup.
+
+APK: `preview/Parkino-test-connected.apk`. SHA-256: `0DF72C8EC35E53FD4183DEF14C517EB6E80FA3FC35E87B0155A5C417F94CD20D`.
+
+APK ZIP integrity and Android v2 signature verification pass. The hosted HTTPS URL is present in the compiled bundle. Scanning every decompressed entry found none of the configured private database URL/password or Gemini key. The previous isolated USB API was stopped after switching the phone to the connected build.
+
+Real sign-reading accuracy and real walking/driving/background notification timing still require field testing. iOS bundle export is not an iOS device test. Render Free still has cold starts; the shared client readiness probe allows up to 75 seconds and never automatically replays an interrupted write. Rate limits are process-local for the current single API instance; multiple instances need shared limit storage.
+
 # Validation — 30 September 2026
 
 ## Physical UI audit — 1 October 2026

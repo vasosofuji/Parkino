@@ -16,6 +16,6 @@ Review each delegated implementation, resolve concrete findings, run the integra
 
 The final full suite passed 134 tests, including SQLite and PostgreSQL parity. Lint and TypeScript checks passed. Expo Doctor passed all 21 checks, and web/Android/iOS bundles exported successfully. The final dependency audit returned zero known vulnerabilities. The rewards migration was applied and the Supabase security advisor again returned no findings. Independent GPS and rewards/backend reviews found no remaining blocker. Native system appearance was corrected from a forced light style to automatic with the matching Expo 57 SystemUI module.
 
-## Remaining validation
+## Deployment and device result
 
-Hosted API rollout and connected Android installation/smoke checks. Final results belong in docs/VALIDATION.md; source tests do not substitute for camera/GPS field testing or real sign extraction.
+Commit `7412660` deployed successfully to the existing Render service, whose build reran and passed all 134 tests. Live HTTPS guest, incremental contribution, reward entitlement, guest upgrade and password-recovery smoke checks passed. All generated cloud test records were cleaned up. The signed connected Parking Test APK installed as an update on the Samsung and launched through onboarding; user-authorized guest Terms acceptance, direct photo/manual choices, the custom popup, and real Samsung camera launch were verified. The phone disconnected before the rest of the interactive checks. See docs/VALIDATION.md for the APK digest, evidence and explicit remaining field-test limits.
