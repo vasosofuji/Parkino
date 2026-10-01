@@ -127,14 +127,16 @@ export default function MapScreen() {
     setSelectedPoint(null);
   }, []);
   const select = useCallback((place: ParkingPlace, coordinate?: Coordinate) => {
+    cameraMoved.current = true;
     searchInput.current?.blur();
     Keyboard.dismiss();
     searchVersion.current++;
     setQuery(""); setRemote([]); setSearching(false);
-    if (place.id !== selected) setSelectedPoint(null);
+    const nextAnchor = coordinate ?? place.coordinate;
+    if (place.id !== selected || anchor?.latitude !== nextAnchor.latitude || anchor?.longitude !== nextAnchor.longitude) setSelectedPoint(null);
     setSelected(place.id);
-    setAnchor(coordinate ?? place.coordinate);
-  }, [selected]);
+    setAnchor(nextAnchor);
+  }, [selected, anchor]);
   function blankMap() {
     searchInput.current?.blur();
     Keyboard.dismiss();
@@ -598,7 +600,7 @@ export default function MapScreen() {
                 </Pressable>
               ) : null}
             </View>
-            {selectedPlace && selectedPoint && !query ? (
+            {selectedPlace && !query ? (
               <ParkingPreview
                 key={selectedPlace.id}
                 place={selectedPlace}

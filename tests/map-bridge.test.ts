@@ -4,11 +4,16 @@ import vm from "node:vm";
 import { mapHtml } from "../src/components/offlineMapHtml";
 
 type Callback = (value?: unknown) => void;
-function bridge() {
+function bridge(reducedMotion = false) {
   const messages: { type: string; sentAt: number; selectionId?: string; anchor?: number[]; point?: unknown }[] = [];
   const mapEvents = new Map<string, Callback>(), windowEvents = new Map<string, Callback>();
   const markers: { options: Record<string, unknown>; events: Map<string, Callback> }[] = [];
   const invalidations: unknown[] = [];
+  const transitions: { kind: string; point: number[]; zoom: number; options?: Record<string, unknown> }[] = [];
+  let center = [42, 21], zoom = 15, stops = 0;
+  let flight: { point: number[]; zoom: number } | null = null;
+  let motionChanged: ((event: { matches: boolean }) => void) | undefined;
+  const motion = { matches: reducedMotion, addEventListener(_event: string, callback: typeof motionChanged) { motionChanged = callback; } };
   let userDots = 0, moves = 0, clears = 0, doubleClickZoomEnabled = true;
   const doubleClickZoom = {
     enable() { doubleClickZoomEnabled = true; },
@@ -19,8 +24,14 @@ function bridge() {
     const events = new Map<string, Callback>();
     return { events, on(name: string, fn: Callback) { events.set(name, fn); return this; }, off() {}, addTo() { return this; }, remove() {}, bringToFront() {}, setLatLng() { moves++; return this; }, setRadius() { return this; }, setLatLngs() {}, bindTooltip() { return this; } };
   };
-  const map = { doubleClickZoom, on(name: string, fn: Callback) { mapEvents.set(name, fn); return this; }, setView() { return this; }, getZoom: () => 15, getCenter: () => ({ lat: 42, lng: 21 }), latLngToContainerPoint: (p: number[]) => ({ x: p[1] * 10, y: p[0] * 10 }), invalidateSize(options: unknown) { invalidations.push(options); }, getBounds: () => ({ intersects: () => true }) };
-  const window = { ReactNativeWebView: { postMessage: (value: string) => messages.push(JSON.parse(value)) }, addEventListener: (name: string, fn: Callback) => windowEvents.set(name, fn) } as unknown as { renderParking: (next: object) => void; updateUserLocation: (point: number[] | null, accuracy: number | null) => void };
+  const map = {
+    doubleClickZoom, on(name: string, fn: Callback) { mapEvents.set(name, fn); return this; },
+    stop() { stops++; const moving = Boolean(flight); flight = null; if (moving) mapEvents.get("moveend")?.(); return this; },
+    setView(point: number[], nextZoom: number, options?: Record<string, unknown>) { transitions.push({ kind: "setView", point, zoom: nextZoom, options }); mapEvents.get("movestart")?.(); center = point; zoom = nextZoom; mapEvents.get("moveend")?.(); return this; },
+    flyTo(point: number[], nextZoom: number, options?: Record<string, unknown>) { transitions.push({ kind: "flyTo", point, zoom: nextZoom, options }); flight = { point, zoom: nextZoom }; mapEvents.get("movestart")?.(); return this; },
+    getZoom: () => zoom, getCenter: () => ({ lat: center[0], lng: center[1] }), latLngToContainerPoint: (p: number[]) => ({ x: p[1] * 10, y: p[0] * 10 }), invalidateSize(options: unknown) { invalidations.push(options); }, getBounds: () => ({ intersects: () => true }),
+  };
+  const window = { matchMedia: () => motion, ReactNativeWebView: { postMessage: (value: string) => messages.push(JSON.parse(value)) }, addEventListener: (name: string, fn: Callback) => windowEvents.set(name, fn) } as unknown as { renderParking: (next: object) => void; updateUserLocation: (point: number[] | null, accuracy: number | null) => void };
   const L = {
     map: () => map, tileLayer: layer, layerGroup: () => ({ ...layer(), getLayers: () => [], clearLayers() { clears++; } }),
     marker: (_point: unknown, options: Record<string, unknown>) => { const next = layer(); markers.push({ options, events: next.events }); return next; },
@@ -29,11 +40,14 @@ function bridge() {
   const document = { getElementById: () => ({ classList: { toggle() {} } }), createElement: () => ({ textContent: "", style: { cssText: "" } }) };
   const script = mapHtml.split("</script><script>")[1].split("</script>")[0];
   vm.runInNewContext(script, { window, document, L });
-  return { window, messages, markers, mapEvents, windowEvents, invalidations, doubleClickZoom, counts: () => ({ userDots, moves, clears }) };
+  return { window, messages, markers, mapEvents, windowEvents, invalidations, doubleClickZoom, transitions,
+    finishFlight() { assert.ok(flight); center = flight.point; zoom = flight.zoom; flight = null; mapEvents.get("moveend")?.(); },
+    motion(value: boolean) { motion.matches = value; motionChanged?.({ matches: value }); },
+    counts: () => ({ userDots, moves, clears, stops, flying: Boolean(flight) }) };
 }
 const payload = { pins: [{ id: "one", point: [42, 21], title: "Parking", html: "<span>?</span>", selected: true }], zones: [], destination: [42, 21], selectedId: "one", selectedAnchor: [42, 21], picking: false, draft: [] };
 
-test("the native Leaflet bridge tags projections and never pans/resizes the camera just to select a pin", () => {
+test("the native Leaflet bridge tags projections and avoids automatic marker focus or resize panning", () => {
   const view = bridge();
   view.window.renderParking(payload);
   assert.equal(view.markers[0].options.autoPanOnFocus, false);
@@ -68,10 +82,54 @@ test("cluster and destination taps send explicit interaction events, while progr
   view.window.renderParking({ ...payload, pins: [{ ...payload.pins[0], cluster: true }], destinationMarker: [42, 21] });
   assert.ok(!view.messages.some(message => message.type === "interaction"));
   view.markers[0].events.get("click")?.();
-  assert.equal(view.messages.at(-1)?.type, "interaction");
+  assert.equal(view.messages.filter(message => message.type === "interaction").length, 1);
+  assert.ok(view.messages.findIndex(message => message.type === "pan") < view.messages.findIndex(message => message.type === "interaction"), "cluster intent precedes native keyboard gating");
   assert.ok(Number.isFinite(view.messages.at(-1)?.sentAt));
   view.markers[1].events.get("click")?.();
   assert.equal(view.messages.filter(message => message.type === "interaction").length, 2);
+});
+
+test("camera flights focus new selections, keep projections hidden until settled, and never replay on catalog/GPS updates", () => {
+  const view = bridge();
+  view.window.renderParking({ ...payload, selectedId: null, selectedAnchor: null });
+  assert.equal(view.transitions.at(-1)?.kind, "setView", "initial destination is immediate");
+  view.window.renderParking(payload);
+  assert.equal(view.transitions.at(-1)?.kind, "flyTo");
+  assert.equal(view.transitions.at(-1)?.zoom, 16);
+  assert.equal(view.transitions.at(-1)?.options?.duration, 0.45);
+  assert.equal(view.messages.at(-1)?.point, null);
+  const count = view.transitions.length;
+  view.window.renderParking({ ...payload, dark: true }); view.window.updateUserLocation([42, 21], 5);
+  assert.equal(view.transitions.length, count);
+  assert.equal(view.messages.at(-1)?.point, null, "routine renders cannot project a moving pin");
+  const replacingFrom = view.messages.length;
+  view.window.renderParking({ ...payload, selectedId: "two", selectedAnchor: [42.01, 21.01] });
+  assert.equal(view.transitions.length, count + 1);
+  assert.equal(view.messages.at(-1)?.selectionId, "two");
+  assert.equal(view.messages.at(-1)?.point, null);
+  assert.ok(view.messages.slice(replacingFrom).filter(message => message.type === "position").every(message => message.point === null), "stop-triggered old moveend cannot reveal the new anchor before the new flight settles");
+  view.finishFlight();
+  assert.equal(view.messages.at(-1)?.selectionId, "two");
+  assert.notEqual(view.messages.at(-1)?.point, null);
+  view.window.renderParking({ ...payload, selectedId: null, selectedAnchor: null, destination: [42.02, 21.02] });
+  assert.equal(view.transitions.at(-1)?.kind, "flyTo");
+  assert.equal(view.transitions.at(-1)?.zoom, 15);
+});
+
+test("reduced motion uses immediate camera movement and entering drawing cancels a pending flight", () => {
+  const view = bridge();
+  view.window.renderParking({ ...payload, selectedId: null, selectedAnchor: null });
+  view.window.renderParking(payload); assert.equal(view.counts().flying, true);
+  view.window.renderParking({ ...payload, drawing: true, picking: true });
+  assert.equal(view.counts().flying, false); assert.equal(view.doubleClickZoom.enabled(), false);
+  const count = view.transitions.length;
+  view.window.renderParking({ ...payload, drawing: true, picking: true, selectedAnchor: [42.01, 21.01] });
+  assert.equal(view.transitions.length, count);
+  view.motion(true);
+  view.window.renderParking({ ...payload, selectedId: "new", selectedAnchor: [42.03, 21.03] });
+  assert.equal(view.transitions.at(-1)?.kind, "setView");
+  assert.equal(view.transitions.at(-1)?.options?.animate, false);
+  assert.notEqual(view.messages.at(-1)?.point, null);
 });
 
 test("boundary drawing disables double-click zoom across corner updates and restores it when finished", () => {

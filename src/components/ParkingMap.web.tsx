@@ -7,6 +7,13 @@ import { SKOPJE } from "../domain/parking";
 import { groupParking } from "../domain/clusters";
 import { parkingMarker, parkingMarkerHtml } from "../domain/marker-appearance";
 
+function moveCamera(map: L.Map, point: L.LatLngTuple, zoom: number, animate = true) {
+  map.stop();
+  if (animate && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === false)
+    map.flyTo(point, zoom, { animate: true, duration: 0.45, easeLinearity: 0.25 });
+  else map.setView(point, zoom, { animate: false });
+}
+
 export default function ParkingMap(props: ParkingMapProps) {
   const host = useRef<HTMLDivElement>(null),
     map = useRef<L.Map | null>(null);
@@ -14,6 +21,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     draftLayer = useRef<L.LayerGroup | null>(null);
   const callbacks = useRef(props);
   const userDot = useRef<L.CircleMarker | null>(null), accuracyCircle = useRef<L.Circle | null>(null);
+  const cameraMoving = useRef(false), destinationKey = useRef(""), selectionKey = useRef("");
   useEffect(() => {
     callbacks.current = props;
   }, [props]);
@@ -40,10 +48,9 @@ export default function ParkingMap(props: ParkingMapProps) {
     draftLayer.current = L.layerGroup().addTo(instance);
     map.current = instance;
     instance.on("zoomend", () => setZoom(instance.getZoom()));
-    instance.on("movestart", () =>
-      callbacks.current.onSelectedPosition?.(null),
-    );
+    instance.on("movestart", () => { cameraMoving.current = true; callbacks.current.onSelectedPosition?.(null); });
     instance.on("moveend", () => {
+      cameraMoving.current = false;
       setViewRevision((value) => value + 1);
       const p = instance.getCenter();
       callbacks.current.onCenterChange?.({ latitude: p.lat, longitude: p.lng });
@@ -59,7 +66,17 @@ export default function ParkingMap(props: ParkingMapProps) {
     });
     const resize = new ResizeObserver(() => instance.invalidateSize({ pan: false }));
     resize.observe(host.current);
+    const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    const motionChanged = (event: MediaQueryListEvent) => {
+      if (!event.matches) return;
+      instance.stop(); cameraMoving.current = false;
+      const anchor = callbacks.current.selectedAnchor;
+      callbacks.current.onSelectedPosition?.(callbacks.current.selectedId && anchor
+        ? instance.latLngToContainerPoint([anchor.latitude, anchor.longitude]) : null);
+    };
+    motion?.addEventListener("change", motionChanged);
     return () => {
+      motion?.removeEventListener("change", motionChanged);
       resize.disconnect();
       instance.remove();
       map.current = null;
@@ -71,7 +88,7 @@ export default function ParkingMap(props: ParkingMapProps) {
   }, []);
   useEffect(() => {
     const handler = map.current?.doubleClickZoom;
-    if (props.drawing) handler?.disable();
+    if (props.drawing) { map.current?.stop(); cameraMoving.current = false; handler?.disable(); }
     else handler?.enable();
   }, [props.drawing]);
   useEffect(() => {
@@ -186,13 +203,13 @@ export default function ParkingMap(props: ParkingMapProps) {
         .on("click", () => {
           if (props.picking) callbacks.current.onPick(place.coordinate);
           else if (props.selectionEnabled === false) return;
-          else if (cluster)
-            instance.setView(
+          else if (cluster) {
+            callbacks.current.onPan?.();
+            moveCamera(instance,
               [place.coordinate.latitude, place.coordinate.longitude],
               Math.min(19, zoom + 1),
-              { animate: false },
             );
-          else callbacks.current.onSelect(place);
+          } else callbacks.current.onSelect(place);
         })
         .addTo(group);
     }
@@ -225,7 +242,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     }
     userDot.current?.bringToFront();
     const anchor = props.selectedAnchor;
-    if (props.selectedId && anchor) {
+    if (props.selectedId && anchor && !cameraMoving.current) {
       const p = instance.latLngToContainerPoint([
         anchor.latitude,
         anchor.longitude,
@@ -349,15 +366,26 @@ export default function ParkingMap(props: ParkingMapProps) {
     };
   }, [props.draftCoordinates, props.drawing]);
   useEffect(() => {
-    map.current?.setView(
-      [props.destination.latitude, props.destination.longitude],
-      15,
-      { animate: false },
-    );
+    const instance = map.current;
+    if (!instance) return;
+    const key = `${props.destination.latitude},${props.destination.longitude}:${props.cameraRevision ?? 0}`;
+    const selected = props.selectedId && props.selectedAnchor ? `${props.selectedId}:${props.selectedAnchor.latitude},${props.selectedAnchor.longitude}` : "";
+    if (key !== destinationKey.current) {
+      const initial = !destinationKey.current;
+      destinationKey.current = key;
+      moveCamera(instance, [props.destination.latitude, props.destination.longitude], 15, !initial && !props.drawing);
+    } else if (selected && selected !== selectionKey.current && !props.picking && !props.drawing) {
+      moveCamera(instance, [props.selectedAnchor!.latitude, props.selectedAnchor!.longitude], Math.max(16, instance.getZoom()));
+    }
+    selectionKey.current = selected;
   }, [
     props.destination.latitude,
     props.destination.longitude,
     props.cameraRevision,
+    props.selectedId,
+    props.selectedAnchor,
+    props.picking,
+    props.drawing,
   ]);
   return (
     <div

@@ -35,12 +35,22 @@ window.updateUserLocation = function(point,accuracy) {
   userDot.bringToFront();
 };
 let current = null;
-let destinationKey = '';
+let destinationKey = '', selectionKey = '', cameraMoving = false, cameraChanging = false;
+const motion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+motion?.addEventListener('change',event=>{if(event.matches){map.stop();cameraMoving=false;position();}});
+function moveCamera(point,zoom,animate=true){
+  cameraChanging=true;
+  map.stop();
+  cameraMoving=false;
+  if(animate && motion && !motion.matches)map.flyTo(point,zoom,{animate:true,duration:.45,easeLinearity:.25});
+  else map.setView(point,zoom,{animate:false});
+  cameraChanging=false;position();
+}
 let dragging = false, pending = null;
 map.on('dragstart',()=>send({type:'pan'}));
-map.on('movestart',()=>send({type:'position',selectionId:current?.selectedId??null,anchor:current?.selectedAnchor??null,point:null}));
-function position(){if(current && current.selectedId && current.selectedAnchor){const p=map.latLngToContainerPoint(current.selectedAnchor);send({type:'position',selectionId:current.selectedId,anchor:current.selectedAnchor,point:{x:p.x,y:p.y}});}else send({type:'position',selectionId:null,anchor:null,point:null});}
-map.on('moveend',()=>{const p=map.getCenter();send({type:'center',latitude:p.lat,longitude:p.lng});position();});
+map.on('movestart',()=>{cameraMoving=true;position();});
+function position(){if(current && current.selectedId && current.selectedAnchor){const p=cameraMoving||cameraChanging?null:map.latLngToContainerPoint(current.selectedAnchor);send({type:'position',selectionId:current.selectedId,anchor:current.selectedAnchor,point:p?{x:p.x,y:p.y}:null});}else send({type:'position',selectionId:null,anchor:null,point:null});}
+map.on('moveend',()=>{cameraMoving=false;const p=map.getCenter();send({type:'center',latitude:p.lat,longitude:p.lng});position();});
 map.on('zoomend',()=>send({type:'zoom',zoom:map.getZoom()}));
 map.on('click',event=>{if(current && current.picking)send({type:'pick',latitude:event.latlng.lat,longitude:event.latlng.lng});else send({type:'blank'});});
 function select(id,latlng) {
@@ -49,7 +59,9 @@ function select(id,latlng) {
 }
 window.renderParking = function(next) {
   if(dragging){pending=next;return;}
+  const enteringDrawing = next.drawing && !current?.drawing;
   current = next;
+  if(enteringDrawing){map.stop();cameraMoving=false;}
   // Two quick corner taps must not be interpreted as a zoom around that point.
   if(next.drawing)map.doubleClickZoom.disable();else map.doubleClickZoom.enable();
   document.getElementById("map").classList.toggle("dark",Boolean(next.dark));
@@ -76,7 +88,7 @@ window.renderParking = function(next) {
     const marker=L.marker(pin.point,{autoPanOnFocus:false,icon,title:pin.title,zIndexOffset:pin.selected?1000:pin.spaces?800:0});
     marker.on('click',()=>{
       if(next.selectionEnabled===false&&!next.picking)return;
-      if(!next.picking && pin.cluster){send({type:'interaction'});map.setView(pin.point,Math.min(19,map.getZoom()+1),{animate:false});}
+      if(!next.picking && pin.cluster){send({type:'pan'});send({type:'interaction'});moveCamera(pin.point,Math.min(19,map.getZoom()+1));}
       else select(pin.id,{lat:pin.point[0],lng:pin.point[1]});
     });
     marker.addTo(group);
@@ -101,7 +113,10 @@ window.renderParking = function(next) {
   }
   if(userDot)userDot.bringToFront();
   const key=next.destination.join(',')+':'+(next.cameraRevision||0);
-  if(key!==destinationKey){destinationKey=key;map.setView(next.destination,15,{animate:false});}
+  const selected=next.selectedId&&next.selectedAnchor?next.selectedId+':'+next.selectedAnchor.join(','):'';
+  if(key!==destinationKey){const initial=!destinationKey;destinationKey=key;moveCamera(next.destination,15,!initial&&!next.drawing);}
+  else if(selected && selected!==selectionKey && !next.drawing && !next.picking)moveCamera(next.selectedAnchor,Math.max(16,map.getZoom()));
+  selectionKey=selected;
   position();
 };
 window.addEventListener('resize',()=>{map.invalidateSize({pan:false});position();});

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, View, Text } from "react-native";
+import { AccessibilityInfo, StyleSheet, View, Text } from "react-native";
 import MapView, {
   Marker,
   Polygon,
@@ -11,7 +11,6 @@ import { groupParking } from "../domain/clusters";
 import { parkingMarker } from "../domain/marker-appearance";
 import { createOverlayTapGate } from "../domain/map-interactions";
 import type { ParkingMapProps } from "./mapTypes";
-import { SKOPJE } from "../domain/parking";
 export default function ParkingMap(props: ParkingMapProps) {
   const map = useRef<MapView>(null);
   const [overlayTaps] = useState(() => createOverlayTapGate());
@@ -20,10 +19,13 @@ export default function ParkingMap(props: ParkingMapProps) {
     callbacks.current = props;
   }, [props]);
   const projectionVersion = useRef(0);
+  const cameraMoving = useRef(false), reduceMotion = useRef(true);
+  const [mapReady, setMapReady] = useState(false);
+  const destinationKey = useRef(""), selectionKey = useRef("");
   const projectSelection = React.useCallback(async () => {
     const p = callbacks.current,
       revision = ++projectionVersion.current;
-    if (!p.selectedId || !p.selectedAnchor || !map.current) {
+    if (!p.selectedId || !p.selectedAnchor || !map.current || cameraMoving.current) {
       p.onSelectedPosition?.(null);
       return;
     }
@@ -37,24 +39,59 @@ export default function ParkingMap(props: ParkingMapProps) {
     }
   }, []);
   const [region, setRegion] = useState<Region>({
-    ...SKOPJE,
-    latitudeDelta: 0.035,
-    longitudeDelta: 0.035,
+    ...props.destination,
+    latitudeDelta: 0.022,
+    longitudeDelta: 0.022,
   });
+  const currentRegion = useRef(region);
+  const moveCamera = React.useCallback((target: Region, animate = true) => {
+    if (!map.current) return;
+    projectionVersion.current++;
+    callbacks.current.onSelectedPosition?.(null);
+    const animated = animate && !reduceMotion.current;
+    cameraMoving.current = animated;
+    if (animated) map.current.animateToRegion(target, 450);
+    else {
+      // animateToRegion duration is ignored on iOS. This API explicitly skips
+      // animation on both native providers and runs only after onMapReady.
+      map.current.fitToCoordinates([
+        { latitude: target.latitude - target.latitudeDelta / 2, longitude: target.longitude - target.longitudeDelta / 2 },
+        { latitude: target.latitude + target.latitudeDelta / 2, longitude: target.longitude + target.longitudeDelta / 2 },
+      ], { animated: false, edgePadding: { top: 0, right: 0, bottom: 0, left: 0 } });
+      void projectSelection();
+    }
+  }, [projectSelection]);
   useEffect(() => {
-    map.current?.animateToRegion(
-      {
-        latitude: props.destination.latitude,
-        longitude: props.destination.longitude,
-        latitudeDelta: 0.022,
-        longitudeDelta: 0.022,
-      },
-      200,
-    );
+    let active = true, changed = false;
+    void AccessibilityInfo.isReduceMotionEnabled().then(value => { if (active && !changed) reduceMotion.current = value; }).catch(() => {});
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", value => {
+      changed = true; reduceMotion.current = value;
+      if (value && cameraMoving.current) moveCamera(currentRegion.current, false);
+    });
+    return () => { active = false; subscription.remove(); };
+  }, [moveCamera]);
+  useEffect(() => {
+    if (!mapReady) return;
+    const key = `${props.destination.latitude},${props.destination.longitude}:${props.cameraRevision ?? 0}`;
+    const selected = props.selectedId && props.selectedAnchor ? `${props.selectedId}:${props.selectedAnchor.latitude},${props.selectedAnchor.longitude}` : "";
+    if (props.drawing && cameraMoving.current) moveCamera(currentRegion.current, false);
+    if (key !== destinationKey.current) {
+      const initial = !destinationKey.current;
+      destinationKey.current = key;
+      moveCamera({ ...props.destination, latitudeDelta: 0.022, longitudeDelta: 0.022 }, !initial && !props.drawing);
+    } else if (selected && selected !== selectionKey.current && !props.picking && !props.drawing) {
+      moveCamera({ ...props.selectedAnchor!, latitudeDelta: Math.min(0.011, currentRegion.current.latitudeDelta), longitudeDelta: Math.min(0.011, currentRegion.current.longitudeDelta) });
+    }
+    selectionKey.current = selected;
   }, [
-    props.destination.latitude,
-    props.destination.longitude,
+    props.destination,
     props.cameraRevision,
+    props.selectedId,
+    props.selectedAnchor,
+    props.drawing,
+    props.picking,
+    mapReady,
+    moveCamera,
   ]);
   useEffect(() => {
     void projectSelection();
@@ -81,14 +118,19 @@ export default function ParkingMap(props: ParkingMapProps) {
       ref={map}
       style={StyleSheet.absoluteFill}
       initialRegion={region}
+      onMapReady={() => setMapReady(true)}
       userInterfaceStyle={props.dark ? "dark" : "light"}
       mapPadding={{ bottom: 0, top: 0, left: 0, right: 0 }}
       moveOnMarkerPress={false}
-      onRegionChange={() => {
+      onRegionChange={(next) => {
+        currentRegion.current = next;
+        cameraMoving.current = true;
         projectionVersion.current++;
         props.onSelectedPosition?.(null);
       }}
       onRegionChangeComplete={(next) => {
+        currentRegion.current = next;
+        cameraMoving.current = false;
         setRegion(next);
         props.onCenterChange?.({
           latitude: next.latitude,
@@ -199,16 +241,16 @@ export default function ParkingMap(props: ParkingMapProps) {
               else if (
                 group.length > 1 &&
                 !group.some((p) => p.id === props.selectedId)
-              )
-                map.current?.animateToRegion(
+              ) {
+                props.onPan?.();
+                moveCamera(
                   {
                     ...place.coordinate,
                     latitudeDelta: region.latitudeDelta / 2,
                     longitudeDelta: region.longitudeDelta / 2,
                   },
-                  200,
                 );
-              else props.onSelect(place);
+              } else props.onSelect(place);
             }}
           >
             <View style={s.markerFrame}>{place.id === props.selectedId ? <View style={[s.selectedFrame, { width: appearance.spaces ? 52 : 38 }]} /> : null}<View

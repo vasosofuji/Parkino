@@ -13,6 +13,7 @@ type Node = { type: string; props: Record<string, unknown>; children: (Node | No
 function renderer() {
   const slots: unknown[] = [], effects: (() => void)[] = [];
   let cursor = 0;
+  let motionChanged: ((value: boolean) => void) | undefined;
   const memo = (fn: () => unknown, deps: unknown[]) => {
     const index = cursor++, previous = slots[index] as { deps: unknown[]; value: unknown } | undefined;
     if (!previous || deps.some((dep, i) => dep !== previous.deps[i])) slots[index] = { deps, value: fn() };
@@ -29,7 +30,7 @@ function renderer() {
   const source = ts.transpileModule(readFileSync("src/components/GoogleParkingMap.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
   vm.runInNewContext(source, { exports, require(name: string) {
     if (name === "react") return { ...React, default: React, __esModule: true };
-    if (name === "react-native") return { StyleSheet: { create: (value: unknown) => value, absoluteFill: {} }, View: "View", Text: "Text" };
+    if (name === "react-native") return { AccessibilityInfo: { isReduceMotionEnabled: async () => false, addEventListener: (_name: string, callback: (value: boolean) => void) => { motionChanged = callback; return { remove() {} }; } }, StyleSheet: { create: (value: unknown) => value, absoluteFill: {} }, View: "View", Text: "Text" };
     if (name === "react-native-maps") return { __esModule: true, default: "MapView", Marker: "Marker", Polygon: "Polygon", Polyline: "Polyline", Circle: "Circle" };
     if (name.endsWith("clusters")) return { groupParking };
     if (name.endsWith("marker-appearance")) return { parkingMarker };
@@ -37,13 +38,14 @@ function renderer() {
     if (name.endsWith("parking")) return { SKOPJE };
     throw new Error(name);
   } });
-  return (props: ParkingMapProps, map: object) => {
+  const render = (props: ParkingMapProps, map: object) => {
     cursor = 0;
     const tree = exports.default!(props);
     (tree.props.ref as { current: object }).current = map;
     effects.splice(0).forEach(effect => effect());
     return tree;
   };
+  return Object.assign(render, { motion: (value: boolean) => motionChanged?.(value) });
 }
 const base: ParkingMapProps = { now: Date.now(), places: [], selectedId: "a", selectedAnchor: SKOPJE, destination: SKOPJE, userLocation: null, picking: false, showZones: true, onSelect() {}, onPick() {}, language: "en" };
 
@@ -67,4 +69,34 @@ test("a Google footprint tap picks its coordinate once while its paired map even
   (polygon.props.onPress as (event: object) => void)(event);
   (tree.props.onPress as (event: object) => void)(event);
   assert.deepEqual(picks, [SKOPJE]); assert.equal(blanks.length, 0);
+});
+
+test("native camera waits for readiness, focuses the tapped anchor once, and respects reduced motion without zero-duration animation", async () => {
+  const render = renderer(), animated: { target: object; duration: number }[] = [], immediate: object[] = [], positions: unknown[] = [];
+  const map = { animateToRegion: (target: object, duration: number) => animated.push({ target, duration }), fitToCoordinates: (points: object[], options: { animated: boolean }) => { assert.equal(options.animated, false); immediate.push(points); }, pointForCoordinate: async () => ({ x: 120, y: 250 }) };
+  let props = { ...base, selectedId: null, selectedAnchor: null, onSelectedPosition: (point: unknown) => positions.push(point) } as ParkingMapProps;
+  let tree = render(props, map);
+  assert.equal(immediate.length, 0); assert.equal(animated.length, 0);
+  (tree.props.onMapReady as () => void)(); tree = render(props, map);
+  assert.equal(immediate.length, 1, "initial framing is immediate after readiness");
+  await new Promise<void>(resolve => setImmediate(resolve));
+  props = { ...props, selectedId: "one", selectedAnchor: { latitude: 42.01, longitude: 21.44 } };
+  tree = render(props, map);
+  assert.equal(animated.length, 1); assert.equal(animated[0].duration, 450);
+  assert.equal((animated[0].target as { latitude: number }).latitude, 42.01);
+  assert.equal(positions.at(-1), null);
+  render({ ...props, now: props.now + 30_000, userLocation: SKOPJE }, map);
+  assert.equal(animated.length, 1, "catalog clock and GPS cannot replay a camera command");
+  (tree.props.onRegionChangeComplete as (region: object) => void)(animated[0].target);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.deepEqual(positions.at(-1), { x: 120, y: 250 });
+  render.motion(true);
+  props = { ...props, selectedId: "two", selectedAnchor: { latitude: 42.02, longitude: 21.45 } };
+  render(props, map);
+  assert.equal(animated.length, 1); assert.equal(immediate.length, 2);
+  render.motion(false);
+  props = { ...props, selectedId: "three", selectedAnchor: { latitude: 42.03, longitude: 21.46 } };
+  render(props, map); assert.equal(animated.length, 2);
+  render({ ...props, drawing: true, picking: true }, map);
+  assert.equal(immediate.length, 3, "entering drawing stops the flight without adding a new one");
 });

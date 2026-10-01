@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Animated, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Button, IconButton } from "./ui";
 import { useTheme } from "../state/ThemeContext";
 import { useParking } from "../state/ParkingContext";
@@ -9,6 +9,7 @@ import DigitalParkingSign from "./DigitalParkingSign";
 import { parkingMarker } from "../domain/marker-appearance";
 import { parkingPreviewLayout } from "../domain/preview-layout";
 import { openParkingDirections } from "../services/navigation";
+import { useParkingPopupMotion } from "../hooks/useParkingPopupMotion";
 export default function ParkingPreview({
   place,
   point,
@@ -18,7 +19,7 @@ export default function ParkingPreview({
   onClose,
 }: {
   place: ParkingPlace;
-  point: { x: number; y: number };
+  point: { x: number; y: number } | null;
   mapHeight: number;
   drawerHeight: number;
   onUpdate: () => void;
@@ -32,22 +33,23 @@ export default function ParkingPreview({
   const price = parkingPrice(place, now),
     status = currentAvailability(place.availability, now);
   const marker = parkingMarker(place, 1, now);
-  const layout = parkingPreviewLayout(point, width, mapHeight, drawerHeight, height);
-  const visible = height > 0 && layout.visible;
+  const layout = parkingPreviewLayout(point ?? { x: 0, y: 0 }, width, mapHeight, drawerHeight, height);
+  const positioned = point !== null && height > 0 && layout.visible;
+  const motion = useParkingPopupMotion(positioned);
+  const visible = positioned && motion.ready;
   return (
-    <View
+    <Animated.View
       accessibilityLabel={t("Parking information", "Информации за паркингот")}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
       pointerEvents={visible ? "auto" : "none"}
       onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
-      style={{
+      style={[{
         position: "absolute",
         zIndex: 1050,
         width: layout.width,
         left: layout.left,
         top: layout.top,
-        opacity: visible ? 1 : 0,
         borderRadius: 16,
         padding: 12,
         backgroundColor: colors.paper,
@@ -55,7 +57,7 @@ export default function ParkingPreview({
         borderWidth: 1,
         gap: 8,
         boxShadow: "0 4px 18px #10292130",
-      }}
+      }, motion.style, !visible && { opacity: 0 }]}
     >
       {layout.showArrow ? <View
         pointerEvents="none"
@@ -157,6 +159,6 @@ export default function ParkingPreview({
         <Text style={{ color: colors.red, fontSize: 12 }}>{error}</Text>
       ) : null}
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
