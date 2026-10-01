@@ -1,0 +1,12 @@
+{
+  "organization": "Parkino",
+  "organizationId": "xyxzrlisgunmofsdiale",
+  "project": "Parkino Database",
+  "projectRef": "vkqxtqcuoobiijbnpxod",
+  "region": "eu-west-2",
+  "schema": "parkskopje",
+  "apiUrl": "https://vkqxtqcuoobiijbnpxod.supabase.co",
+  "runtimeRole": "parkino_api",
+  "poolerHost": "aws-0-eu-west-2.pooler.supabase.com",
+  "poolerPort": 5432
+}

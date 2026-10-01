@@ -1,0 +1,225 @@
+{
+  "source": {
+    "label": "JP Gradski Parking official map · area reference",
+    "url": "https://www.gradskiparking.com.mk/mapa-lokacii-nova.nspx",
+    "retrievedAt": "2026-10-01T11:03:53.982941Z"
+  },
+  "anchors": {
+    "A01": {
+      "coordinate": {
+        "latitude": 41.99875178066483,
+        "longitude": 21.42857420273279
+      },
+      "mapLabel": "A1 Агромеханика"
+    },
+    "A3": {
+      "coordinate": {
+        "latitude": 41.99454529829993,
+        "longitude": 21.4277801068726
+      },
+      "mapLabel": "A3 Даме Груев 1"
+    },
+    "A4": {
+      "coordinate": {
+        "latitude": 41.99212,
+        "longitude": 21.430672
+      },
+      "mapLabel": "А4 Даме Груев 2"
+    },
+    "A05": {
+      "coordinate": {
+        "latitude": 41.997714,
+        "longitude": 21.429041
+      },
+      "mapLabel": "А5 Орце Николов (Мал ринг)"
+    },
+    "A06": {
+      "coordinate": {
+        "latitude": 41.996235,
+        "longitude": 21.428033
+      },
+      "mapLabel": "А6 Максим Горки"
+    },
+    "A8": {
+      "coordinate": {
+        "latitude": 41.999014,
+        "longitude": 21.434148
+      },
+      "mapLabel": "А8 Камен Мост"
+    },
+    "B2": {
+      "coordinate": {
+        "latitude": 41.99204323835062,
+        "longitude": 21.4287882778324
+      },
+      "mapLabel": "Б2 Бристол"
+    },
+    "B3": {
+      "coordinate": {
+        "latitude": 41.99219241839701,
+        "longitude": 21.42782231035605
+      },
+      "mapLabel": "Б3 Бристол 2"
+    },
+    "B6": {
+      "coordinate": {
+        "latitude": 41.995358,
+        "longitude": 21.426102
+      },
+      "mapLabel": "Б6 Јосип Броз Тито"
+    },
+    "B7": {
+      "coordinate": {
+        "latitude": 41.999267,
+        "longitude": 21.43789
+      },
+      "mapLabel": "Б7 Илинден"
+    },
+    "D3": {
+      "coordinate": {
+        "latitude": 41.985486,
+        "longitude": 21.464462
+      },
+      "mapLabel": "Д3 Бисер"
+    },
+    "D4": {
+      "coordinate": {
+        "latitude": 41.984864,
+        "longitude": 21.468743
+      },
+      "mapLabel": "Д4 Веро (Рударски институт)"
+    },
+    "D5": {
+      "coordinate": {
+        "latitude": 41.991411,
+        "longitude": 21.450631
+      },
+      "mapLabel": "Д5 Владимир Комаров"
+    },
+    "D6": {
+      "coordinate": {
+        "latitude": 41.98903,
+        "longitude": 21.4528
+      },
+      "mapLabel": "Д6 Палма Аеродром"
+    },
+    "D7": {
+      "coordinate": {
+        "latitude": 41.986522,
+        "longitude": 21.465524
+      },
+      "mapLabel": "Д7 Аеродром Глорија"
+    },
+    "D40": {
+      "coordinate": {
+        "latitude": 42.002976,
+        "longitude": 21.401597
+      },
+      "mapLabel": "Д40 8 - ми Септември"
+    },
+    "D62": {
+      "coordinate": {
+        "latitude": 42.006755,
+        "longitude": 21.41379
+      },
+      "mapLabel": "Д62 Тениски клуб АБЦ"
+    },
+    "C8": {
+      "coordinate": {
+        "latitude": 41.99617022202308,
+        "longitude": 21.42275370022642
+      },
+      "mapLabel": "Ц8 Дебар Маало"
+    },
+    "C9": {
+      "coordinate": {
+        "latitude": 41.9962850326122,
+        "longitude": 21.42401792207031
+      },
+      "mapLabel": "Ц9 Дебар Маало"
+    },
+    "C15": {
+      "coordinate": {
+        "latitude": 42.00016010429008,
+        "longitude": 21.42200940564188
+      },
+      "mapLabel": "Ц15 Ѓуро Ѓаковиќ"
+    },
+    "C17": {
+      "coordinate": {
+        "latitude": 42.000361,
+        "longitude": 21.424476
+      },
+      "mapLabel": "Ц17 Ленинова"
+    },
+    "C19": {
+      "coordinate": {
+        "latitude": 41.999456,
+        "longitude": 21.417026
+      },
+      "mapLabel": "Ц19 Универзална Сала"
+    },
+    "C33": {
+      "coordinate": {
+        "latitude": 41.991949,
+        "longitude": 21.445843
+      },
+      "mapLabel": "Ц33 Транспортен Центар"
+    },
+    "C35": {
+      "coordinate": {
+        "latitude": 41.990298,
+        "longitude": 21.443541
+      },
+      "mapLabel": "Ц35 Спроти Депо Пајак"
+    },
+    "C45": {
+      "coordinate": {
+        "latitude": 41.997164,
+        "longitude": 21.443879
+      },
+      "mapLabel": "Ц45 Комплекс објекти: Ману, Мтв, Судска палата"
+    },
+    "C46": {
+      "coordinate": {
+        "latitude": 41.99536169442734,
+        "longitude": 21.44084987786212
+      },
+      "mapLabel": "Ц46 Богородица (продолжение Ц45)"
+    },
+    "C80": {
+      "coordinate": {
+        "latitude": 42.005587,
+        "longitude": 21.417165
+      },
+      "mapLabel": "Ц80 Зоолошка"
+    },
+    "C81": {
+      "coordinate": {
+        "latitude": 42.004909,
+        "longitude": 21.41916
+      },
+      "mapLabel": "Ц81 Градско Собрание"
+    },
+    "D1": {
+      "coordinate": {
+        "latitude": 41.992339,
+        "longitude": 21.464971
+      },
+      "mapLabel": "ЗОНА Д1"
+    },
+    "D8": {
+      "coordinate": {
+        "latitude": 41.990767,
+        "longitude": 21.449746
+      },
+      "mapLabel": "ЗОНА Д8"
+    }
+  },
+  "excluded": [
+    {
+      "mapLabel": "Ц11 Орце Николов",
+      "reason": "Not in the current zone inventory"
+    }
+  ]
+}

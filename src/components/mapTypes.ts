@@ -1,0 +1,26 @@
+import type { Coordinate, ParkingPlace } from "../domain/types";
+export type ParkingMapProps = {
+  places: ParkingPlace[];
+  selectedId: string | null;
+  selectedAnchor?: Coordinate | null;
+  onSelectedPosition?: (point: { x: number; y: number } | null) => void;
+  onCenterChange?: (coordinate: Coordinate) => void;
+  onBlankPress?: () => void;
+  selectionEnabled?: boolean;
+  destination: Coordinate;
+  cameraRevision?: number;
+  destinationMarker?: Coordinate | null;
+  userLocation: Coordinate | null;
+  userAccuracy?: number | null;
+  destinationName?: string;
+  drawing?: boolean;
+  onMoveVertex?: (index: number, coordinate: Coordinate) => void;
+  onPan?: () => void;
+  picking: boolean;
+  showZones: boolean;
+  onSelect: (place: ParkingPlace, coordinate?: Coordinate) => void;
+  onPick: (coordinate: Coordinate) => void;
+  language: "mk" | "en";
+  dark?: boolean;
+  draftCoordinates?: Coordinate[];
+};

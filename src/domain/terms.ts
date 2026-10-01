@@ -1,0 +1,28 @@
+export function termsParagraphs(t: (en: string, mk: string) => string) {
+  return [
+    t(
+      "Use this parking app only when it is safe. Do not interact with it while driving.",
+      "Користете ја апликацијата само кога е безбедно. Не користете ја додека возите.",
+    ),
+    t(
+      "Parking locations, prices and availability can change. Check the signs where you park and follow local parking rules. The app does not reserve spaces or collect parking payments.",
+      "Локациите, цените и достапноста може да се променат. Проверете ги таблите каде што паркирате и почитувајте ги локалните правила. Апликацијата не резервира места и не наплаќа паркинг.",
+    ),
+    t(
+      "Share information you believe is accurate and photos you have the right to share. Do not upload faces, registration plates, private information or abusive content.",
+      "Споделувајте информации за кои верувате дека се точни и слики за кои имате право на споделување. Не прикачувајте лица, регистарски таблички, приватни податоци или навредлива содржина.",
+    ),
+    t(
+      "Parking contributions and sign photos are public. You allow the app to store, display and process them for the shared map. Google Gemini may process sign photos to read prices, hours and zone labels.",
+      "Придонесите за паркирање и сликите од табли се јавни. Дозволувате апликацијата да ги чува, прикажува и обработува за заедничката мапа. Google Gemini може да ги обработува сликите за читање цени, работно време и ознаки на зони.",
+    ),
+    t(
+      "Location is used on your device to find nearby parking and detect a stop. GPS accuracy depends on your device and surroundings. Your GPS history is not uploaded. Address searches and map/navigation requests are processed by their providers.",
+      "Локацијата се користи на вашиот уред за блиски паркинзи и откривање запирање. Прецизноста на GPS зависи од уредот и околината. GPS историјата не се испраќа. Пребарувањата на адреси и барањата за мапи/навигација ги обработуваат нивните даватели.",
+    ),
+    t(
+      "Your username belongs to this device account. This demo has no password or account recovery. You can delete your account, photos and reports in Privacy. Published parking locations and zone boundaries remain on the shared map.",
+      "Корисничкото име ѝ припаѓа на сметката на овој уред. Демото нема лозинка или обновување сметка. Сметката, сликите и пријавите може да ги избришете во Приватност. Објавените паркинзи и граници на зони остануваат на заедничката мапа.",
+    ),
+  ];
+}
