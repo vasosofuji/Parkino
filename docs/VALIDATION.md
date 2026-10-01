@@ -1,3 +1,16 @@
+# Smooth parking motion and local builder shutdown — 2026-10-02
+
+Reviewed application source: `e291a08` on `codex/contribution-polish`. Separate native subagents implemented camera and popup motion, kept their plans in `docs/plans/`, and completed an independent critic loop.
+
+- Parking selection, cluster expansion and destination/recenter changes use short, interruptible camera movement. Closer zoom is preserved; drawing cancels motion. Reduced Motion uses immediate camera changes and a still popup. The popup enters over 200ms with a subtle fade, upward settle and scale, once per selection. Position updates do not replay it, and moving projections remain hidden. Same-place/new-anchor taps clear the old point, and selection/cluster actions protect user camera intent from late GPS initialization.
+- **183/183 tests pass**, including executable native Leaflet, web Leaflet, native Maps and popup lifecycle regressions. Final Expo lint and TypeScript pass. Independent review approved the final source and checked builder success/failure/shutdown behavior using the PowerShell AST with mocked calls.
+- Built the connected **Parking Test** APK locally with Expo/Gradle, preserving the existing test signing identity. No EAS build was used. Build completed in 1m22s. APK ZIP integrity, Android v2 signature, hosted HTTPS endpoint and configured private-secret scans pass. Source snapshot hashes match the final app/module/config files.
+- Local build scripts now use `--no-daemon`, Kotlin compilation in-process and a shutdown attempt in `finally`, preserving compilation errors if cleanup fails. The actual build requested Gradle shutdown and stopped the existing daemon. With the phone disconnected, the test ADB server was also stopped. Final process inspection found no Java/Gradle/Kotlin, ADB, aapt2, Ninja or CMake processes, and no Node process from the build snapshot. SDK installations and generated build caches remain on disk.
+
+APK: `preview/Parkino-test-connected.apk` — **62,665,194 bytes**; SHA-256 **`6A5CA0E458549DF07A0AA9196558BE96A76596D169D4680E1A2DE235A43EA0F4`**. Test certificate SHA-256: `fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c`. The APK remains an ignored local artifact rather than a Git source file.
+
+Limits: the user disconnected the phone before this build, so the new animation timing has not been checked on hardware and this APK has not been installed. Earlier phone validation below applies to the previous APK. iOS/native provider timing, real sign accuracy and outdoor/background arrival behavior still need field testing.
+
 # Contribution refinement and phone verification — 2026-10-02
 
 Implemented with separate native subagents, persistent plans and independent critic loops. Final application source is `79a8b7a` on `codex/contribution-polish`, including the contribution refinements at `a88e3ae` and Android keyboard module at `0f95929`. This follow-up changes the client only; the hosted API needs no migration or redeployment.
