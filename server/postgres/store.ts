@@ -48,8 +48,8 @@ export class PostgresParkingStore {
   async session(token: string) {
     const hash = createHash("sha256").update(token).digest("hex");
     const row = (await this.db
-      .prepare("SELECT id,created FROM sessions WHERE hash=?")
-      .get(hash)) as
+      .prepare("SELECT id,created FROM sessions WHERE hash=? UNION ALL SELECT s.id,s.created FROM sessions s JOIN auth_sessions a ON a.session_id=s.id WHERE a.hash=? AND a.expires>? LIMIT 1")
+      .get(hash, hash, Date.now())) as
       | {
           id: string;
           created: number;
@@ -89,11 +89,12 @@ export class PostgresParkingStore {
       | undefined;
     const rows = (await this.db
       .prepare(
-        "SELECT status,observed FROM reports WHERE place_id=? AND observed>? ORDER BY observed DESC, rowid DESC",
+        "SELECT status,observed,free_spaces FROM reports WHERE place_id=? AND observed>? ORDER BY observed DESC, rowid DESC",
       )
       .all(id, now - REPORT_TTL_MS)) as {
       status: "spaces" | "full";
       observed: number;
+      free_spaces: number | null;
     }[];
     if (
       operator &&
@@ -122,6 +123,7 @@ export class PostgresParkingStore {
     return {
       status,
       source: "community",
+      ...(status !== "mixed" && rows[0].free_spaces !== null ? { freeSpaces: rows[0].free_spaces } : {}),
       reports: rows.length,
       observedAt: new Date(rows[0].observed).toISOString(),
       expiresAt: new Date(
@@ -232,6 +234,7 @@ export class PostgresParkingStore {
         place_id: string;
         status: "spaces" | "full";
         observed: number;
+        free_spaces: number | null;
       }[],
     );
     const observations = grouped(
@@ -291,6 +294,8 @@ export class PostgresParkingStore {
                   ? "full"
                   : "mixed",
             source: "community",
+            ...((this.trustInputs || spaces === community.length || spaces === 0) && community[0].free_spaces !== null
+              ? { freeSpaces: community[0].free_spaces } : {}),
             reports: community.length,
             observedAt: new Date(community[0].observed).toISOString(),
             expiresAt: new Date(
@@ -321,7 +326,7 @@ export class PostgresParkingStore {
         };
       });
   }
-  async report(placeId: string, token: string, status: "spaces" | "full") {
+  async report(placeId: string, token: string, status: "spaces" | "full", freeSpaces?: number) {
     const user = await this.session(token),
       place = await this.place(placeId);
     if (place.kind === "zone" || place.access === "restricted")
@@ -329,11 +334,18 @@ export class PostgresParkingStore {
         new Error("Reports are available for accessible parking locations."),
         { statusCode: 400 },
       );
+    const capacityRow = (await this.db.prepare("SELECT capacity FROM capacity_reports WHERE place_id=? ORDER BY updated DESC,session_id DESC LIMIT 1").get(placeId)) as {capacity:number}|undefined;
+    const capacity = capacityRow?.capacity ?? place.capacity;
+    if (capacity === 0 && status === "spaces")
+      throw Object.assign(new Error("This parking is recorded as having no spaces. Correct its capacity before reporting availability."), { statusCode: 400 });
+    if (freeSpaces !== undefined && (!Number.isInteger(freeSpaces) || freeSpaces < 0 || freeSpaces > 100000 ||
+      (capacity !== null && freeSpaces > capacity) || (status === "full" ? freeSpaces !== 0 : freeSpaces === 0)))
+      throw Object.assign(new Error("Free spaces must match availability and cannot exceed capacity."), { statusCode: 400 });
     await this.db
       .prepare(
-        "INSERT INTO reports VALUES (?,?,?,?) ON CONFLICT(place_id,session_id) DO UPDATE SET status=excluded.status,observed=excluded.observed",
+        "INSERT INTO reports(place_id,session_id,status,observed,free_spaces) VALUES (?,?,?,?,?) ON CONFLICT(place_id,session_id) DO UPDATE SET status=excluded.status,observed=excluded.observed,free_spaces=excluded.free_spaces",
       )
-      .run(placeId, user.id, status, this.clock());
+      .run(placeId, user.id, status, this.clock(), status === "full" ? 0 : freeSpaces ?? null);
     await this.db
       .prepare("DELETE FROM reports WHERE observed<=?")
       .run(this.clock() - REPORT_TTL_MS);

@@ -187,7 +187,7 @@ const styles = (colors: ThemeColors) =>
       borderRadius: 15,
       gap: 8,
     },
-    number: { fontSize: 32, color: colors.green, fontWeight: "800" },
+    number: { fontSize: 32, color: colors.accentText, fontWeight: "800" },
     sectionTitle: {
       color: colors.ink,
       fontSize: 21,
@@ -210,7 +210,7 @@ const styles = (colors: ThemeColors) =>
       borderBottomWidth: 1,
       borderColor: colors.line,
     },
-    code: { width: 46, color: colors.green, fontSize: 16, fontWeight: "800" },
+    code: { width: 46, color: colors.accentText, fontSize: 16, fontWeight: "800" },
     rowMain: { flex: 1, gap: 5 },
     name: { color: colors.ink, fontSize: 14, fontWeight: "700" },
     price: {

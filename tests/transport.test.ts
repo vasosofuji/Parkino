@@ -45,3 +45,25 @@ test('unavailable database fails within the warm-up budget without sending a wri
   await assert.rejects(request('/report', {method:'POST'}), /Could not connect/);
   assert.equal(now,75000);
 });
+
+test('a throttled readiness probe stops retrying and respects its cooldown', async () => {
+  let now=0, calls=0;
+  const request=createTransport('https://test.example',{clock:()=>now,fetcher:(async()=>{
+    calls++;
+    return calls===1 ? Response.json({error:'limited'},{status:429,headers:{'Retry-After':'45'}}) : Response.json({status:'ok'});
+  }) as typeof fetch,pause:async()=>{throw new Error('must not retry throttled probe');}});
+  await assert.rejects(request('/report',{method:'POST'}),/Too many requests/);
+  await assert.rejects(request('/report',{method:'POST'}),/Too many requests/);
+  assert.equal(calls,1);
+  now=45001;
+  await request('/catalog');
+  assert.equal(calls,3);
+});
+
+test('authenticated requests do not follow redirects or attach browser cookies',async()=>{
+  const request=createTransport('https://test.example',{fetcher:(async(url: string | URL | Request, init?: RequestInit)=>{
+    assert.equal(init?.credentials,'omit'); assert.equal(init?.redirect,'error');
+    return Response.json(String(url).endsWith('/health')?{status:'ok'}:{saved:true});
+  }) as typeof fetch});
+  await request('/report',{method:'POST',headers:{Authorization:'Bearer test-only-token'}});
+});

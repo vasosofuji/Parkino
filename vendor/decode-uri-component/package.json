@@ -1,0 +1,8 @@
+{
+  "name": "decode-uri-component",
+  "version": "0.5.0",
+  "description": "Upstream 0.5.0 security fix with the CommonJS export required by Expo Router's query-string 7",
+  "main": "index.js",
+  "license": "MIT",
+  "repository": "SamVerschueren/decode-uri-component"
+}

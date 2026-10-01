@@ -1,4 +1,4 @@
-import { distanceMeters } from "./parking";
+import { distanceMeters, parkingPrice } from "./parking";
 import type { Coordinate, Geometry, ParkingPlace } from "./types";
 
 export function insidePolygon(point: Coordinate, geometry: Geometry): boolean {
@@ -26,7 +26,12 @@ export type Fix = Coordinate & {
   speed: number | null;
   timestamp: number;
 };
-export const ARRIVAL_DWELL_MS = 35000;
+export const ARRIVAL_DWELL_MS = 10000;
+export const ARRIVAL_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+export type ArrivalSnapshot = {
+  candidate: { id: string; since: number; last: number; anchor: Coordinate } | null;
+  prompted: [string, number][];
+};
 export function containsParkingFix(fix: Coordinate, place: ParkingPlace) {
   return (
     place.access !== "restricted" &&
@@ -38,13 +43,20 @@ export function containsParkingFix(fix: Coordinate, place: ParkingPlace) {
   );
 }
 export class ArrivalDetector {
-  private candidate: {
-    id: string;
-    since: number;
-    last: number;
-    anchor: Coordinate;
-  } | null = null;
+  private candidate: ArrivalSnapshot["candidate"] = null;
   private prompted = new Map<string, number>();
+  constructor(snapshot?: ArrivalSnapshot) {
+    if (snapshot) {
+      this.candidate = snapshot.candidate ? { ...snapshot.candidate, anchor: { ...snapshot.candidate.anchor } } : null;
+      this.prompted = new Map(snapshot.prompted);
+    }
+  }
+  snapshot(now = Date.now()): ArrivalSnapshot {
+    return {
+      candidate: this.candidate ? { ...this.candidate, anchor: { ...this.candidate.anchor } } : null,
+      prompted: [...this.prompted].filter(([, at]) => now - at < ARRIVAL_COOLDOWN_MS),
+    };
+  }
   reset() {
     this.candidate = null;
   }
@@ -54,19 +66,24 @@ export class ArrivalDetector {
     now = Date.now(),
   ): ParkingPlace | null {
     if (
+      !Number.isFinite(fix.latitude) ||
+      !Number.isFinite(fix.longitude) ||
+      !Number.isFinite(fix.timestamp) ||
+      Math.abs(fix.latitude) > 90 ||
+      Math.abs(fix.longitude) > 180 ||
       fix.accuracy === null ||
       !Number.isFinite(fix.accuracy) ||
       fix.accuracy < 0 ||
       fix.accuracy > 25 ||
       now - fix.timestamp > 20000 ||
       fix.timestamp > now + 5000 ||
-      (fix.speed !== null && fix.speed > 0.8)
+      (fix.speed !== null && (!Number.isFinite(fix.speed) || fix.speed > 0.8))
     ) {
       this.reset();
       return null;
     }
     const place = places
-      .filter((p) => containsParkingFix(fix, p))
+      .filter((p) => containsParkingFix(fix, p) && (p.kind !== "zone" || !parkingPrice(p)))
       .sort(
         (a, b) =>
           Number(a.kind === "zone") - Number(b.kind === "zone") ||
@@ -74,7 +91,7 @@ export class ArrivalDetector {
       )[0];
     if (
       !place ||
-      now - (this.prompted.get(place.id) ?? 0) < 6 * 60 * 60 * 1000
+      now - (this.prompted.get(place.id) ?? -Infinity) < ARRIVAL_COOLDOWN_MS
     ) {
       this.reset();
       return null;

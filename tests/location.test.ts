@@ -305,4 +305,9 @@ test("location rejects stale/invalid readings and prefers a precise fix over rec
     preferFix(fix, { ...fix, accuracy: 5000, timestamp: now + 21000 }),
     true,
   );
+  assert.equal(preferFix(fix, { ...fix, longitude: 21.431, accuracy: 180, speed: 12, timestamp: now + 1000 }), true, "ordinary driving fixes stay live despite reduced accuracy");
+  assert.equal(preferFix(fix, { ...fix, longitude: 21.43002, accuracy: 110, speed: 1.2, timestamp: now + 1000 }), true, "walking movement is not frozen by the previous precise reading");
+  assert.equal(preferFix(fix, { ...fix, accuracy: 5000, timestamp: now + 5000 }), true, "coarse fallback is shown as approximate after at most five seconds");
+  assert.equal(preferFix(fix, fix), false, "duplicate cached/watch events do not rerender the marker");
+  assert.equal(preferFix(fix, { ...fix, accuracy: 5 }), true, "accuracy improvements with the same timestamp are accepted");
 });

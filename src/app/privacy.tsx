@@ -2,7 +2,7 @@ import { useTheme, type ThemeColors } from "../state/ThemeContext";
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
 import Page from "../components/Page";
-import { Button, Note } from "../components/ui";
+import { Button, Note, Sheet } from "../components/ui";
 import { useParking } from "../state/ParkingContext";
 import { api } from "../services/api";
 import { useAccount } from "../state/AccountContext";
@@ -12,17 +12,19 @@ export default function Privacy() {
   const s = styles(colors);
   const { t, connected, refresh } = useParking();
   const [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [confirmDelete, setConfirmDelete] = useState(false);
   async function remove() {
     setBusy(true);
     try {
       await api.deleteSession();
       await account.clear();
+      setConfirmDelete(false);
       await refresh();
       setMessage(
         t(
-          "Contributor session, reports and confirmations deleted.",
-          "Корисничката сесија, пријавите и потврдите се избришани.",
+          "Your account, points, reports and confirmations were deleted.",
+          "Вашата сметка, поени, пријави и потврди се избришани.",
         ),
       );
     } catch {
@@ -46,8 +48,8 @@ export default function Privacy() {
         <Text style={s.title}>{t("Location", "Локација")}</Text>
         <Note>
           {t(
-            "GPS finds nearby parking and detects a stop of about 35 seconds while the app is open. Your location history stays on the device. Adding a parking place shares its coordinates; an availability report shares the parking ID. Address searches, maps and navigation use their providers’ services.",
-            "GPS наоѓа блиски паркинзи и препознава застанување од околу 35 секунди додека апликацијата е отворена. Историјата на локации останува на уредот. Додавањето паркинг ги споделува неговите координати; пријавата за места го споделува идентификаторот на паркингот. Пребарувањето, мапите и навигацијата користат услуги од нивните провајдери.",
+            "GPS finds nearby parking and can ask a quick question after about 10 seconds of accurate, stationary readings. Optional background reminders use location even when the app is minimized; your phone controls delivery timing, and force-closing can stop them. The latest arrival location and reminder cooldowns stay on this device and are cleared when you turn reminders off or sign out. Adding a parking place shares its coordinates; an availability report shares the parking ID. Address searches, maps and navigation use their providers’ services.",
+            "GPS наоѓа блиски паркинзи и може да постави кратко прашање по околу 10 секунди прецизни, неподвижни мерења. Потсетниците во заднина се по избор и користат локација и кога апликацијата е минимизирана; телефонот го одредува времето на испорака, а присилното затворање може да ги запре. Последната локација на пристигнување и паузите меѓу потсетниците остануваат на уредот и се бришат кога ги исклучувате потсетниците или се одјавувате. Додавањето паркинг ги споделува неговите координати; пријавата го споделува идентификаторот на паркингот. Пребарувањето, мапите и навигацијата користат услуги од нивните провајдери.",
           )}
         </Note>
         <Note>
@@ -59,8 +61,8 @@ export default function Privacy() {
         <Text style={s.subhead}>{t("What is saved", "Што се зачувува")}</Text>
         <Note>
           {t(
-            "The server stores a hashed anonymous session token, session age, parking availability reports, driver prices, proposed parking coordinates and details, and confirmations. Price reports and location confirmations are displayed for 90 days. Proposal details and confirmation counts are public. Do not include names, registration plates or other personal information in notes. Reports are ignored after 15 minutes and cleaned up on subsequent reports.",
-            "Серверот зачувува хеширан анонимен токен, старост на сесија, пријави за достапност, цени од возачи, координати и детали за нови паркинзи и потврди. Цените и потврдите за локации се прикажуваат 90 дена. Деталите за предлози и бројот на потврди се јавни. Не внесувајте имиња, регистарски таблички или лични податоци. Пријавите не важат по 15 минути и се чистат со следни пријави.",
+            "The server stores your username, a salted password hash if you set a password, hashed sign-in tokens, contribution points and history, parking reports, prices, coordinates, boundaries and confirmations. Your password is never stored as plain text. Price reports and location confirmations are displayed for 90 days. Shared parking details and confirmation counts are public. Do not include names, registration plates or other personal information in notes. Availability reports expire after 15 minutes.",
+            "Серверот зачувува корисничко име, безбедно хеширана лозинка ако ја поставите, хеширани токени за најава, поени и историја на придонеси, пријави, цени, координати, граници и потврди. Лозинката не се чува како обичен текст. Цените и потврдите се прикажуваат 90 дена. Деталите за паркинзи и бројот на потврди се јавни. Не внесувајте имиња, регистарски таблички или лични податоци. Пријавите за достапност истекуваат по 15 минути.",
           )}
         </Note>
         <Text style={s.subhead}>
@@ -68,8 +70,8 @@ export default function Privacy() {
         </Text>
         <Note>
           {t(
-            "This removes your username, account, uploaded photos, zone-label edits, price and availability reports and confirmations. Published parking locations and zone boundaries remain on the shared map. Your account is saved on this device; account recovery is not available in this demo.",
-            "Се бришат корисничкото име, сметката, сликите, измените на ознаки, пријавите и потврдите. Објавените паркинг локации и граници на зони остануваат на заедничката мапа. Сметката е зачувана на овој уред; обновување не е достапно во демото.",
+            "Deleting removes your username, password, all sign-in sessions, points, uploaded photos, zone-label edits, price and availability reports and confirmations. Published parking locations and boundaries remain on the shared map. To keep your account and use it later, sign out from Your account instead.",
+            "Бришењето ги отстранува името, лозинката, сите сесии, поените, сликите, измените на ознаки, пријавите и потврдите. Објавените паркинзи и граници остануваат на заедничката мапа. За да ја зачувате сметката за подоцна, одјавете се преку Вашата сметка.",
           )}
         </Note>
         <Button
@@ -80,10 +82,15 @@ export default function Privacy() {
           }
           variant="danger"
           disabled={busy || !connected || !account.profile}
-          onPress={() => void remove()}
+          onPress={() => setConfirmDelete(true)}
         />
         {message ? <Note>{message}</Note> : null}
       </ScrollView>
+      <Sheet visible={confirmDelete} title={t("Delete your account?", "Да се избрише сметката?")} onClose={() => { if (!busy) setConfirmDelete(false); }}>
+        <Note>{t("Your username, points and private account data will be permanently removed. You cannot sign back in to this account after deletion.", "Вашето име, поени и приватни податоци трајно ќе се избришат. По бришењето нема да можете повторно да се најавите на оваа сметка.")}</Note>
+        <Button title={busy ? t("Deleting…", "Се брише…") : t("Delete account permanently", "Трајно избриши сметка")} variant="danger" disabled={busy} onPress={() => void remove()} />
+        <Button title={t("Keep my account", "Задржи ја сметката")} variant="secondary" disabled={busy} onPress={() => setConfirmDelete(false)} />
+      </Sheet>
     </Page>
   );
 }

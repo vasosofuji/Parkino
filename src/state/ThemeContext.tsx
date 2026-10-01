@@ -7,10 +7,13 @@ import React, {
 } from "react";
 import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { PALETTE_COLORS, eligibleCosmetics } from "../domain/cosmetics";
+import { useAccount } from "./AccountContext";
 export const lightColors = {
   ink: "#392C25",
   muted: "#796B5D",
   green: "#962E2B",
+  accentText: "#962E2B",
   mint: "#EDE2D0",
   paper: "#FAF3E5",
   line: "#DCD0BC",
@@ -24,6 +27,7 @@ const darkColors: ThemeColors = {
   ink: "#F6EAD5",
   muted: "#C0AC95",
   green: "#B9463D",
+  accentText: "#F0958E",
   mint: "#443328",
   paper: "#281F1B",
   line: "#5A4638",
@@ -40,6 +44,8 @@ const Context = createContext({
   setMode: (_mode: ThemeMode) => {},
 });
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const { profile } = useAccount();
+  const palette = eligibleCosmetics(profile?.points ?? 0, profile?.cosmetics?.palette).palette;
   const system = useColorScheme();
   const [mode, updateMode] = useState<ThemeMode>("system");
   useEffect(() => {
@@ -53,7 +59,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const dark = mode === "dark" || (mode === "system" && system === "dark");
   const value = useMemo(
     () => ({
-      colors: dark ? darkColors : lightColors,
+      colors: { ...(dark ? darkColors : lightColors), ...(palette === "default" ? {} : PALETTE_COLORS[palette][dark ? "dark" : "light"]) },
       dark,
       mode,
       setMode: (next: ThemeMode) => {
@@ -61,7 +67,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         void AsyncStorage.setItem("parkskopje-theme", next).catch(() => {});
       },
     }),
-    [dark, mode],
+    [dark, mode, palette],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

@@ -21,8 +21,8 @@ export function termsParagraphs(t: (en: string, mk: string) => string) {
       "Локацијата се користи на вашиот уред за блиски паркинзи и откривање запирање. Прецизноста на GPS зависи од уредот и околината. GPS историјата не се испраќа. Пребарувањата на адреси и барањата за мапи/навигација ги обработуваат нивните даватели.",
     ),
     t(
-      "Your username belongs to this device account. This demo has no password or account recovery. You can delete your account, photos and reports in Privacy. Published parking locations and zone boundaries remain on the shared map.",
-      "Корисничкото име ѝ припаѓа на сметката на овој уред. Демото нема лозинка или обновување сметка. Сметката, сликите и пријавите може да ги избришете во Приватност. Објавените паркинзи и граници на зони остануваат на заедничката мапа.",
+      "Guest contributions and points stay with this device until you create an account. Your username, contributions and points belong to your account. Save your password to sign in after reinstalling; email password reset is not available yet. Existing device accounts need to add a password in Account first. You can delete your account, photos and reports in Privacy. Published parking locations and boundaries remain on the shared map. Contribution points have no monetary value.",
+      "Придонесите и поените на гостите остануваат на овој уред додека не создадете сметка. Корисничкото име, придонесите и поените ѝ припаѓаат на вашата сметка. Зачувајте ја лозинката за најава по повторна инсталација; обновување преку е-пошта сè уште нема. Постојните сметки прво треба да додадат лозинка во Сметка. Сметката, сликите и пријавите може да ги избришете во Приватност. Објавените паркинзи и граници остануваат на мапата. Поените немаат парична вредност.",
     ),
   ];
 }

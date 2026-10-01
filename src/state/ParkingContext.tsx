@@ -4,7 +4,6 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,6 +11,8 @@ import { AppState } from "react-native";
 import seed from "../../data/catalog.json";
 import type { Catalog, Proposal } from "../domain/types";
 import { api } from "../services/api";
+import { confirmedSignCatalog } from "../domain/parking";
+import { createRefreshCoordinator } from "../domain/refresh-coordinator";
 type Language = "mk" | "en";
 type State = {
   catalog: Catalog;
@@ -30,21 +31,13 @@ export function ParkingProvider({ children }: { children: React.ReactNode }) {
   const [connected, setConnected] = useState(false),
     [language, updateLanguage] = useState<Language>("mk"),
     [now, setNow] = useState(() => Date.now());
-  const busy = useRef<Promise<void> | null>(null);
-  const refreshAgain = useRef(false);
-  const refresh = useCallback((): Promise<void> => {
-    // A write during a poll needs another read; callers must await that read.
-    refreshAgain.current = true;
-    if (busy.current) return busy.current;
-    const work = async () => {
-      do {
-        refreshAgain.current = false;
-        try {
+  const [requestRefresh] = useState(() => createRefreshCoordinator(async () => {
+    try {
       const [next, community] = await Promise.all([
         api.catalog(),
         api.proposals(),
       ]);
-      setCatalog(next);
+      setCatalog(confirmedSignCatalog(next));
       setProposals(community);
       setConnected(true);
       setNow(Date.now());
@@ -52,15 +45,13 @@ export function ParkingProvider({ children }: { children: React.ReactNode }) {
         "parkskopje-cache",
         JSON.stringify({ catalog: next, proposals: community }),
       );
-        } catch {
+    } catch {
       setConnected(false);
       setNow(Date.now());
-        }
-      } while (refreshAgain.current);
-    };
-    busy.current = work().finally(() => { busy.current = null; });
-    return busy.current;
-  }, []);
+    }
+  }));
+  // Mutation callers need a read newer than an already-running catalog request.
+  const refresh = useCallback(() => requestRefresh(true), [requestRefresh]);
   useEffect(() => {
     let active = true;
     (async () => {
@@ -77,7 +68,7 @@ export function ParkingProvider({ children }: { children: React.ReactNode }) {
             value.catalog?.zones &&
             value.catalog.generatedAt >= seed.generatedAt
           ) {
-            setCatalog(value.catalog);
+            setCatalog(confirmedSignCatalog(value.catalog));
             setProposals(value.proposals ?? []);
           }
         }
@@ -85,21 +76,22 @@ export function ParkingProvider({ children }: { children: React.ReactNode }) {
       } catch {
         /* The bundled source catalog remains available. */
       }
-      if (active) await refresh();
+      if (active && AppState.currentState === "active") await requestRefresh();
     })();
     const interval = setInterval(() => {
+      if (AppState.currentState !== "active") return;
       setNow(Date.now());
-      void refresh();
+      void requestRefresh();
     }, 30000);
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void refresh();
+      if (state === "active") { setNow(Date.now()); void requestRefresh(); }
     });
     return () => {
       active = false;
       clearInterval(interval);
       subscription.remove();
     };
-  }, [refresh]);
+  }, [requestRefresh]);
   const setLanguage = useCallback((lang: Language) => {
     updateLanguage(lang);
     void AsyncStorage.setItem("parkskopje-language", lang);

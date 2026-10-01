@@ -135,6 +135,8 @@ test("drawn zones, free prices, labels, photos and queued jobs survive database 
     assert.equal(job?.id, signId);
     assert.equal(community.claim(), undefined);
     community.finish(signId, info, "gemini-3.8-flash");
+    assert.equal(community.enrich(store.places())[0].signInfo, undefined, "AI output stays a draft until confirmed");
+    community.confirmSign(signId, token, info);
     const updated = community.enrich(store.places())[0];
     assert.equal(updated.signInfo?.chargingHours, info.chargingHours);
     assert.equal(updated.zoneCode, "D42");
@@ -389,6 +391,8 @@ test("invalid Gemini key skips its remaining models; missing keys defer durable 
   assert.equal(community.photo(uploaded.id).status, "review");
   assert.equal(community.enrich(store.places())[0].signInfo, undefined);
   community.finish(uploaded.id, info, "gemini-3.8-flash");
+  assert.equal(parkingPrice(community.enrich(store.places())[0]), null);
+  community.confirmSign(uploaded.id, token, info);
   assert.equal(
     parkingPrice(community.enrich(store.places())[0])?.firstHour,
     40,
@@ -398,6 +402,8 @@ test("invalid Gemini key skips its remaining models; missing keys defer durable 
     { ...info, currency: "EUR" },
     "gemini-3.8-flash",
   );
+  assert.equal(parkingPrice(community.enrich(store.places())[0])?.firstHour, 40, "late AI cannot overwrite human confirmation");
+  community.confirmSign(uploaded.id, token, {...info,currency:"EUR"});
   assert.equal(parkingPrice(community.enrich(store.places())[0]), null);
   store.close();
 });

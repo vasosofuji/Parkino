@@ -33,6 +33,10 @@ export class ParkingStore {
       CREATE TABLE IF NOT EXISTS price_reports(place_id TEXT REFERENCES places(id), session_id TEXT REFERENCES sessions(id), first_hour REAL NOT NULL, next_hour REAL NOT NULL, observed INTEGER NOT NULL, PRIMARY KEY(place_id,session_id));
       CREATE TABLE IF NOT EXISTS location_reports(place_id TEXT REFERENCES places(id), session_id TEXT REFERENCES sessions(id), present INTEGER NOT NULL, observed INTEGER NOT NULL, PRIMARY KEY(place_id,session_id));
       CREATE TABLE IF NOT EXISTS observations(place_id TEXT PRIMARY KEY REFERENCES places(id), operator TEXT NOT NULL, free_spaces INTEGER NOT NULL, observed INTEGER NOT NULL);`);
+    this.db.exec("CREATE TABLE IF NOT EXISTS auth_sessions(hash TEXT PRIMARY KEY,session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,created INTEGER NOT NULL,expires INTEGER NOT NULL)");
+    if (!(this.db.prepare("PRAGMA table_info(reports)").all() as {name:string}[]).some(column => column.name === "free_spaces"))
+      this.db.exec("ALTER TABLE reports ADD COLUMN free_spaces INTEGER");
+    this.db.exec("CREATE TABLE IF NOT EXISTS capacity_reports(place_id TEXT NOT NULL REFERENCES places(id) ON DELETE CASCADE,session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,capacity INTEGER NOT NULL,updated INTEGER NOT NULL,PRIMARY KEY(place_id,session_id))");
     const put = this.db.prepare(
       "INSERT INTO places(id,data) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data",
     );
@@ -60,8 +64,8 @@ export class ParkingStore {
   session(token: string) {
     const hash = createHash("sha256").update(token).digest("hex");
     const row = this.db
-      .prepare("SELECT id,created FROM sessions WHERE hash=?")
-      .get(hash) as { id: string; created: number } | undefined;
+      .prepare("SELECT id,created FROM sessions WHERE hash=? UNION ALL SELECT s.id,s.created FROM sessions s JOIN auth_sessions a ON a.session_id=s.id WHERE a.hash=? AND a.expires>? LIMIT 1")
+      .get(hash, hash, Date.now()) as { id: string; created: number } | undefined;
     if (!row)
       throw Object.assign(new Error("A valid session is required."), {
         statusCode: 401,
@@ -89,11 +93,12 @@ export class ParkingStore {
       | undefined;
     const rows = this.db
       .prepare(
-        "SELECT status,observed FROM reports WHERE place_id=? AND observed>? ORDER BY observed DESC, rowid DESC",
+        "SELECT status,observed,free_spaces FROM reports WHERE place_id=? AND observed>? ORDER BY observed DESC, rowid DESC",
       )
       .all(id, now - REPORT_TTL_MS) as {
       status: "spaces" | "full";
       observed: number;
+      free_spaces: number | null;
     }[];
     if (operator && (!this.trustInputs || !rows.length || operator.observed >= rows[0].observed))
       return {
@@ -112,6 +117,7 @@ export class ParkingStore {
     return {
       status,
       source: "community",
+      ...(status !== "mixed" && rows[0].free_spaces !== null ? { freeSpaces: rows[0].free_spaces } : {}),
       reports: rows.length,
       observedAt: new Date(rows[0].observed).toISOString(),
       expiresAt: new Date(
@@ -212,7 +218,7 @@ export class ParkingStore {
       };
     });
   }
-  report(placeId: string, token: string, status: "spaces" | "full") {
+  report(placeId: string, token: string, status: "spaces" | "full", freeSpaces?: number) {
     const user = this.session(token),
       place = this.place(placeId);
     if (place.kind === "zone" || place.access === "restricted")
@@ -220,11 +226,18 @@ export class ParkingStore {
         new Error("Reports are available for accessible parking locations."),
         { statusCode: 400 },
       );
+    const capacityRow = this.db.prepare("SELECT capacity FROM capacity_reports WHERE place_id=? ORDER BY updated DESC,session_id DESC LIMIT 1").get(placeId) as {capacity:number}|undefined;
+    const capacity = capacityRow?.capacity ?? place.capacity;
+    if (capacity === 0 && status === "spaces")
+      throw Object.assign(new Error("This parking is recorded as having no spaces. Correct its capacity before reporting availability."), { statusCode: 400 });
+    if (freeSpaces !== undefined && (!Number.isInteger(freeSpaces) || freeSpaces < 0 || freeSpaces > 100000 ||
+      (capacity !== null && freeSpaces > capacity) || (status === "full" ? freeSpaces !== 0 : freeSpaces === 0)))
+      throw Object.assign(new Error("Free spaces must match availability and cannot exceed capacity."), { statusCode: 400 });
     this.db
       .prepare(
-        "INSERT INTO reports VALUES (?,?,?,?) ON CONFLICT(place_id,session_id) DO UPDATE SET status=excluded.status,observed=excluded.observed",
+        "INSERT INTO reports(place_id,session_id,status,observed,free_spaces) VALUES (?,?,?,?,?) ON CONFLICT(place_id,session_id) DO UPDATE SET status=excluded.status,observed=excluded.observed,free_spaces=excluded.free_spaces",
       )
-      .run(placeId, user.id, status, this.clock());
+      .run(placeId, user.id, status, this.clock(), status === "full" ? 0 : freeSpaces ?? null);
     this.db
       .prepare("DELETE FROM reports WHERE observed<=?")
       .run(this.clock() - REPORT_TTL_MS);

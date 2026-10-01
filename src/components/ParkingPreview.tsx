@@ -5,6 +5,7 @@ import { useTheme } from "../state/ThemeContext";
 import { useParking } from "../state/ParkingContext";
 import { currentAvailability, parkingPrice } from "../domain/parking";
 import type { ParkingPlace } from "../domain/types";
+import DigitalParkingSign from "./DigitalParkingSign";
 export default function ParkingPreview({
   place,
   point,
@@ -98,6 +99,7 @@ export default function ParkingPreview({
             : price.firstHour + t(" MKD / first hour", " ден. / прв час")
           : t("Price unknown", "Непозната цена")}
       </Text>
+      {place.signInfo ? <DigitalParkingSign info={place.signInfo} compact /> : null}
       {place.kind !== "zone" ? (
         <Text
           style={{
@@ -112,7 +114,7 @@ export default function ParkingPreview({
           }}
         >
           {status.status === "spaces"
-            ? t("✓ Spaces recently reported", "✓ Пријавени слободни места")
+            ? status.freeSpaces !== undefined ? `${status.freeSpaces} ${t("free recently", "неодамна слободни")}${place.capacity !== null ? ` / ${place.capacity}` : ""}` : t("✓ Spaces recently reported", "✓ Пријавени слободни места")
             : status.status === "full"
               ? t("Full — recently reported", "Полн — неодамнешна пријава")
               : t(
@@ -128,7 +130,7 @@ export default function ParkingPreview({
       <View style={{ flexDirection: "row", gap: 6 }}>
         <Button
           style={{ flex: 1 }}
-          title={t("Update info", "Промени инфо")}
+          title={status.status === "full" ? t("Find space nearby", "Најди места блиску") : t("Details & update", "Детали и промени")}
           variant="secondary"
           onPress={onUpdate}
         />

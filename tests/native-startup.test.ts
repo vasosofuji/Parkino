@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { createSessionManager } from "../src/services/session";
+import { apiEndpoint } from "../src/services/apiEndpoint";
 
 // Load the actual API module before any screen mounts, as the release bundle does.
 const source = ts.transpileModule(readFileSync("src/services/api.ts", "utf8"), {
@@ -21,6 +23,8 @@ function load(platform: string, window: object, apiUrl?: string, hostUri?: strin
         createTransport(value: string) { base = value; return async () => ({}); },
       };
       if (name === "./credentials") return { credentials: {} };
+      if (name === "./session") return { createSessionManager };
+      if (name === "./apiEndpoint") return { apiEndpoint };
       if (name === "../domain/account") return { TERMS_VERSION: "test" };
       throw new Error(`Unexpected startup dependency: ${name}`);
     },

@@ -1,0 +1,133 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
+import ts from "typescript";
+
+const source = ts.transpileModule(readFileSync("src/services/photos.ts", "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS },
+}).outputText;
+
+function picker(options: { platform?: string; denied?: boolean; canceled?: boolean; empty?: boolean; renderError?: boolean; saveError?: boolean; oversized?: boolean; portrait?: boolean } = {}) {
+  const calls: string[] = [];
+  let resize: unknown;
+  let captureOptions: unknown;
+  const native = {
+    requestCameraPermissionsAsync: async () => { calls.push("permission"); return { granted: !options.denied, canAskAgain: false }; },
+    launchCameraAsync: async (value: unknown) => { calls.push("camera"); captureOptions = value; return result(); },
+    launchImageLibraryAsync: async (value: unknown) => { calls.push("gallery"); captureOptions = value; return result(); },
+  };
+  function result() {
+    return { canceled: Boolean(options.canceled), assets: options.empty ? [] : [{ uri: "file:///chosen.jpg", width: options.portrait ? 2400 : 4000, height: options.portrait ? 4000 : 2400 }] };
+  }
+  const context = {
+    exports: {} as { chooseSignPhoto: (camera?: boolean) => Promise<{ uri: string; base64: string; mimeType: string } | null> },
+    require(name: string) {
+      if (name === "expo-image-picker") return native;
+      if (name === "react-native") return { Platform: { OS: options.platform ?? "android" } };
+      if (name === "expo-image-manipulator") return {
+        SaveFormat: { JPEG: "jpeg" },
+        ImageManipulator: { manipulate() {
+          calls.push("manipulate");
+          return {
+            resize(value: unknown) { resize = value; },
+            async renderAsync() {
+              if (options.renderError) throw new Error("render failed");
+              return {
+                async saveAsync() {
+                  if (options.saveError) throw new Error("save failed");
+                  return { uri: "file:///safe.jpg", base64: options.oversized ? "a".repeat(2796201) : "safe-jpeg" };
+                },
+                release() { calls.push("release image"); },
+              };
+            },
+            release() { calls.push("release context"); },
+          };
+        } },
+      };
+      throw new Error(`Photo capture must not need network or account modules: ${name}`);
+    },
+  };
+  vm.runInNewContext(source, context);
+  return { choose: context.exports.chooseSignPhoto, calls, resize: () => resize, captureOptions: () => captureOptions };
+}
+
+test("gallery cancellation returns without camera permission or image processing", async () => {
+  const native = picker({ canceled: true });
+  assert.equal(await native.choose(false), null);
+  assert.deepEqual(native.calls, ["gallery"]);
+});
+
+test("camera denial stops before launch and exposes the blocked permission state", async () => {
+  const native = picker({ denied: true });
+  await assert.rejects(native.choose(true), (error: { name?: string; blocked?: boolean }) => error.name === "PhotoPermissionError" && error.blocked === true);
+  assert.deepEqual(native.calls, ["permission"]);
+});
+
+test("local capture produces a resized JPEG and releases both native resources", async () => {
+  for (const portrait of [false, true]) {
+    const native = picker({ portrait });
+    const photo = await native.choose(true);
+    assert.equal(photo?.mimeType, "image/jpeg");
+    assert.equal(photo?.base64, "safe-jpeg");
+    assert.equal(JSON.stringify(native.resize()), JSON.stringify(portrait ? { height: 1600 } : { width: 1600 }));
+    assert.equal(JSON.stringify(native.captureOptions()), JSON.stringify({ mediaTypes: ["images"], quality: 1, exif: false }));
+    assert.deepEqual(native.calls, ["permission", "camera", "manipulate", "release image", "release context"]);
+  }
+});
+
+test("rendering and saving failures release every created native resource", async () => {
+  const render = picker({ renderError: true });
+  await assert.rejects(render.choose(), /render failed/);
+  assert.deepEqual(render.calls, ["gallery", "manipulate", "release context"]);
+  const save = picker({ saveError: true });
+  await assert.rejects(save.choose(), /save failed/);
+  assert.deepEqual(save.calls, ["gallery", "manipulate", "release image", "release context"]);
+});
+
+test("empty results and oversized JPEGs fail safely", async () => {
+  const empty = picker({ empty: true });
+  await assert.rejects(empty.choose(), /No photo/);
+  assert.deepEqual(empty.calls, ["gallery"]);
+  const large = picker({ oversized: true });
+  await assert.rejects(large.choose(), /smaller/);
+  assert.deepEqual(large.calls, ["gallery", "manipulate", "release image", "release context"]);
+});
+
+test("web launch remains in the user action without an asynchronous permission request", async () => {
+  const native = picker({ platform: "web", canceled: true });
+  await native.choose(true);
+  assert.deepEqual(native.calls, ["camera"]);
+});
+
+test("sign-photo controls remain usable when the catalog is offline", () => {
+  type Element = { type: unknown; props: Record<string, unknown>; children: Element[] };
+  const PhotoPicker = () => null;
+  const react = {
+    createElement: (type: unknown, props: Record<string, unknown>, ...children: Element[]): Element => ({ type, props, children }),
+    useState: (value: unknown) => [value, () => {}],
+    useEffect: () => {},
+  };
+  const component = ts.transpileModule(readFileSync("src/components/SignPhotos.tsx", "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React },
+  }).outputText;
+  const context = {
+    exports: {} as { default: (props: { placeId: string }) => Element },
+    require(name: string) {
+      if (name === "react") return { ...react, default: react, __esModule: true };
+      if (name === "react-native") return { View: "View", Image: "Image", Text: "Text", Pressable: "Pressable", ScrollView: "ScrollView", Platform: { OS: "android" }, useWindowDimensions: () => ({ height: 900 }) };
+      if (name === "../services/api") return { api: {} };
+      if (name === "../state/ParkingContext") return { useParking: () => ({ connected: false, t: (en: string) => en, refresh: () => {} }) };
+      if (name === "../state/ThemeContext") return { useTheme: () => ({ colors: {} }) };
+      if (name === "./ui") return { Button: "Button", Note: "Note", Sheet: "Sheet" };
+      if (name === "./PhotoPicker") return { default: PhotoPicker, __esModule: true };
+      if (name === "./SignReviewSheet" || name === "./DigitalParkingSign") return { default: () => null, __esModule: true };
+      throw new Error(`Unexpected dependency: ${name}`);
+    },
+  };
+  vm.runInNewContext(component, context);
+  const tree = context.exports.default({ placeId: "parking-test" });
+  const control = tree.children.find(child => child?.type === PhotoPicker);
+  assert.ok(control);
+  assert.equal(control.props.disabled, false);
+});

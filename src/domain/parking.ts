@@ -1,4 +1,4 @@
-import type { Availability, Coordinate, ParkingPlace, Tariff } from "./types";
+import type { Availability, Catalog, Coordinate, ParkingPlace, Tariff } from "./types";
 export const SKOPJE: Coordinate = { latitude: 41.9961, longitude: 21.4316 };
 export const REPORT_TTL_MS = 15 * 60 * 1000;
 export const OPERATOR_TTL_MS = 5 * 60 * 1000;
@@ -27,6 +27,7 @@ export function parkingPrice(place: ParkingPlace, now = Date.now()) {
   if (place.tariff && validRates(place.tariff)) return place.tariff;
   const sign = place.signInfo;
   if (
+    sign?.confirmedAt &&
     sign?.currency === "MKD" &&
     sign.firstHour !== null &&
     sign.nextHour !== null
@@ -37,6 +38,15 @@ export function parkingPrice(place: ParkingPlace, now = Date.now()) {
       evidence: "sign" as const,
     };
   return null;
+}
+// Older app caches may contain automatically published AI readings. Treat those as drafts.
+export function confirmedSignCatalog(catalog: Catalog): Catalog {
+  return { ...catalog, places: catalog.places.map(place => place.signInfo && !place.signInfo.confirmedAt ? {
+    ...place, signInfo: undefined,
+    ...(place.zoneCodeEvidence === "sign" ? { zoneCode: null, zoneCodeEvidence: undefined } : {}),
+    ...(place.signInfo.chargingHours && place.openingHours === place.signInfo.chargingHours
+      ? { openingHours: null } : {}),
+  } : place) };
 }
 export function distanceMeters(a: Coordinate, b: Coordinate): number {
   const rad = Math.PI / 180;
@@ -66,6 +76,13 @@ export function currentAvailability(
   if (!value?.expiresAt || Date.parse(value.expiresAt) <= now)
     return UNKNOWN_AVAILABILITY;
   return value;
+}
+export function nearestAvailableParking(places: ParkingPlace[], selected: ParkingPlace, radius = 1500, now = Date.now()) {
+  return places.filter(place => place.id !== selected.id && place.kind !== "zone" && place.access !== "restricted" && place.capacity !== 0 &&
+    currentAvailability(place.availability, now).status === "spaces")
+    .map(place => ({ place, distance: distanceMeters(selected.coordinate, place.coordinate) }))
+    .filter(row => row.distance <= radius)
+    .sort((a,b) => a.distance - b.distance || (b.place.availability?.freeSpaces ?? 0) - (a.place.availability?.freeSpaces ?? 0));
 }
 export function rankParking(
   places: ParkingPlace[],

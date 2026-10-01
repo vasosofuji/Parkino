@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { PGlite, type Transaction } from "@electric-sql/pglite";
 import {
@@ -135,7 +135,7 @@ for (const backend of ["sqlite", "postgres"] as const) {
     if (backend === "postgres") {
       const pg = await PGlite.create({ parsers: { 20: Number } });
       await pg.exec(
-        readFileSync("supabase/migrations/202610010001_parking.sql", "utf8"),
+        readdirSync("supabase/migrations").filter(f => f.endsWith(".sql")).sort().map(f => readFileSync(`supabase/migrations/${f}`, "utf8")).join("\n"),
       );
       store = new PostgresParkingStore(
         new TestPostgresDatabase(pg),
@@ -184,6 +184,7 @@ for (const backend of ["sqlite", "postgres"] as const) {
             headers,
             payload: {
               username: i ? "ｄｅｍｏｕｓｅｒ" : "DemoUser",
+              password: "recoverable test password",
               accepted: true,
               termsVersion: TERMS_VERSION,
             },
@@ -215,6 +216,7 @@ for (const backend of ["sqlite", "postgres"] as const) {
             headers: loser,
             payload: {
               username: "DemoSecond",
+              password: "recoverable test password",
               accepted: true,
               termsVersion: TERMS_VERSION,
             },
@@ -314,6 +316,8 @@ for (const backend of ["sqlite", "postgres"] as const) {
           rawText: "A42 50 ден",
         };
         await community.finish(job.id, info, "test-model");
+        assert.equal((await app.inject("/v1/catalog")).json().places[0].signInfo, undefined);
+        await community.confirmSign(job.id, first.token, info);
         assert.equal(
           (await app.inject("/v1/catalog")).json().places[0].signInfo.firstHour,
           50,
@@ -326,7 +330,7 @@ for (const backend of ["sqlite", "postgres"] as const) {
         const all = await app.inject("/v1/catalog");
         assert.equal(all.statusCode, 200, all.body);
         assert.ok(
-          db.count <= 10,
+          db.count <= 11, // Includes one bulk original-contributor cosmetics lookup.
           `catalog should use bulk queries, used ${db.count}`,
         );
         assert.ok(all.json().places.length >= realCatalog.places.length);

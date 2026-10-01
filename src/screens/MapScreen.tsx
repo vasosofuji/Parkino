@@ -8,6 +8,7 @@ import React, {
 import {
   ActivityIndicator,
   Keyboard,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -41,6 +42,7 @@ import type {
   Destination,
   ParkingPlace,
   Geometry,
+  ParkingKind,
 } from "../domain/types";
 import { useParking } from "../state/ParkingContext";
 import { useArrival } from "../hooks/useArrival";
@@ -51,6 +53,7 @@ type NewParking = {
   geometry?: Geometry;
   accuracy?: number;
   zoneCode?: string;
+  kind?: ParkingKind;
 };
 export default function MapScreen() {
   const { colors, dark } = useTheme(),
@@ -77,6 +80,8 @@ export default function MapScreen() {
     y: number;
   } | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
+  const [detailsGeometry, setDetailsGeometry] = useState<{ id: string; geometry: Geometry } | null>(null);
+  const [detailsEditing, setDetailsEditing] = useState(false);
   const [menu, setMenu] = useState(false),
     [locationHelp, setLocationHelp] = useState(false);
   const [picking, setPicking] = useState<"destination" | "zone" | null>(null);
@@ -91,6 +96,10 @@ export default function MapScreen() {
     [drawerHeight, setDrawerHeight] = useState(94);
   const [drawerRevision, setDrawerRevision] = useState(0);
   const [followupId, setFollowupId] = useState<string | null>(null);
+  const [followupFromNotification, setFollowupFromNotification] = useState(false);
+  const [notificationClosing, setNotificationClosing] = useState(false);
+  const [arrivalPaid, setArrivalPaid] = useState(false),
+    [arrivalPrice, setArrivalPrice] = useState("");
   const target = nearbyOrigin(
     destination?.coordinate ?? null,
     gps.location,
@@ -104,6 +113,8 @@ export default function MapScreen() {
   const selectedPlace = catalog.places.find((place) => place.id === selected);
   const followupPlace = catalog.places.find((place) => place.id === followupId);
   const arrivalPlace = followupPlace ?? gps.arrival;
+  const notificationPriority = gps.arrivalFromNotification || followupFromNotification;
+  const suspendSheets = notificationPriority || notificationClosing;
   const clearSelection = useCallback(() => {
     setSelected(null);
     setAnchor(null);
@@ -338,36 +349,40 @@ export default function MapScreen() {
       return;
     }
     if (!editingBoundary) {
-      setProposal({ geometry: shape, coordinate: draft[0] });
+      setProposal(previous => previous ? { ...previous, geometry: shape } : { geometry: shape, coordinate: draft[0], kind: "zone" });
       setPicking(null);
       return;
     }
-    setSending(true);
-    try {
-      await api.boundary(editingBoundary, shape);
-      await refresh();
-      cancelPicking();
-      setMessage(editingPerimeter ? t("Parking perimeter saved", "Периметарот е зачуван") : t("Zone saved", "Зоната е зачувана"));
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : t(
-              "Could not save. Try again.",
-              "Не е зачувано. Обидете се повторно.",
-            ),
-      );
-    } finally {
-      setSending(false);
-    }
+    // Return the geometry to the still-mounted wizard; it owns per-step saving.
+    setDetailsGeometry({ id: editingBoundary, geometry: shape });
+    cancelPicking();
   }
   function dismissArrival() {
+    if (notificationPriority && Platform.OS === "ios") setNotificationClosing(true);
     gps.dismiss();
     setFollowupId(null);
+    setFollowupFromNotification(false);
+    setArrivalPaid(false);
+    setArrivalPrice("");
   }
   function updateArrival() {
-    if (arrivalPlace) setDetailsId(arrivalPlace.id);
+    if (arrivalPlace) { setDetailsEditing(true); setDetailsId(arrivalPlace.id); }
     dismissArrival();
+  }
+  async function saveArrivalPrice(free: boolean) {
+    if (!arrivalPlace) return;
+    const amount = free ? 0 : Number(arrivalPrice.replace(",", "."));
+    if ((!free && !arrivalPrice.trim()) || !Number.isFinite(amount) || amount < 0 || amount > 10000) {
+      setMessage(t("Enter a price from 0 to 10,000 MKD.", "Внесете цена од 0 до 10.000 денари.")); return;
+    }
+    setSending(true); setMessage("");
+    try {
+      await api.price(arrivalPlace.id, amount, amount);
+      await refresh();
+      dismissArrival();
+      setMessage(t("Thank you — price shared", "Ви благодариме — цената е споделена"));
+    } catch { setMessage(t("Could not save. Try again.", "Не е зачувано. Обидете се повторно.")); }
+    finally { setSending(false); }
   }
   async function reportArrival(status: "spaces" | "full") {
     if (!gps.arrival) return;
@@ -377,8 +392,14 @@ export default function MapScreen() {
     try {
       await api.report(place.id, status);
       await refresh();
+      if (!parkingPrice(place)) setFollowupFromNotification(gps.arrivalFromNotification);
+      else if (gps.arrivalFromNotification && Platform.OS === "ios") setNotificationClosing(true);
       gps.dismiss();
+      setArrivalPaid(false);
+      setArrivalPrice("");
       if (!parkingPrice(place)) setFollowupId(place.id);
+      else if (status === "full") { setDetailsEditing(false); setDetailsId(place.id); }
+      else setMessage(t("Thanks for helping other drivers", "Благодариме што им помагате на возачите"));
     } catch {
       setMessage(
         t("Could not send. Try again.", "Не е испратено. Обидете се повторно."),
@@ -519,7 +540,7 @@ export default function MapScreen() {
                     disabled={searching || query.trim().length < 3}
                   >
                     {searching ? (
-                      <ActivityIndicator color={colors.green} />
+                      <ActivityIndicator color={colors.accentText} />
                     ) : (
                       <Icon name="search" size={16} />
                     )}
@@ -564,7 +585,7 @@ export default function MapScreen() {
                 mapHeight={mapHeight}
                 drawerHeight={drawerHeight}
                 onClose={clearSelection}
-                onUpdate={() => setDetailsId(selectedPlace.id)}
+                onUpdate={() => { setDetailsEditing(false); setDetailsId(selectedPlace.id); }}
               />
             ) : null}
             {drawerHeight <= 100 ? <View style={[s.locate, { bottom: drawerHeight + 14 }]}>
@@ -735,7 +756,7 @@ export default function MapScreen() {
                       ? t("Saving…", "Се зачувува…")
                       : editingBoundary
                         ? editingPerimeter ? t("Save perimeter", "Зачувај периметар") : t("Save zone", "Зачувај зона")
-                        : t("Finish zone", "Заврши зона")
+                        : proposal ? t("Use this boundary", "Користи ја границата") : t("Finish zone", "Заврши зона")
                   }
                   disabled={draft.length < 3 || sending}
                   onPress={() => void finishZone()}
@@ -754,18 +775,19 @@ export default function MapScreen() {
       <ParkingDetails
         key={detailsId ?? "none"}
         place={catalog.places.find((place) => place.id === detailsId)}
-        visible={detailsId !== null}
-        initialEditing
+        visible={detailsId !== null && !picking && !suspendSheets}
+        boundaryGeometry={detailsGeometry?.id === detailsId ? detailsGeometry.geometry : undefined}
+        initialEditing={detailsEditing}
         minutes={60}
-        onClose={() => setDetailsId(null)}
-        onEditBoundary={(place) => {
-          setDetailsId(null);
+        onClose={() => { setDetailsId(null); setDetailsGeometry(null); }}
+        onSelectAlternative={(place) => { setDetailsEditing(false); select(place); setDetailsId(place.id); setCenter(place.coordinate); setCameraRevision(value => value + 1); }}
+        onEditBoundary={(place, geometry) => {
           clearSelection();
           setEditingBoundary(place.id);
           clearSearch();
           setMessage("");
           setDraft(
-            place.geometry?.coordinates[0]
+            (geometry ?? (detailsGeometry?.id === place.id ? detailsGeometry.geometry : place.geometry))?.coordinates[0]
               .slice(0, -1)
               .map(([longitude, latitude]) => ({ latitude, longitude })) ?? [],
           );
@@ -774,19 +796,32 @@ export default function MapScreen() {
         }}
       />
       <LocationHelp
-        visible={locationHelp}
+        visible={locationHelp && !suspendSheets}
         issue={gps.issue}
         onClose={() => setLocationHelp(false)}
         onRetry={retryLocation}
       />
       {proposal ? (
         <ProposalSheet
+          visible={!picking && !suspendSheets}
           coordinate={proposal.coordinate}
           geometry={proposal.geometry}
           locationAccuracy={proposal.accuracy}
           initial={{
-            name: proposal.geometry ? undefined : t("Parking", "Паркинг"),
             zoneCode: proposal.zoneCode,
+            kind: proposal.kind,
+          }}
+          onDrawBoundary={(geometry) => {
+            Keyboard.dismiss();
+            clearSearch();
+            clearSelection();
+            setEditingBoundary(null);
+            setDraft((geometry ?? proposal.geometry)?.coordinates[0].slice(0, -1).map(([longitude, latitude]) => ({ latitude, longitude })) ?? []);
+            cameraMoved.current = true;
+            setCenter(proposal.coordinate);
+            setCameraRevision(value => value + 1);
+            setMessage("");
+            setPicking("zone");
           }}
           onClose={() => {
             setProposal(null);
@@ -801,7 +836,7 @@ export default function MapScreen() {
         />
       ) : null}
       <SettingsSheet
-        visible={menu}
+        visible={menu && !suspendSheets}
         onClose={() => setMenu(false)}
         locationStatus={locationStatus}
         onRefreshLocation={() => {
@@ -815,20 +850,21 @@ export default function MapScreen() {
       />
       <Sheet
         visible={
-          Boolean(arrivalPlace) &&
+          Boolean(arrivalPlace) && (notificationPriority || (
           !selected &&
           !detailsId &&
           !menu &&
           !proposal &&
           !picking &&
-          !locationHelp
+          !locationHelp))
         }
         title={
           followupPlace || arrivalPlace?.kind === "zone"
-            ? t("Add parking information", "Додај информации за паркингот")
+            ? t("One more thing — is it free?", "Уште нешто — бесплатно ли е?")
             : t("Any free spaces here?", "Има ли слободни места тука?")
         }
-        onClose={dismissArrival}
+        onClose={() => { if (!sending) dismissArrival(); }}
+        onDismiss={() => setNotificationClosing(false)}
       >
         <Text style={s.title}>
           {language === "en"
@@ -852,24 +888,27 @@ export default function MapScreen() {
             />
           </View>
         ) : null}
-        {arrivalPlace &&
-        (!parkingPrice(arrivalPlace) ||
-          arrivalPlace.kind === "zone" ||
-          followupPlace) ? (
+        {arrivalPlace && !parkingPrice(arrivalPlace) && (followupPlace || arrivalPlace.kind === "zone") ? (
           <>
-            <Note>
-              {t(
-                "Add a sign photo or the parking price.",
-                "Додајте слика од таблата или цена за паркирање.",
-              )}
-            </Note>
+            <Note>{t("The price is still missing here. A quick answer helps the next driver.", "Тука сè уште нема цена. Брзиот одговор му помага на следниот возач.")}</Note>
+            {followupPlace?.availability?.status === "full" ? <Button title={t("Find free spaces nearby", "Најди слободни места блиску")} icon="map-pin" variant="secondary" disabled={sending} onPress={() => { setDetailsEditing(false); setDetailsId(followupPlace.id); dismissArrival(); }} /> : null}
+            {arrivalPaid ? <>
+              <TextInput accessibilityLabel={t("Price per hour in MKD", "Цена по час во денари")} value={arrivalPrice} onChangeText={setArrivalPrice} keyboardType="decimal-pad" placeholder={t("MKD per hour", "Денари по час")} placeholderTextColor={colors.muted} style={[s.input, { flex: undefined, backgroundColor: colors.input, borderRadius: 10, paddingHorizontal: 12 }]} editable={!sending} />
+              <Note>{t("If the first and following hours differ, use “Add photo or details”.", "Ако првиот и следните часови се разликуваат, изберете „Додај слика или детали“.")}</Note>
+              <Button title={t("Share price", "Сподели цена")} disabled={sending || !connected || !arrivalPrice.trim()} onPress={() => void saveArrivalPrice(false)} />
+            </> : <View style={s.answers}>
+              <Button style={s.flex} title={t("It's free", "Бесплатно е")} disabled={sending || !connected} onPress={() => void saveArrivalPrice(true)} />
+              <Button style={s.flex} title={t("Paid parking", "Се плаќа")} variant="secondary" disabled={sending} onPress={() => setArrivalPaid(true)} />
+            </View>}
             <Button
-              title={t("Add photo or price", "Додај слика или цена")}
+              title={t("Add photo or details", "Додај слика или детали")}
               variant="secondary"
+              disabled={sending}
               onPress={updateArrival}
             />
           </>
         ) : null}
+        <Button title={t("Not sure · skip", "Не знам · прескокни")} variant="secondary" disabled={sending} onPress={dismissArrival} />
         {!connected ? (
           <Note>
             {t("Connect to send your answer.", "Поврзете се за да одговорите.")}

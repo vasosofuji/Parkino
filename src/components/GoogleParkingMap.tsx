@@ -8,6 +8,7 @@ import MapView, {
   type Region,
 } from "react-native-maps";
 import { groupParking } from "../domain/clusters";
+import { accentColor } from "../domain/cosmetics";
 import type { ParkingMapProps } from "./mapTypes";
 import { SKOPJE, currentAvailability } from "../domain/parking";
 export default function ParkingMap(props: ParkingMapProps) {
@@ -219,6 +220,9 @@ export default function ParkingMap(props: ParkingMapProps) {
                 place.id === props.selectedId ? s.selected : null,
                 availability.status === "spaces" && group.length === 1
                   ? s.spaces
+                  : null,
+                group.length === 1 && place.id !== props.selectedId && accentColor(place.contributionAccent)
+                  ? { borderColor: accentColor(place.contributionAccent) }
                   : null,
               ]}
             >

@@ -20,6 +20,17 @@ const send = (message) => window.ReactNativeWebView && window.ReactNativeWebView
 const map = L.map('map',{zoomControl:false,attributionControl:false,minZoom:3}).setView([41.9961,21.4316],15);
 L.tileLayer(${JSON.stringify(tileUrl)},{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
 const group = L.layerGroup().addTo(map);
+let userDot = null, userAccuracy = null;
+window.updateUserLocation = function(point,accuracy) {
+  if(!point){if(userDot){userDot.remove();userDot=null;}if(userAccuracy){userAccuracy.remove();userAccuracy=null;}return;}
+  if(userDot)userDot.setLatLng(point);
+  else userDot=L.circleMarker(point,{radius:7,fillColor:'#3977D5',color:'#fff',weight:3,fillOpacity:1,interactive:false}).addTo(map);
+  if(accuracy>0){
+    if(userAccuracy)userAccuracy.setLatLng(point).setRadius(accuracy);
+    else userAccuracy=L.circle(point,{radius:accuracy,color:'#3977D5',weight:1,fillOpacity:.08,interactive:false}).addTo(map);
+  }else if(userAccuracy){userAccuracy.remove();userAccuracy=null;}
+  userDot.bringToFront();
+};
 let current = null;
 let destinationKey = '';
 let dragging = false, pending = null;
@@ -59,6 +70,7 @@ window.renderParking = function(next) {
     const span = document.createElement('span');
     span.textContent=pin.spaces?'P ✓':pin.label;
     span.style.background=pin.color;
+    if(pin.accent)span.style.borderColor=pin.accent;
     const icon=L.divIcon({className:'parking-pin'+(pin.selected?' selected':'')+(pin.cluster?' cluster':'')+(pin.spaces?' spaces':''),html:span,iconSize:[26,26],iconAnchor:[13,13]});
     const marker=L.marker(pin.point,{icon,title:pin.title,zIndexOffset:pin.selected?1000:pin.spaces?800:0});
     marker.on('click',()=>{
@@ -86,10 +98,7 @@ window.renderParking = function(next) {
     const label=document.createElement('span');label.textContent=next.destinationName;
     L.marker(next.destinationMarker,{zIndexOffset:2000,title:next.destinationName,icon:L.divIcon({className:'destination-pin',html:'<span></span>',iconSize:[34,44],iconAnchor:[17,44]})}).bindTooltip(label,{permanent:true,direction:'top',offset:[0,-44],className:'destination-label'}).addTo(group);
   }
-  if(next.userLocation){
-    if(next.userAccuracy)L.circle(next.userLocation,{radius:next.userAccuracy,color:'#3977D5',weight:1,fillOpacity:.08,interactive:false}).addTo(group);
-    L.circleMarker(next.userLocation,{radius:7,fillColor:'#3977D5',color:'#fff',weight:3,fillOpacity:1,interactive:false}).addTo(group);
-  }
+  if(userDot)userDot.bringToFront();
   const key=next.destination.join(',')+':'+(next.cameraRevision||0);
   if(key!==destinationKey){destinationKey=key;map.setView(next.destination,15,{animate:false});}
   map.invalidateSize();

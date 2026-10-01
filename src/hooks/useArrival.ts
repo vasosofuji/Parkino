@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import {
-  ArrivalDetector,
   containsParkingFix,
   type Fix,
 } from "../domain/arrival";
@@ -9,6 +8,13 @@ import { preferFix, usableFix } from "../domain/location";
 import type { Coordinate, ParkingPlace } from "../domain/types";
 import { watchLocation } from "../services/location";
 import type { LocationIssue } from "../domain/locationWatch";
+import {
+  consumePendingArrival,
+  observePendingArrival,
+  recordForegroundArrival,
+  resetArrivalCandidate,
+} from "../services/backgroundArrival";
+import { saveArrivalCatalog } from "../services/arrivalStorage";
 
 export function useArrival(places: ParkingPlace[]) {
   const [fix, setFix] = useState<Fix | null>(null);
@@ -16,22 +22,41 @@ export function useArrival(places: ParkingPlace[]) {
     null,
   );
   const [arrival, setArrival] = useState<ParkingPlace | null>(null);
+  const [arrivalFromNotification, setArrivalFromNotification] = useState(false);
   const [status, setStatus] = useState<
     "loading" | "ready" | "approximate" | "denied" | "error"
   >("loading");
   const [retry, setRetry] = useState(0);
   const [issue, setIssue] = useState<LocationIssue | null>(null);
   const latest = useRef(places);
+  const restored = useRef(false);
   useEffect(() => {
     latest.current = places;
+    void saveArrivalCatalog(places).catch(() => {});
   }, [places]);
-  const detector = useRef(new ArrivalDetector());
+  useEffect(() => {
+    let active = true;
+    const restore = () => {
+      // Notification callbacks can precede the OS foreground transition. Keep the pending
+      // prompt persisted until the map is active, so an intermediate inactive event cannot erase it.
+      if (AppState.currentState !== "active") return;
+      void consumePendingArrival(latest.current).then((place) => {
+        if (!active || !place) return;
+        restored.current = true;
+        setArrivalFromNotification(true);
+        setArrival(place);
+      }).catch(() => {});
+    };
+    restore();
+    const remove = observePendingArrival(restore);
+    const subscription = AppState.addEventListener("change", (state) => { if (state === "active") restore(); });
+    return () => { active = false; remove(); subscription.remove(); };
+  }, []);
   useEffect(() => {
     let active = true,
       previous: Fix | null = null,
       initialAccuracy = Infinity;
     let stop: (() => void) | undefined;
-    const arrivalDetector = detector.current;
     function fail(value: LocationIssue) {
       if (!active) return;
       if (__DEV__ && value.detail)
@@ -40,8 +65,8 @@ export function useArrival(places: ParkingPlace[]) {
       if (previous && Date.now() - previous.timestamp < 30000) return;
       previous = null;
       setFix(null);
-      setArrival(null);
-      arrivalDetector.reset();
+      if (!restored.current) setArrival(null);
+      void resetArrivalCandidate().catch(() => {});
       setStatus(
         value.code === "denied" || value.code === "blocked"
           ? "denied"
@@ -53,11 +78,13 @@ export function useArrival(places: ParkingPlace[]) {
         fail({ code: "timeout" });
     }, 5000);
     const appState = AppState.addEventListener("change", (state) => {
-      arrivalDetector.reset();
+      void resetArrivalCandidate().catch(() => {});
       if (state !== "active") {
         previous = null;
         setFix(null);
         setArrival(null);
+        restored.current = false;
+        setArrivalFromNotification(false);
         stop?.();
       } else {
         setStatus("loading");
@@ -84,20 +111,23 @@ export function useArrival(places: ParkingPlace[]) {
           longitude: next.longitude,
         });
       }
-      const parked = arrivalDetector.update(next, latest.current);
       setArrival((current) =>
-        current &&
+        current && !restored.current &&
         (next.accuracy! > 25 ||
           (next.speed !== null && next.speed > 0.8) ||
           !containsParkingFix(next, current))
           ? null
           : current,
       );
-      if (parked) setArrival(parked);
+      void recordForegroundArrival(next, latest.current).then((parked) => {
+        // Persistence can finish after a newer one-second fix. Do not discard a
+        // legitimate prompt (and its recorded cooldown) just because time moved on.
+        if (active && AppState.currentState === "active" && parked && !restored.current && previous && usableFix(previous) && previous.accuracy! <= 25 && (previous.speed === null || previous.speed <= 0.8) && containsParkingFix(previous, parked)) setArrival(parked);
+      }).catch(() => {});
     }, fail)
       .then((remove) => {
         stop = remove;
-        if (!active || AppState.currentState === "background") remove();
+        if (!active || AppState.currentState === "background" || AppState.currentState === "inactive") remove();
       })
       .catch(() => fail({ code: "unavailable" }));
     return () => {
@@ -105,7 +135,7 @@ export function useArrival(places: ParkingPlace[]) {
       clearInterval(stale);
       stop?.();
       appState.remove();
-      arrivalDetector.reset();
+      void resetArrivalCandidate().catch(() => {});
     };
   }, [retry]);
   return {
@@ -113,9 +143,10 @@ export function useArrival(places: ParkingPlace[]) {
     accuracy: fix?.accuracy ?? null,
     initialLocation,
     arrival,
+    arrivalFromNotification: arrivalFromNotification && Boolean(arrival),
     status,
     issue,
-    dismiss: () => setArrival(null),
+    dismiss: () => { restored.current = false; setArrivalFromNotification(false); setArrival(null); },
     retry: () => {
       setStatus("loading");
       setIssue(null);

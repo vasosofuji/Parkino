@@ -123,12 +123,16 @@ export function Sheet({
   onClose,
   children,
   footer,
+  onDismiss,
+  onShow,
 }: {
   visible: boolean;
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  onDismiss?: () => void;
+  onShow?: () => void;
 }) {
   const { colors } = useTheme();
   const s = styles(colors);
@@ -142,6 +146,8 @@ export function Sheet({
       navigationBarTranslucent
       animationType="fade"
       onRequestClose={onClose}
+      onDismiss={onDismiss}
+      onShow={onShow}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}

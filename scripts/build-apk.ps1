@@ -1,7 +1,9 @@
-param([string]$ApiUrl, [switch]$OfflinePreview)
+param([string]$ApiUrl, [switch]$OfflinePreview, [switch]$DeviceTest, [switch]$TestPackage)
 # Local Windows APK build. Connected builds require the deployed HTTPS API.
 $ErrorActionPreference = 'Stop'
-if (-not $OfflinePreview) {
+if ($DeviceTest) {
+    if ($ApiUrl -ne 'http://127.0.0.1:3002') { throw 'DeviceTest uses only http://127.0.0.1:3002 through adb reverse.' }
+} elseif (-not $OfflinePreview) {
     $parkingApiUri = $null
     if (-not [Uri]::TryCreate($ApiUrl, [UriKind]::Absolute, [ref]$parkingApiUri) -or $parkingApiUri.Scheme -ne 'https' -or $parkingApiUri.IsLoopback) {
         throw 'Pass -ApiUrl with the deployed HTTPS API address, or explicitly use -OfflinePreview.'
@@ -32,7 +34,7 @@ try {
     }
 } finally { Pop-Location }
 $parkingSavedEnvironment = @{}
-foreach ($name in @('ANDROID_HOME','ANDROID_SDK_ROOT','EXPO_PUBLIC_API_URL','EXPO_PUBLIC_OFFLINE_PREVIEW','NODE_ENV','CI')) {
+foreach ($name in @('ANDROID_HOME','ANDROID_SDK_ROOT','EXPO_PUBLIC_API_URL','EXPO_PUBLIC_OFFLINE_PREVIEW','PARKINO_DEVICE_TEST','PARKINO_TEST_PACKAGE','NODE_ENV','CI')) {
     $parkingSavedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
 try {
@@ -41,6 +43,8 @@ try {
     $env:EXPO_PUBLIC_OFFLINE_PREVIEW = $(if ($OfflinePreview) { '1' } else { '0' })
     if (-not $OfflinePreview) { $env:EXPO_PUBLIC_API_URL = $ApiUrl }
     $env:CI = '1'
+    $env:PARKINO_DEVICE_TEST = $(if ($DeviceTest) { '1' } else { '0' })
+    $env:PARKINO_TEST_PACKAGE = $(if ($TestPackage) { '1' } else { '0' })
     Push-Location $parkingBuildRoot
     try {
         & npm.cmd ci --include=dev
@@ -56,7 +60,7 @@ try {
     } finally { Pop-Location }
     $parkingPreviewRoot = Join-Path $parkingProjectRoot 'preview'
     New-Item -ItemType Directory -Path $parkingPreviewRoot -Force | Out-Null
-    $parkingApkPath = Join-Path $parkingPreviewRoot $(if ($OfflinePreview) { 'ParkSkopje-preview.apk' } else { 'Parkino-connected.apk' })
+    $parkingApkPath = Join-Path $parkingPreviewRoot $(if ($DeviceTest) { 'Parkino-device-test.apk' } elseif ($TestPackage) { 'Parkino-test-connected.apk' } elseif ($OfflinePreview) { 'ParkSkopje-preview.apk' } else { 'Parkino-connected.apk' })
     Copy-Item -LiteralPath (Join-Path $parkingBuildRoot 'android\app\build\outputs\apk\release\app-release.apk') -Destination $parkingApkPath -Force
     Get-FileHash -LiteralPath $parkingApkPath -Algorithm SHA256
 } finally {

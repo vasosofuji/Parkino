@@ -17,7 +17,7 @@ In another terminal in the same folder:
 npm run web
 ```
 
-Open http://localhost:8081. The API runs at http://localhost:3001. First launch requires a connection to choose a unique username and accept the Terms of Service. Returning users can browse the saved catalog offline; contributions require a connection. Macedonian is the default, with an English switch.
+Open http://localhost:8081. The API runs at http://localhost:3001. First launch walks through language, appearance, account creation/sign-in or guest access, then Terms of Service. Initial access requires a connection; returning users can browse the saved catalog offline. Contributions require a connection.
 
 For a physical Android or iPhone, run `npm start` and open the project with the matching Expo Go version. Set `EXPO_PUBLIC_API_URL` to your computer's LAN address, such as `http://192.168.1.10:3001`, in `.env`. Start the API with `$env:HOST='0.0.0.0'; npm run api` on a trusted local network. Allow the API port through the firewall if needed. Restart Expo after changing `.env`. The phone and computer must be on the same network. The default localhost API is not a public deployment.
 
@@ -29,9 +29,9 @@ For a physical Android or iPhone, run `npm start` and open the project with the 
 - Nearest parking within 1.5 km, with published first-hour prices and separate dated driver reports.
 - Spaces/full reports, conflicting-report display, expiry after 15 minutes, and refresh every 30 seconds.
 - Immediate community parking and polygon contributions, zone labels, free/paid price reports, and public sign photos. Demo proposals also publish immediately, without session-age or vote requirements.
-- Shared SQLite/PostgreSQL persistence, unique username onboarding, recorded Terms consent, native SecureStore credentials, request validation, rate limits, contributor-data deletion, and operator-scoped occupancy ingestion.
+- Shared SQLite/PostgreSQL persistence, username/password onboarding, recorded Terms consent, native SecureStore credentials, request validation, rate limits, contributor-data deletion, and operator-scoped occupancy ingestion.
 - Offline catalog cache, per-location and per-tariff source links, explicit coverage/access labels, Google Maps navigation handoff.
-- 35-second foreground arrival detection with availability prompts and photo/price follow-ups, using fresh stationary GPS fixes.
+- 10-second arrival detection using fresh stationary GPS fixes, with availability first and an optional missing-price question. Opt-in background reminders use native location updates and local notifications; notification taps restore the same prompt.
 - Persistent price reporting for facilities and zones, including free parking.
 
 ## Important data limits
@@ -42,7 +42,7 @@ Only three individual facilities currently have an independently matched officia
 
 Prices are baseline estimates, not payment quotes: billing schedules, seasonal hours, holidays, pollution surcharges, permit exemptions and site-specific exceptions still need authoritative modeling. Walking distances are straight-line estimates. Availability reports are observations, not reservations. Government live feeds are supported but none is connected.
 
-Usernames are unique across the shared database and belong to device accounts. This demo has no password, account recovery, or proof of distinct people. The first demo trusts human contributions immediately. Set `DEMO_TRUST_INPUTS=false` to restore the legacy proposal confirmation policy; a production review policy for direct contributions still needs to be designed.
+Usernames are unique across the shared database. New accounts use a password; existing device accounts can save a password under Account to preserve their username, points and contribution history after reinstalling. Passwords use salted scrypt hashes; login sessions are random, hashed on the server, expiring bearer tokens. Email password reset is not implemented. There is no proof of distinct people. The first demo trusts human contributions immediately. Set `DEMO_TRUST_INPUTS=false` to restore the legacy proposal confirmation policy; a production review policy for direct contributions still needs to be designed.
 
 ## Data refresh and operator integration
 
@@ -83,7 +83,7 @@ The main screen is a full map, destination field and recenter control. The botto
 
 The catalog contains 866 parking features, 13 POC sector polygons, 36 Gradski codes and 35 Gradski map labels (30 using operator map coordinates). Gradski's published list confirms D42 (MIDA), not A42. A02 remains in the inventory without a map anchor; A01 now uses the operator's published map point. Approximate labels are never used as parking entrances or arrival geofences. The offline street index uses an OSM snapshot. Online address lookup happens only on explicit submission, through the API's cached, throttled Nominatim search; configure server-only GEOCODER_URL to switch providers. No autocomplete requests are sent to Nominatim.
 
-A foreground GPS watch asks whether parking exists after at least 35 seconds of fresh, accurate, stationary fixes inside a facility polygon (excluding holes), or within 25 m of a point-only facility. It resets for inaccurate fixes, gaps over 25 seconds, movement, leaving the area and app state changes. Prompts have a six-hour per-location cooldown during that app session. No background location task is registered. Real phone GPS behavior still needs field testing.
+A GPS watch asks about availability after at least 10 seconds of fresh, accurate, stationary fixes inside a facility polygon (excluding holes), or within 25 m of a point-only facility. It resets for inaccurate fixes, large gaps, movement and departure. Cooldowns persist across restarts: six hours per location and 30 minutes between prompts. Background reminders are opt-in in Settings and need the rebuilt native app, Always/background location and notifications. The OS may delay location delivery; force-stop and some vendor task killers prevent reminders. Real GPS/background delivery still needs field testing.
 
 Driver price reports accept first/subsequent-hour MKD amounts, including zero. They persist separately from official tariffs, are dated, and stay visible for 90 days. Reports for a zone are shared across its sectors with the same operator and code. Presence confirmations are separate from spaces/full reports. In the trusted demo, the latest No hides the location from the catalog without deleting it; a later Yes restores it. Contributor deletion removes both report types. Sharing requires the connected API; the offline-preview APK cannot submit reports.
 
@@ -99,9 +99,9 @@ Default order: `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemi
 
 Uploads return immediately. A durable SQLite queue runs one extraction at a time, with a 5.5-second per-model timeout, a 30-second chain budget, model cooldowns and exponential retry delay (five attempts maximum). Invalid credentials skip the remaining models for that provider temporarily. Successful duplicate photos reuse their extraction. Stale job leases recover after restart. Readers never block catalog/report requests. Timeouts are configurable with `SIGN_AI_TIMEOUT_MS`; actual speed depends on provider latency.
 
-Clear readings (confidence >= 0.85) supply missing zone labels, charging hours and prices. Scalar prices are used only for explicitly read MKD hourly rates. Ambiguous/conditional tariffs remain text. Official source tariffs and human reports are retained; human label edits take precedence. Unclear or non-parking photos remain available for manual review. Session deletion removes that session's photos, label edits and reports, while published locations remain on the map.
+AI readings remain drafts, including high-confidence readings. The uploader sees the original photo and a digital sign preview, can correct any field, and explicitly confirms it before it supplies missing zone labels, charging hours and prices. Manual correction is available when AI is unavailable. Confirmed tariff-zone signs are inherited by contained parking areas when there is a single matching zone; conflicting overlaps are not guessed. Scalar prices are used only for explicitly read MKD hourly rates. Ambiguous/conditional tariffs remain text. Official source tariffs and human reports are retained; human label edits take precedence. Unclear or non-parking photos remain available for manual review. Session deletion removes that session's photos, label edits and reports, while published locations remain on the map.
 
-Relevant endpoints: `POST /v1/contributions`, `POST /v1/places/:id/labels`, `POST /v1/places/:id/prices`, `GET/POST /v1/places/:id/signs`, and `GET /v1/signs/:id/image`. Writes require a registered device account. `GET/POST /v1/profile` and `GET /v1/usernames/availability` support onboarding. A shared public deployment still requires hosting the API/database behind HTTPS and pointing mobile builds at that URL.
+Relevant endpoints: `POST /v1/contributions`, `POST /v1/places/:id/labels`, `POST /v1/places/:id/prices`, `GET/POST /v1/places/:id/signs`, and `GET /v1/signs/:id/image`. Writes require an authenticated guest or named account with current Terms consent. `POST /v1/auth/guest`, `POST /v1/auth/login`, `GET/POST /v1/profile` and `GET /v1/usernames/availability` support onboarding. Connected releases use the hosted HTTPS API.
 
 Provider documentation checked 2026-10-01: [Gemini models](https://ai.google.dev/gemini-api/docs/models), [structured output](https://ai.google.dev/gemini-api/docs/structured-output), [image input](https://ai.google.dev/gemini-api/docs/image-understanding).
 
@@ -119,4 +119,31 @@ Follow [SUPABASE.md](docs/SUPABASE.md) to connect a project, run `npm run db:mig
 
 Native GPS checks foreground permission and system location services, prompts Android to enable its location provider when needed, requests an initial fix for stationary devices, and restarts after returning from Settings. Denied permissions, disabled GPS, timeouts and browser-provider failures have distinct recovery messages. Browser previews require HTTPS (or localhost) and a functioning browser/OS location provider; retries cannot supply a provider the host does not have. Native GPS and camera behavior still require physical-device testing.
 
-All native scroll indicators and web scrollbars are hidden while touch scrolling remains available. Parking forms use compact layouts and fixed Save buttons. Sign photo selection offers Camera/Gallery using the native iOS action sheet or Android dialog. The current app requires onboarding even in a catalog-preview build; an offline-only APK is no longer a substitute for the connected multi-user demo.
+All native scroll indicators and web scrollbars are hidden while touch scrolling remains available. Parking forms use compact layouts and fixed Save buttons. Sign photo selection uses a custom in-app Camera/Gallery popup on every platform; the selected native camera or photo browser then opens. The current app requires onboarding even in a catalog-preview build; an offline-only APK is no longer a substitute for the connected multi-user demo.
+
+
+## Contributions, accounts and rewards update
+
+Every new parking and Details & update starts with manual entry or a sign photograph. Manual entry offers simple (zone, then price/free) and detailed (zone, price/free, total/free spaces, perimeter) paths. Optional steps can be skipped. Each completed step saves independently in the background; account-scoped drafts retain unfinished work and explicit retries. Sign capture needs no prior zone or price entry, and its local camera/gallery popup remains available offline. Upload and AI reading require a connection. Every reading has a digital preview and manual corrections before confirmation.
+
+A facility with a boundary remains a facility; a tariff zone is explicitly selected. Draft fields survive drawing on the map. Settings opens one category at a time. Guest accounts can be upgraded to a password account while keeping their points and contributions. Guest identities alone are not recoverable after reinstalling.
+
+Community free-space counts expire after 15 minutes; total capacity is durable. Full parking details offer the nearest accessible parking with a fresh spaces report. These are observations, not live sensors or reservations. Unknown counts never imply zero spaces.
+
+Points are server-authoritative and recorded once per account and parking detail: parking 10, boundary 20, price 10, capacity 10, confirmed sign 25. Availability earns 3 points per parking per UTC day. Retried submissions cannot duplicate points. Account shows the total and recent events; points have no monetary value.
+
+Rewards unlock without spending points: Ocean palette at 40, Plum at 120, Gold contribution accents at 100, and Violet at 250. The server validates unlocks and only applies a contribution accent to parking created by that account. Availability colors remain separate. Selections survive guest upgrades and password sign-in.
+
+Apply every checked-in migration before deploying the updated API. The new tables remain in the private `parkskopje` schema. Run `npm test`, `npm run typecheck`, `npm run lint`, and `npx expo-doctor`. Implementation plans and review notes are in `docs/plans/`.
+
+A separate USB test build can be installed alongside the existing app:
+
+```powershell
+node --env-file-if-exists=.env --import tsx scripts/device-test-api.ts
+# Another terminal:
+.\scripts\build-apk.ps1 -DeviceTest -ApiUrl http://127.0.0.1:3002
+adb reverse tcp:3002 tcp:3002
+adb install -r preview/Parkino-device-test.apk
+```
+
+The isolated test server uses SQLite under `data/runtime/device-test.sqlite`, never the shared database. That explicit `-DeviceTest` build needs USB forwarding. For the normal **Parking Test** app (`mk.parkskopje.app.dev`) use `scripts/build-apk.ps1 -TestPackage -ApiUrl https://parkino-api.onrender.com`, producing `preview/Parkino-test-connected.apk`. It works over Wi-Fi/mobile data without USB. Preserve its signing identity when updating an existing installation.

@@ -32,7 +32,7 @@ export async function watchLocation(
         Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            timeInterval: 5000,
+            timeInterval: 1000,
             distanceInterval: 0,
             mayShowUserSettingsDialog: true,
           },

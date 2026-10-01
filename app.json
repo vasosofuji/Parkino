@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "mk.parkskopje.app"
@@ -29,10 +29,16 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Show your position to help you find parking nearby."
+          "locationWhenInUsePermission": "Show your position to help you find parking nearby.",
+          "locationAlwaysAndWhenInUsePermission": "When you enable parking reminders, notice arrivals and ask a quick question even while Parking is in the background.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-system-ui",
+      "expo-notifications"
     ],
     "scheme": "parkskopje",
     "extra": {

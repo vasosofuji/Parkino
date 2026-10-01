@@ -27,7 +27,6 @@ body,
 }
 .parking-pin.selected span {
   transform: scale(1.24);
-  background: #962e2b !important;
   outline: 3px solid #d9a48d;
 }
 .leaflet-control-attribution {

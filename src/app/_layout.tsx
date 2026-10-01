@@ -7,9 +7,13 @@ import { AccountProvider, useAccount } from "../state/AccountContext";
 import { ActivityIndicator, View } from "react-native";
 import { ModalBackgroundProvider } from "../components/ModalBackdrop";
 import AppStyles from "../components/AppStyles";
+import { useArrivalNotifications } from "../hooks/useArrivalNotifications";
+import { hasCurrentTerms } from "../domain/onboarding";
 function Navigator() {
   const { dark, colors } = useTheme();
   const { profile, ready } = useAccount();
+  const accepted = hasCurrentTerms(profile);
+  useArrivalNotifications(ready && accepted);
   if (!ready)
     return (
       <View
@@ -20,7 +24,7 @@ function Navigator() {
           backgroundColor: colors.paper,
         }}
       >
-        <ActivityIndicator color={colors.green} />
+        <ActivityIndicator color={colors.accentText} />
       </View>
     );
   return (
@@ -32,10 +36,15 @@ function Navigator() {
           contentStyle: { backgroundColor: colors.paper },
         }}
       >
-        <Stack.Protected guard={Boolean(profile)}>
+        <Stack.Protected guard={accepted}>
           <Stack.Screen name="index" />
           <Stack.Screen name="coverage" />
           <Stack.Screen name="community" />
+          <Stack.Screen name="account" />
+          <Stack.Screen name="rewards" />
+        </Stack.Protected>
+        <Stack.Protected guard={Boolean(profile) && !accepted}>
+          <Stack.Screen name="consent" />
         </Stack.Protected>
         <Stack.Protected guard={!profile}>
           <Stack.Screen name="welcome" />
@@ -48,11 +57,11 @@ function Navigator() {
 }
 export default function Layout() {
   return (
-    <ThemeProvider>
-      <AppStyles />
-      <AccountProvider>
+    <AccountProvider>
+      <ThemeProvider>
+        <AppStyles />
         <ModalBackgroundProvider><Navigator /></ModalBackgroundProvider>
-      </AccountProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </AccountProvider>
   );
 }

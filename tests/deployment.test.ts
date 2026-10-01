@@ -21,7 +21,7 @@ test('proxy headers cannot bypass rate limits when the connecting peer is untrus
   const store = new ParkingStore(':memory:', seed as Catalog);
   const app = await buildApp(seed as Catalog, store, {trustedProxies:['loopback','uniquelocal']});
   try {
-    for (let n=0;n<180;n++) {
+    for (let n=0;n<60;n++) {
       const response=await app.inject({url:'/v1/usernames/availability?username=DemoCheck', remoteAddress:'203.0.113.9', headers:{'x-forwarded-for':`198.51.100.${n%250+1}`}});
       assert.equal(response.statusCode,200);
     }

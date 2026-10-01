@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { currentAvailability, SKOPJE } from "../domain/parking";
 import { groupParking } from "../domain/clusters";
+import { accentColor } from "../domain/cosmetics";
 import type { ParkingMapProps } from "./mapTypes";
 import { mapHtml } from "./offlineMapHtml";
 const SOURCE = { html: mapHtml };
@@ -35,6 +36,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
           props.language === "en" ? (place.nameEn ?? place.name) : place.name,
         label: String(cluster ? members.length : "P"),
         color,
+        accent: cluster ? undefined : accentColor(place.contributionAccent),
         cluster,
         selected: place.id === props.selectedId,
         spaces: !cluster && availability.status === "spaces",
@@ -44,7 +46,6 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       pins,
       dark: props.dark,
       drawing: props.drawing,
-      userAccuracy: props.userAccuracy,
       destinationName:
         props.destinationName ??
         (props.language === "mk" ? "Дестинација" : "Destination"),
@@ -95,9 +96,6 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
           : [],
       destination: [props.destination.latitude, props.destination.longitude],
       cameraRevision: props.cameraRevision,
-      userLocation: props.userLocation
-        ? [props.userLocation.latitude, props.userLocation.longitude]
-        : null,
       selectedId: props.selectedId,
       selectedAnchor: props.selectedAnchor
         ? [props.selectedAnchor.latitude, props.selectedAnchor.longitude]
@@ -108,7 +106,6 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
   }, [
     props.dark,
     props.drawing,
-    props.userAccuracy,
     props.destinationName,
     props.draftCoordinates,
     props.destinationMarker,
@@ -120,7 +117,6 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
     props.showZones,
     props.destination,
     props.cameraRevision,
-    props.userLocation,
     props.picking,
     zoom,
   ]);
@@ -131,6 +127,11 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       `window.renderParking && window.renderParking(${serialized});true;`,
     );
   }, [payload, ready]);
+  useEffect(() => {
+    if (!ready) return;
+    const point = props.userLocation ? [props.userLocation.latitude, props.userLocation.longitude] : null;
+    web.current?.injectJavaScript(`window.updateUserLocation && window.updateUserLocation(${JSON.stringify(point)},${JSON.stringify(props.userAccuracy ?? null)});true;`);
+  }, [ready, props.userLocation, props.userAccuracy]);
   function receive(event: WebViewMessageEvent) {
     let message;
     try {

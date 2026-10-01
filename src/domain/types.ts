@@ -1,3 +1,4 @@
+import type { ContributionAccent } from "./cosmetics";
 export type Coordinate = { latitude: number; longitude: number };
 export type Geometry = { type: "Polygon"; coordinates: number[][][] };
 export type ParkingKind =
@@ -53,8 +54,9 @@ export type ParkingPlace = {
   locationReports?: { yes: number; no: number };
   locationPrecision?: "area";
   zoneCodeEvidence?: "community" | "sign";
-  signInfo?: SignInfo & { photoId: string; model: string; observedAt: string };
+  signInfo?: SignInfo & { photoId: string; model: string; observedAt: string; confirmedAt?: string; sourcePlaceId?: string; sourcePlaceName?: string };
   photoCount?: number;
+  contributionAccent?: Exclude<ContributionAccent, "default">;
 };
 export type SignInfo = {
   isParkingSign: boolean;
@@ -77,6 +79,9 @@ export type SignPhoto = {
   status: "queued" | "processing" | "ready" | "review" | "waiting" | "failed";
   info: SignInfo | null;
   model: string | null;
+  confirmedAt?: string | null;
+  confirmedByMe?: boolean;
+  uploadedByMe?: boolean;
 };
 export type PhotoUpload = {
   base64: string;
@@ -91,6 +96,8 @@ export type Contribution = {
   zoneCode: string | null;
   firstHour: number | null;
   nextHour: number | null;
+  capacity?: number | null;
+  freeSpaces?: number | null;
 };
 export type ZoneInventory = {
   code: string;

@@ -2,7 +2,7 @@
 
 The connected APK uses https://parkino-api.onrender.com and the shared Supabase database. It does not need Expo Go or a Metro server. Android uses Leaflet/OpenStreetMap without a Google Maps key. Map tiles and writes require internet; the cached parking catalog can be browsed offline. Coverage and prices remain incomplete.
 
-The APK is compiled in release mode and signed with the generated Android test keystore. It is for private testing, not Play Store publication. Both ARM64 and ARMv7 devices are included, with Android 7 (API 24) or newer required. Actual hardware installation is not verified on this PC because no Android device is attached.
+The APK is compiled in release mode and signed with the generated Android test keystore. It is for private testing, not Play Store publication. Both ARM64 and ARMv7 devices are included, with Android 7 (API 24) or newer required. See docs/VALIDATION.md for the exact device checks completed.
 
 ## Rebuild locally
 
@@ -18,7 +18,24 @@ This produces `preview/Parkino-connected.apk` with live contributions enabled. U
 
 Connect a phone with USB debugging enabled and approve its debugging prompt. Check `adb devices`, install the connected APK with `adb install -r preview/Parkino-connected.apk`, then launch `mk.parkskopje.app/.MainActivity`. Use `adb logcat -b crash -d` if it exits. Do not uninstall an existing installation just to bypass a signing mismatch: that deletes its device identity.
 
-Before sharing broadly, verify username/terms onboarding, denied and precise GPS permissions, GPS off/on recovery, returning from the background, center-pin destination selection, draggable vertices, camera/gallery uploads and edits shared between two phones on mobile data. Stay stationary inside a parking perimeter for at least 35 seconds with a fresh fix accurate to 25 m or better. Arrival detection runs while the app is in the foreground.
+Before sharing broadly, verify username/terms onboarding, denied and precise GPS permissions, GPS off/on recovery, returning from the background, center-pin destination selection, draggable vertices, camera/gallery uploads and edits shared between two phones on mobile data. Stay stationary inside a parking perimeter for at least 10 seconds with a fresh fix accurate to 25 m or better. Foreground detection is always available. Opt into background reminders in Settings and allow background location and notifications; delivery timing depends on the OS. Force-stopping the app stops monitoring.
+
+## Connected Parking Test update
+
+Use `scripts/build-apk.ps1 -TestPackage -ApiUrl https://parkino-api.onrender.com` to build `preview/Parkino-test-connected.apk`. It retains the separate **Parking Test** package (`mk.parkskopje.app.dev`) while using the hosted database over HTTPS. USB forwarding is unnecessary. When updating the existing test installation, retain the original test signing key; do not uninstall to bypass a mismatch. A previous isolated-test account belongs to the isolated database and must be replaced by a hosted guest/account at first connection.
+
+## Optional isolated contribution test build
+
+For testing without changing shared data, the explicit `-DeviceTest` build talks to an isolated SQLite API through USB. Its package is also **Parking Test**, so it replaces the connected test build when installed; use the connected variant for everyday testing.
+
+```powershell
+node --env-file-if-exists=.env --import tsx scripts/device-test-api.ts
+adb reverse tcp:3002 tcp:3002
+.\scripts\build-apk.ps1 -DeviceTest -ApiUrl http://127.0.0.1:3002
+adb install -r preview/Parkino-device-test.apk
+```
+
+The API and USB forwarding must stay available for test writes. `DeviceTest` uses a separate package, app name and URL scheme, and permits cleartext traffic only for this local test configuration. The production configuration continues to require HTTPS. Apply the new migration and deploy the updated API before building/sharing a connected APK for these features.
 
 ## Temporary download link
 

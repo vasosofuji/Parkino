@@ -5,6 +5,7 @@ import "./map.css";
 import type { ParkingMapProps } from "./mapTypes";
 import { currentAvailability, SKOPJE } from "../domain/parking";
 import { groupParking } from "../domain/clusters";
+import { accentColor } from "../domain/cosmetics";
 
 export default function ParkingMap(props: ParkingMapProps) {
   const host = useRef<HTMLDivElement>(null),
@@ -12,6 +13,7 @@ export default function ParkingMap(props: ParkingMapProps) {
   const layers = useRef<L.LayerGroup | null>(null),
     draftLayer = useRef<L.LayerGroup | null>(null);
   const callbacks = useRef(props);
+  const userDot = useRef<L.CircleMarker | null>(null), accuracyCircle = useRef<L.Circle | null>(null);
   useEffect(() => {
     callbacks.current = props;
   }, [props]);
@@ -63,6 +65,8 @@ export default function ParkingMap(props: ParkingMapProps) {
       map.current = null;
       layers.current = null;
       draftLayer.current = null;
+      userDot.current = null;
+      accuracyCircle.current = null;
     };
   }, []);
   useEffect(() => {
@@ -156,6 +160,7 @@ export default function ParkingMap(props: ParkingMapProps) {
               ? "#88948D"
               : "#392c25";
       const label = cluster ? String(members.length) : "P";
+      const accent = cluster ? undefined : accentColor(place.contributionAccent);
       const icon = L.divIcon({
         className:
           "parking-pin" +
@@ -165,6 +170,7 @@ export default function ParkingMap(props: ParkingMapProps) {
         html:
           '<span style="background:' +
           color +
+          (accent ? ";border-color:" + accent : "") +
           '">' +
           (!cluster && availability.status === "spaces" ? "P ✓" : label) +
           "</span>",
@@ -226,28 +232,7 @@ export default function ParkingMap(props: ParkingMapProps) {
         })
         .addTo(group);
     }
-    if (props.userLocation) {
-      const point: L.LatLngTuple = [
-        props.userLocation.latitude,
-        props.userLocation.longitude,
-      ];
-      if (props.userAccuracy)
-        L.circle(point, {
-          radius: props.userAccuracy,
-          color: "#3977D5",
-          weight: 1,
-          fillOpacity: 0.08,
-          interactive: false,
-        }).addTo(group);
-      L.circleMarker(point, {
-        radius: 7,
-        fillColor: "#3977D5",
-        color: "#fff",
-        weight: 3,
-        fillOpacity: 1,
-        interactive: false,
-      }).addTo(group);
-    }
+    userDot.current?.bringToFront();
     const anchor = props.selectedAnchor;
     if (props.selectedId && anchor) {
       const p = instance.latLngToContainerPoint([
@@ -268,8 +253,6 @@ export default function ParkingMap(props: ParkingMapProps) {
     props.destination,
     props.destinationMarker,
     props.destinationName,
-    props.userLocation,
-    props.userAccuracy,
     props.drawing,
     props.showZones,
     props.picking,
@@ -278,6 +261,23 @@ export default function ParkingMap(props: ParkingMapProps) {
     zoom,
     viewRevision,
   ]);
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance) return;
+    if (!props.userLocation) {
+      userDot.current?.remove(); userDot.current = null;
+      accuracyCircle.current?.remove(); accuracyCircle.current = null;
+      return;
+    }
+    const point: L.LatLngTuple = [props.userLocation.latitude, props.userLocation.longitude];
+    if (userDot.current) userDot.current.setLatLng(point);
+    else userDot.current = L.circleMarker(point, { radius: 7, fillColor: "#3977D5", color: "#fff", weight: 3, fillOpacity: 1, interactive: false }).addTo(instance);
+    if (props.userAccuracy && props.userAccuracy > 0) {
+      if (accuracyCircle.current) accuracyCircle.current.setLatLng(point).setRadius(props.userAccuracy);
+      else accuracyCircle.current = L.circle(point, { radius: props.userAccuracy, color: "#3977D5", weight: 1, fillOpacity: 0.08, interactive: false }).addTo(instance);
+    } else { accuracyCircle.current?.remove(); accuracyCircle.current = null; }
+    userDot.current.bringToFront();
+  }, [props.userLocation, props.userAccuracy]);
   // Keep handles alive while GPS/catalog updates redraw the other overlays.
   useEffect(() => {
     const group = draftLayer.current;

@@ -6,7 +6,9 @@ import { z } from "zod";
 import type { Catalog, Destination } from "../src/domain/types";
 import { ParkingStore } from "./store";
 import { CommunityStore } from "./community";
-import { SignWorker, type SignExtractor } from "./sign-ai";
+import { SignWorker, signSchema, type SignExtractor } from "./sign-ai";
+import { registerAccountRoutes } from "./account-routes";
+import { accountError, bearerToken, RequestBudget } from "./account-security";
 import { validZone, MAX_BOUNDARY_VERTICES } from "../src/domain/geometry";
 import { AccountStore } from "./accounts";
 import { TERMS_VERSION } from "../src/domain/account";
@@ -54,7 +56,7 @@ export async function buildApp(
     trustedProxies?: string[];
   } = {},
 ) {
-  const app = Fastify({ logger: false, bodyLimit: 256 * 1024, trustProxy: options.trustedProxies ?? false });
+  const app = Fastify({ logger: false, bodyLimit: 256 * 1024, requestTimeout: 15000, connectionTimeout: 15000, trustProxy: options.trustedProxies ?? false });
   const community =
     store instanceof PostgresParkingStore
       ? new PostgresCommunityStore(store)
@@ -75,26 +77,47 @@ export async function buildApp(
     methods: ["GET", "HEAD", "POST", "PUT", "DELETE"],
   });
   await app.register(rateLimit, { max: 180, timeWindow: "1 minute" });
+  const requestBudget = new RequestBudget();
+  app.addHook("onRequest", async (request, reply) => {
+    // These aggregate limits still apply when a route has a custom IP limit.
+    requestBudget.consume("process", "all", 3000, 60000);
+    requestBudget.consume("ip", request.ip, 300, 60000);
+    reply.header("X-Content-Type-Options", "nosniff");
+    if (request.headers.authorization || request.url.startsWith("/v1/auth/") || request.url === "/v1/sessions")
+      reply.header("Cache-Control", "no-store");
+  });
+  registerAccountRoutes(app, accounts);
   app.addHook("preHandler", async (request) => {
-    if (!options.requireOnboarding || !["POST", "PUT"].includes(request.method))
+    if (!["POST", "PUT"].includes(request.method))
       return;
     const url = request.url.split("?")[0];
     if (
       url === "/v1/sessions" ||
       url === "/v1/profile" ||
+      url === "/v1/auth/login" ||
+      url === "/v1/auth/guest" ||
+      url === "/v1/auth/logout" ||
       url.startsWith("/v1/operators/")
     )
       return;
-    if (!(await accounts.profile(token(request.headers.authorization))))
-      throw Object.assign(
-        new Error("Choose a username and accept the Terms of Service first."),
-        { statusCode: 403 },
-      );
+    const auth = token(request.headers.authorization);
+    const user = await store.session(auth);
+    requestBudget.consume("writes", user.id, 60, 60000);
+    const route = request.routeOptions.url;
+    if (route === "/v1/places/:id/signs") {
+      requestBudget.consume("uploads-hour", user.id, 10, 3600000);
+      requestBudget.consume("uploads-day", user.id, 30, 86400000);
+    } else if (route === "/v1/contributions") requestBudget.consume("contributions", user.id, 20, 3600000);
+    if (options.requireOnboarding) {
+      const profile = await accounts.profile(auth);
+      if (!profile || profile.termsVersion !== TERMS_VERSION)
+        throw accountError("Accept the current Terms of Service first.", 403);
+    }
   });
   app.get("/v1/profile", async (request) =>
     accounts.profile(token(request.headers.authorization)),
   );
-  app.get("/v1/usernames/availability", async (request) => {
+  app.get("/v1/usernames/availability", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (request) => {
     const { username } = z
       .object({ username: z.string().max(100) })
       .parse(request.query);
@@ -102,20 +125,23 @@ export async function buildApp(
   });
   app.post(
     "/v1/profile",
-    { config: { rateLimit: { max: 60, timeWindow: "1 hour" } } },
+    { config: { rateLimit: { max: 12, timeWindow: "15 minutes" } } },
     async (request) => {
       const input = z
         .object({
           username: z.string().max(100),
           accepted: z.literal(true),
           termsVersion: z.literal(TERMS_VERSION),
+          password: z.string().min(10).max(128),
         })
+        .strict()
         .parse(request.body);
       return accounts.register(
         token(request.headers.authorization),
         input.username,
         input.termsVersion,
         input.accepted,
+        input.password,
       );
     },
   );
@@ -136,8 +162,7 @@ export async function buildApp(
           : "Server error. Please try again.",
     });
   });
-  const token = (authorization?: string) =>
-    authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const token = bearerToken;
   app.get("/health", { config: { rateLimit: false } }, async (_request, reply) => {
     try {
       await store.db.prepare("SELECT 1 FROM places LIMIT 1").get();
@@ -148,7 +173,7 @@ export async function buildApp(
   });
   const searchCache = new Map<string, { at: number; results: Destination[] }>();
   let nextSearch = 0;
-  app.get("/v1/search", async (request) => {
+  app.get("/v1/search", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (request) => {
     const { q } = z
       .object({ q: z.string().trim().min(3).max(160) })
       .parse(request.query);
@@ -202,7 +227,7 @@ export async function buildApp(
     searchCache.set(q.toLowerCase(), { at: Date.now(), results });
     return results;
   });
-  app.get("/v1/catalog", async () => {
+  app.get("/v1/catalog", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async () => {
     await store.publishReadyProposals();
     return {
       ...catalog,
@@ -242,20 +267,24 @@ export async function buildApp(
           zoneCode: z.string().trim().max(16).nullable(),
           firstHour: z.number().min(0).max(10000).nullable(),
           nextHour: z.number().min(0).max(10000).nullable(),
+          capacity: z.number().int().min(0).max(100000).nullable().optional(),
+          freeSpaces: z.number().int().min(0).max(100000).nullable().optional(),
         })
+        .refine(v => v.capacity == null || v.freeSpaces == null || v.freeSpaces <= v.capacity, "Free spaces cannot exceed capacity.")
+        .refine(v => v.kind !== "zone" || v.freeSpaces == null, "Report free spaces for an individual parking area.")
         .refine(
           (v) => v.kind !== "zone" || Boolean(v.geometry),
           "Draw the zone boundary first.",
         )
         .parse(request.body);
-      return reply
-        .code(201)
-        .send(
-          await community.contribute(
-            input,
-            token(request.headers.authorization),
-          ),
-        );
+      const auth = token(request.headers.authorization);
+      const place = await community.contribute(input, auth);
+      // Reward only the original contribution, never a retry's body or later work by other drivers.
+      const rewards = await community.contributionRewards(place.id, auth);
+      await accounts.award(auth, `parking:${place.id}`, "parking");
+      for (const kind of rewards.kinds) await accounts.award(auth,
+        `${kind}:${place.id}${kind === "availability" ? ":" + new Date(rewards.created).toISOString().slice(0,10) : ""}`, kind);
+      return reply.code(201).send(place);
     },
   );
   app.post<{ Params: { id: string } }>(
@@ -282,16 +311,37 @@ export async function buildApp(
   app.put<{ Params: { id: string } }>(
     "/v1/places/:id/boundary",
     { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
-    async (request) =>
-      community.boundary(
+    async (request) => {
+      const result = await community.boundary(
         request.params.id,
         token(request.headers.authorization),
         geometry.parse(request.body),
-      ),
+      );
+      await accounts.award(token(request.headers.authorization), `boundary:${request.params.id}`, "boundary");
+      return result;
+    },
   );
-  app.get<{ Params: { id: string } }>("/v1/places/:id/signs", async (request) =>
-    community.photos(request.params.id),
+  app.get<{ Params: { id: string } }>("/v1/places/:id/signs", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (request) =>
+    community.photos(request.params.id, token(request.headers.authorization) || undefined),
   );
+  app.put<{Params:{id:string}}>("/v1/places/:id/capacity", {config:{rateLimit:{max:20,timeWindow:"1 minute"}}}, async request => {
+    const {capacity} = z.object({capacity:z.number().int().min(0).max(100000)}).parse(request.body);
+    const auth = token(request.headers.authorization);
+    const result = await community.capacity(request.params.id, auth, capacity);
+    await accounts.award(auth, `capacity:${request.params.id}`, "capacity");
+    return result;
+  });
+  app.post<{ Params: { id: string } }>("/v1/signs/:id/confirm", {
+    config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+  }, async request => {
+    const auth = token(request.headers.authorization);
+    const details = signSchema.refine(info => Boolean(info.zoneCode?.trim() || info.firstHour !== null || info.nextHour !== null ||
+      info.chargingHours?.trim() || info.paymentInstructions?.trim() || info.restrictions?.trim() || info.rawText.trim().length >= 3),
+    "Add at least one detail from the sign.").parse(request.body);
+    const photo = await community.confirmSign(request.params.id, auth, details);
+    await accounts.award(auth, `sign:${photo.placeId}`, "sign");
+    return photo;
+  });
   app.post<{ Params: { id: string } }>(
     "/v1/places/:id/signs",
     {
@@ -316,6 +366,7 @@ export async function buildApp(
   );
   app.get<{ Params: { id: string } }>(
     "/v1/signs/:id/image",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
     async (request, reply) => {
       const image = await community.image(request.params.id);
       return reply
@@ -350,12 +401,14 @@ export async function buildApp(
           nextHour: z.number().min(0).max(10000),
         })
         .parse(request.body);
-      return store.reportPrice(
+      const result = await store.reportPrice(
         request.params.id,
         token(request.headers.authorization),
         body.firstHour,
         body.nextHour,
       );
+      await accounts.award(token(request.headers.authorization), `pricing:${request.params.id}`, "pricing");
+      return result;
     },
   );
   app.post<{ Params: { id: string } }>(
@@ -375,13 +428,16 @@ export async function buildApp(
     { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (request) => {
       const body = z
-        .object({ status: z.enum(["spaces", "full"]) })
+        .object({ status: z.enum(["spaces", "full"]), freeSpaces: z.number().int().min(0).max(100000).optional() })
         .parse(request.body);
-      return store.report(
+      const result = await store.report(
         request.params.id,
         token(request.headers.authorization),
         body.status,
+        body.freeSpaces,
       );
+      await accounts.award(token(request.headers.authorization), `availability:${request.params.id}:${new Date().toISOString().slice(0,10)}`, "availability");
+      return result;
     },
   );
   app.post(

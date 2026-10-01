@@ -148,7 +148,7 @@ const styles = (colors: ThemeColors) =>
       fontWeight: "800",
       letterSpacing: -1,
     },
-    message: { color: colors.green, fontSize: 14, lineHeight: 22 },
+    message: { color: colors.accentText, fontSize: 14, lineHeight: 22 },
     empty: { paddingVertical: 30, gap: 18 },
     emptyTitle: { color: colors.ink, fontSize: 20, fontWeight: "700" },
     card: {
@@ -160,7 +160,7 @@ const styles = (colors: ThemeColors) =>
     },
     cardHeader: { flexDirection: "row", gap: 12, alignItems: "center" },
     name: { flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink },
-    state: { color: colors.green, fontSize: 11, fontWeight: "700" },
+    state: { color: colors.accentText, fontSize: 11, fontWeight: "700" },
     note: { color: colors.ink, fontSize: 15, lineHeight: 23 },
-    progress: { color: colors.green, fontWeight: "700", fontSize: 12 },
+    progress: { color: colors.accentText, fontWeight: "700", fontSize: 12 },
   });

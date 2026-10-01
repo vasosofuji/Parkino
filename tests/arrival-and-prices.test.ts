@@ -54,11 +54,11 @@ function update(
     start + seconds * 1000,
   );
 }
-test("arrival needs 35 seconds of fresh stationary fixes and suppresses repeat prompts", () => {
+test("arrival needs 10 seconds of fresh stationary fixes and suppresses repeat prompts", () => {
   const d = new ArrivalDetector();
-  for (let s = 0; s < 35; s += 5) assert.equal(update(d, s), null);
-  assert.equal(update(d, 35)?.id, place.id);
-  for (let s = 40; s < 180; s += 5) assert.equal(update(d, s), null);
+  for (let s = 0; s < 10; s += 5) assert.equal(update(d, s), null);
+  assert.equal(update(d, 10)?.id, place.id);
+  for (let s = 15; s < 180; s += 5) assert.equal(update(d, s), null);
 });
 test("leaving, driving, poor accuracy and GPS gaps reset arrival dwell", () => {
   for (const change of [
@@ -68,14 +68,15 @@ test("leaving, driving, poor accuracy and GPS gaps reset arrival dwell", () => {
     { accuracy: null },
   ]) {
     const d = new ArrivalDetector();
-    for (let s = 0; s <= 20; s += 5) update(d, s);
-    assert.equal(update(d, 25, change), null);
-    for (let s = 30; s < 65; s += 5) assert.equal(update(d, s), null);
-    assert.equal(update(d, 65)?.id, place.id);
+    update(d, 0);
+    update(d, 5);
+    assert.equal(update(d, 10, change), null);
+    for (let s = 15; s < 25; s += 5) assert.equal(update(d, s), null);
+    assert.equal(update(d, 25)?.id, place.id);
   }
   const d = new ArrivalDetector();
   update(d, 0);
-  update(d, 10);
+  update(d, 5);
   assert.equal(update(d, 70), null);
   assert.equal(d.update(fix(10), [place], start + 80000), null);
 });
@@ -120,10 +121,10 @@ test("polygons respect holes, surveyed zones trigger arrival, and approximate la
     geometry: { ...geometry, coordinates: [geometry.coordinates[0]] },
   };
   const zoneDetector = new ArrivalDetector();
-  for (let s = 0; s < 35; s += 5)
+  for (let s = 0; s < 10; s += 5)
     assert.equal(zoneDetector.update(fix(s), [zone], start + s * 1000), null);
   assert.equal(
-    zoneDetector.update(fix(35), [zone], start + 35000)?.id,
+    zoneDetector.update(fix(10), [zone], start + 10000)?.id,
     place.id,
   );
   const approximate = {
@@ -138,7 +139,7 @@ test("polygons respect holes, surveyed zones trigger arrival, and approximate la
       null,
     );
   const facilityDetector = new ArrivalDetector();
-  for (let s = 0; s < 35; s += 5)
+  for (let s = 0; s < 10; s += 5)
     facilityDetector.update(
       fix(s),
       [{ ...zone, id: "zone" }, place],
@@ -146,9 +147,9 @@ test("polygons respect holes, surveyed zones trigger arrival, and approximate la
     );
   assert.equal(
     facilityDetector.update(
-      fix(35),
+      fix(10),
       [{ ...zone, id: "zone" }, place],
-      start + 35000,
+      start + 10000,
     )?.id,
     place.id,
   );

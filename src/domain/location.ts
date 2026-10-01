@@ -35,9 +35,12 @@ export function usableFix(fix: Fix, now = Date.now()) {
 export function preferFix(previous: Fix | null, next: Fix) {
   if (!previous) return true;
   if (next.timestamp < previous.timestamp) return false;
-  // Avoid a sudden coarse network estimate replacing a recent precise fix.
+  if (next.timestamp === previous.timestamp) return next.accuracy! < previous.accuracy!;
+  // Keep walking/driving updates live through ordinary GPS degradation. Briefly
+  // hold extreme network drift, then show its true (approximate) accuracy rather
+  // than leaving a precise-looking marker at a location the driver has left.
   return (
-    next.timestamp - previous.timestamp > 20000 ||
-    next.accuracy! <= Math.max(100, previous.accuracy! * 2)
+    next.timestamp - previous.timestamp >= 5000 ||
+    next.accuracy! <= Math.max(250, previous.accuracy! * 2)
   );
 }

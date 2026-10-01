@@ -219,6 +219,8 @@ test("HTTP routes reject invalid coordinates, missing identity and operator cred
   const app = await buildApp(catalog, store, {
     feedKeys: { gradski: "test-key" },
   });
+  const session = await app.inject({ method: "POST", url: "/v1/sessions" });
+  assert.equal(session.statusCode, 201);
   assert.equal(
     (
       await app.inject({
@@ -234,6 +236,7 @@ test("HTTP routes reject invalid coordinates, missing identity and operator cred
       await app.inject({
         method: "POST",
         url: "/v1/proposals",
+        headers: { authorization: "Bearer " + session.json().token },
         payload: {
           name: "Out of city",
           coordinate: { latitude: 50, longitude: 21 },
@@ -255,8 +258,6 @@ test("HTTP routes reject invalid coordinates, missing identity and operator cred
     ).statusCode,
     401,
   );
-  const session = await app.inject({ method: "POST", url: "/v1/sessions" });
-  assert.equal(session.statusCode, 201);
   const report = await app.inject({
     method: "POST",
     url: "/v1/places/test/reports",

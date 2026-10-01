@@ -25,7 +25,7 @@ export default function ParkingRow({
   const { t, language, now } = useParking();
   const available = currentAvailability(place.availability, now);
   const status = {
-    spaces: t("Spaces reported", "Пријавени слободни места"),
+    spaces: available.freeSpaces !== undefined ? `${available.freeSpaces} ${t("free reported", "пријавени слободни")}${place.capacity !== null ? ` / ${place.capacity}` : ""}` : t("Spaces reported", "Пријавени слободни места"),
     full: t("Full reported", "Пријавено полн"),
     mixed: t("Conflicting reports", "Различни пријави"),
     unknown: t("No recent report", "Нема свежа пријава"),

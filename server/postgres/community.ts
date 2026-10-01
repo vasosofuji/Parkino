@@ -1,3 +1,5 @@
+import type { RewardKind } from "../../src/domain/account";
+import { CONTRIBUTION_COSMETICS_QUERY, contributionAccents, type ContributionCosmeticRow } from "../cosmetics";
 import { createHash, randomUUID } from "node:crypto";
 import type {
   Contribution,
@@ -9,14 +11,7 @@ import type {
 } from "../../src/domain/types";
 import { normalizeZoneCode } from "../../src/domain/parking";
 import type { PostgresParkingStore } from "./store";
-type PhotoRow = {
-  id: string;
-  place_id: string;
-  created: number;
-  status: SignPhoto["status"];
-  info: string | null;
-  model: string | null;
-};
+import { PHOTO_SELECT, photoView, enrichSigns, type PhotoRow } from "../sign-catalog";
 export class PostgresCommunityStore {
   constructor(private store: PostgresParkingStore) {}
 
@@ -43,7 +38,7 @@ export class PostgresCommunityStore {
       zoneCodeEvidence: "community",
       access: "unknown",
       tariff: null,
-      capacity: null,
+      capacity: input.capacity ?? null,
       openingHours: null,
       verification: "community",
       source: {
@@ -69,6 +64,13 @@ export class PostgresCommunityStore {
       await this.store.db
         .prepare("INSERT INTO contributions VALUES (?,?,?)")
         .run(input.requestId, user.id, place.id);
+      const kinds: RewardKind[] = [];
+      if (input.geometry) kinds.push("boundary");
+      if (input.firstHour !== null) kinds.push("pricing");
+      if (input.capacity != null) kinds.push("capacity");
+      if (input.freeSpaces != null && input.kind !== "zone") kinds.push("availability");
+      await this.store.db.prepare("INSERT INTO contribution_details(place_id,session_id,details,created) VALUES (?,?,?,?)")
+        .run(place.id,user.id,JSON.stringify(kinds),Date.now());
       if (input.firstHour !== null)
         await this.store.reportPrice(
           place.id,
@@ -76,8 +78,15 @@ export class PostgresCommunityStore {
           input.firstHour,
           input.nextHour ?? input.firstHour,
         );
+      if (input.freeSpaces !== undefined && input.freeSpaces !== null && input.kind !== "zone")
+        await this.store.report(place.id, token, input.freeSpaces > 0 ? "spaces" : "full", input.freeSpaces);
       return place;
     });
+  }
+  async contributionRewards(id: string, token: string) {
+    const user = await this.store.session(token);
+    const row = (await this.store.db.prepare("SELECT details,created FROM contribution_details WHERE place_id=? AND session_id=?").get(id,user.id)) as {details:string;created:number}|undefined;
+    return {kinds: row ? JSON.parse(row.details) as RewardKind[] : [], created: row?.created ?? Date.now()};
   }
   async label(id: string, token: string, code: string) {
     const user = await this.store.session(token);
@@ -99,6 +108,13 @@ export class PostgresCommunityStore {
       )
       .run(id, JSON.stringify(geometry), Date.now());
     return { saved: true };
+  }
+  async capacity(id: string, token: string, capacity: number) {
+    const user = await this.store.session(token);
+    const place = await this.store.place(id);
+    if (place.kind === "zone") throw Object.assign(new Error("Set capacity on an individual parking area."), {statusCode:400});
+    await this.store.db.prepare("INSERT INTO capacity_reports(place_id,session_id,capacity,updated) VALUES (?,?,?,?) ON CONFLICT(place_id,session_id) DO UPDATE SET capacity=excluded.capacity,updated=excluded.updated").run(id,user.id,capacity,Date.now());
+    return {saved:true};
   }
   async upload(id: string, token: string, photo: PhotoUpload) {
     const user = await this.store.session(token);
@@ -132,7 +148,10 @@ export class PostgresCommunityStore {
             id: string;
           }
         | undefined;
-      if (prior) return await this.photo(prior.id);
+      if (prior) {
+        await this.store.db.prepare("INSERT INTO sign_uploaders(photo_id,session_id) VALUES (?,?) ON CONFLICT DO NOTHING").run(prior.id, user.id);
+        return await this.photo(prior.id, token);
+      }
       const count = (await this.store.db
         .prepare("SELECT COUNT(*) AS n FROM sign_photos WHERE place_id=?")
         .get(id)) as {
@@ -172,40 +191,32 @@ export class PostgresCommunityStore {
           cached?.info ?? null,
           cached?.model ?? null,
         );
-      return await this.photo(photoId);
+      return await this.photo(photoId, token);
     });
   }
-  private async view(row: PhotoRow): Promise<SignPhoto> {
-    return {
-      id: row.id,
-      placeId: row.place_id,
-      createdAt: new Date(row.created).toISOString(),
-      status: row.status,
-      info: row.info ? JSON.parse(row.info) : null,
-      model: row.model,
-    };
+  async photo(id: string, token?: string): Promise<SignPhoto> {
+    const row = (await this.store.db.prepare(PHOTO_SELECT + " WHERE p.id=?").get(id)) as PhotoRow | undefined;
+    if (!row) throw Object.assign(new Error("Photo not found."), { statusCode: 404 });
+    const user = token ? await this.store.session(token) : undefined;
+    const uploaded = user ? (await this.store.db.prepare("SELECT 1 FROM sign_uploaders WHERE photo_id=? AND session_id=?").get(id, user.id)) : undefined;
+    return photoView(row, user?.id, Boolean(uploaded));
   }
-  async photo(id: string) {
-    const row = (await this.store.db
-      .prepare(
-        "SELECT id,place_id,created,status,info,model FROM sign_photos WHERE id=?",
-      )
-      .get(id)) as PhotoRow | undefined;
-    if (!row)
-      throw Object.assign(new Error("Photo not found."), { statusCode: 404 });
-    return await this.view(row);
-  }
-  async photos(id: string) {
+  async photos(id: string, token?: string): Promise<SignPhoto[]> {
     await this.store.place(id);
-    return await Promise.all(
-      (
-        (await this.store.db
-          .prepare(
-            "SELECT id,place_id,created,status,info,model FROM sign_photos WHERE place_id=? ORDER BY created DESC",
-          )
-          .all(id)) as PhotoRow[]
-      ).map(async (row) => await this.view(row)),
-    );
+    const user = token ? await this.store.session(token) : undefined;
+    const rows = (await this.store.db.prepare(PHOTO_SELECT + " WHERE p.place_id=? ORDER BY p.created DESC").all(id)) as PhotoRow[];
+    const uploads = user ? (await this.store.db.prepare("SELECT photo_id FROM sign_uploaders WHERE session_id=?").all(user.id)) as { photo_id: string }[] : [];
+    const ids = new Set(uploads.map(row => row.photo_id));
+    return rows.map(row => photoView(row, user?.id, ids.has(row.id)));
+  }
+  async confirmSign(id: string, token: string, info: SignInfo): Promise<SignPhoto> {
+    const user = await this.store.session(token);
+    const photo = await this.photo(id, token);
+    if (!photo.uploadedByMe) throw Object.assign(new Error("Upload this sign before confirming its details."), { statusCode: 403 });
+    if (!info.isParkingSign) throw Object.assign(new Error("Only parking signs can be confirmed."), { statusCode: 400 });
+    await this.store.db.prepare("INSERT INTO sign_confirmations(photo_id,session_id,info,confirmed) VALUES (?,?,?,?) ON CONFLICT(photo_id) DO UPDATE SET session_id=excluded.session_id,info=excluded.info,confirmed=excluded.confirmed")
+      .run(id, user.id, JSON.stringify(info), Date.now());
+    return await this.photo(id, token);
   }
   async image(id: string) {
     await this.photo(id);
@@ -218,78 +229,14 @@ export class PostgresCommunityStore {
     };
   }
   async enrich(places: ParkingPlace[]) {
-    const boundaries = new Map(
-      (
-        (await this.store.db
-          .prepare("SELECT place_id,geometry FROM boundaries")
-          .all()) as {
-          place_id: string;
-          geometry: string;
-        }[]
-      ).map((row) => [row.place_id, JSON.parse(row.geometry) as Geometry]),
-    );
-    const labels = (await this.store.db
-      .prepare("SELECT place_id,code FROM labels ORDER BY created DESC")
-      .all()) as {
-      place_id: string;
-      code: string;
-    }[];
-    const latest = new Map<string, string>();
-    for (const l of labels)
-      if (!latest.has(l.place_id)) latest.set(l.place_id, l.code);
-    const photos = (await this.store.db
-      .prepare(
-        "SELECT id,place_id,created,status,info,model FROM sign_photos ORDER BY created DESC",
-      )
-      .all()) as PhotoRow[];
-    const counts = new Map<string, number>(),
-      signs = new Map<string, PhotoRow>();
-    for (const photo of photos) {
-      counts.set(photo.place_id, (counts.get(photo.place_id) ?? 0) + 1);
-      if (photo.status === "ready" && !signs.has(photo.place_id))
-        signs.set(photo.place_id, photo);
-    }
-    return places.map((place) => {
-      const photo = signs.get(place.id),
-        info: SignInfo | null = photo?.info ? JSON.parse(photo.info) : null,
-        label = latest.get(place.id);
-      return {
-        ...place,
-        ...(boundaries.has(place.id)
-          ? {
-              geometry: boundaries.get(place.id),
-              coordinate: place.kind === "zone" ? {
-                latitude: boundaries.get(place.id)!.coordinates[0][0][1],
-                longitude: boundaries.get(place.id)!.coordinates[0][0][0],
-              } : place.coordinate,
-              locationPrecision: undefined,
-            }
-          : {}),
-        photoCount: counts.get(place.id) ?? 0,
-        ...(info && photo
-          ? {
-              signInfo: {
-                ...info,
-                photoId: photo.id,
-                model: photo.model!,
-                observedAt: new Date(photo.created).toISOString(),
-              },
-              ...(!place.zoneCode && info.zoneCode
-                ? {
-                    zoneCode: normalizeZoneCode(info.zoneCode),
-                    zoneCodeEvidence: "sign" as const,
-                  }
-                : {}),
-              ...(!place.openingHours && info.chargingHours
-                ? { openingHours: info.chargingHours }
-                : {}),
-            }
-          : {}),
-        ...(label
-          ? { zoneCode: label, zoneCodeEvidence: "community" as const }
-          : {}),
-      };
-    });
+    const accents = contributionAccents(await this.store.db.prepare(CONTRIBUTION_COSMETICS_QUERY).all() as ContributionCosmeticRow[]);
+    const boundaries = (await this.store.db.prepare("SELECT place_id,geometry FROM boundaries").all()) as { place_id: string; geometry: string }[];
+    const labels = (await this.store.db.prepare("SELECT place_id,code FROM labels ORDER BY created DESC").all()) as { place_id: string; code: string }[];
+    const photos = (await this.store.db.prepare(PHOTO_SELECT + " ORDER BY c.confirmed DESC,p.created DESC").all()) as PhotoRow[];
+    const capacities = (await this.store.db.prepare("SELECT place_id,capacity FROM capacity_reports ORDER BY updated DESC,session_id DESC").all()) as {place_id:string;capacity:number}[];
+    const latest = new Map<string,number>();
+    for (const row of capacities) if (!latest.has(row.place_id)) latest.set(row.place_id,row.capacity);
+    return enrichSigns(places.map(place => ({...place,capacity:latest.get(place.id) ?? place.capacity,contributionAccent:accents.get(place.id)})), boundaries, labels, photos);
   }
   async claim() {
     const now = Date.now();

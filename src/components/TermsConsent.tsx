@@ -87,7 +87,7 @@ export default function TermsConsent({
             </Text>
             <IconButton
               name="x"
-              label={t("Back to username", "Назад кон корисничкото име")}
+              label={t("Back", "Назад")}
               onPress={() => {
                 if (!busy) onClose();
               }}
@@ -152,7 +152,7 @@ export default function TermsConsent({
             <Button
               title={
                 busy
-                  ? t("Creating account…", "Се создава сметка…")
+                  ? t("Please wait…", "Почекајте…")
                   : t("I accept and continue", "Прифаќам и продолжувам")
               }
               disabled={!read || busy}
