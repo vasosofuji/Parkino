@@ -1,4 +1,4 @@
-# ParkSkopje
+# Parkino
 
 Android/iOS parking application built with Expo 57 and React Native, with a browser preview and a shared API backed by SQLite locally or Supabase PostgreSQL when configured. All code lives in this folder; the website project was not edited.
 
@@ -83,7 +83,7 @@ The main screen is a full map, destination field and recenter control. The botto
 
 The catalog contains 866 parking features, 13 POC sector polygons, 36 Gradski codes and 35 Gradski map labels (30 using operator map coordinates). Gradski's published list confirms D42 (MIDA), not A42. A02 remains in the inventory without a map anchor; A01 now uses the operator's published map point. Approximate labels are never used as parking entrances or arrival geofences. The offline street index uses an OSM snapshot. Online address lookup happens only on explicit submission, through the API's cached, throttled Nominatim search; configure server-only GEOCODER_URL to switch providers. No autocomplete requests are sent to Nominatim.
 
-A foreground GPS watch asks whether parking exists after at least 60 seconds of fresh, accurate, stationary fixes inside a facility polygon (excluding holes), or within 25 m of a point-only facility. It resets for inaccurate fixes, gaps over 25 seconds, movement, leaving the area and app state changes. Prompts have a six-hour per-location cooldown during that app session. No background location task is registered. Real phone GPS behavior still needs field testing.
+A foreground GPS watch asks whether parking exists after at least 35 seconds of fresh, accurate, stationary fixes inside a facility polygon (excluding holes), or within 25 m of a point-only facility. It resets for inaccurate fixes, gaps over 25 seconds, movement, leaving the area and app state changes. Prompts have a six-hour per-location cooldown during that app session. No background location task is registered. Real phone GPS behavior still needs field testing.
 
 Driver price reports accept first/subsequent-hour MKD amounts, including zero. They persist separately from official tariffs, are dated, and stay visible for 90 days. Reports for a zone are shared across its sectors with the same operator and code. Presence confirmations are separate from spaces/full reports. In the trusted demo, the latest No hides the location from the catalog without deleting it; a later Yes restores it. Contributor deletion removes both report types. Sharing requires the connected API; the offline-preview APK cannot submit reports.
 
@@ -115,7 +115,7 @@ The map requests fresh high-accuracy GPS. Desktop browsers may provide only a co
 
 ## Supabase and mobile onboarding
 
-Follow [SUPABASE.md](docs/SUPABASE.md) to connect a project, run `npm run db:migrate`, optionally migrate the existing SQLite demo data, and configure the hosted API. The checked-in PostgreSQL migration and adapter are tested locally; no cloud project has been created or connected.
+Follow [SUPABASE.md](docs/SUPABASE.md) to connect a project, run `npm run db:migrate`, optionally migrate the existing SQLite demo data, and configure the hosted API. The Parkino Supabase project is connected, with verified TLS, shared application tables and preserved demo accounts. See docs/CLOUD-DEPLOYMENT.md for the Render rollout and connected APK setup.
 
 Native GPS checks foreground permission and system location services, prompts Android to enable its location provider when needed, requests an initial fix for stationary devices, and restarts after returning from Settings. Denied permissions, disabled GPS, timeouts and browser-provider failures have distinct recovery messages. Browser previews require HTTPS (or localhost) and a functioning browser/OS location provider; retries cannot supply a provider the host does not have. Native GPS and camera behavior still require physical-device testing.
 
