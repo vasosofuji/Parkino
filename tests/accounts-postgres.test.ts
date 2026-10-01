@@ -17,6 +17,19 @@ import { TERMS_VERSION } from "../src/domain/account";
 import { zoneGeometry } from "../src/domain/geometry";
 import type { Catalog, SignInfo } from "../src/domain/types";
 
+test("an idle PostgreSQL connection failure does not crash the API or expose credentials", async (t) => {
+  const db = new PgDatabase("postgresql://test:test@localhost:5432/test");
+  const warning = t.mock.method(console, "warn", () => {});
+  try {
+    assert.doesNotThrow(() => db.pool.emit("error", new Error("private connection details")));
+    assert.equal(warning.mock.callCount(), 1);
+    assert.equal(String(warning.mock.calls[0].arguments[0]).includes("private"), false);
+  } finally {
+    warning.mock.restore();
+    await db.close();
+  }
+});
+
 test("PostgreSQL pool initializes the private schema and keeps a transaction on one connection", async (t) => {
   const db = new PgDatabase("postgresql://test:test@localhost:5432/test");
   const queries: { sql: string; values?: unknown[] }[] = [];

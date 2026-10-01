@@ -8,6 +8,8 @@ import {
   rankParking,
   normalizeZoneCode,
   REPORT_TTL_MS,
+  PRICE_REPORT_TTL_MS,
+  parkingPrice,
   SESSION_MATURITY_MS,
 } from "../src/domain/parking";
 import type { Catalog, ParkingPlace, Tariff } from "../src/domain/types";
@@ -68,7 +70,7 @@ test("price estimates round started hours and respect time limits", () => {
   assert.equal(estimateCost(tariff, 0), null);
   assert.equal(estimateCost(tariff, NaN), null);
 });
-test("cheapest comparison excludes unknown prices, restricted access and sector centres", () => {
+test("cheapest comparison keeps unknown estimates last and excludes restricted access and sector centres", () => {
   const rows = rankParking(
     [
       place,
@@ -88,7 +90,7 @@ test("cheapest comparison excludes unknown prices, restricted access and sector 
   );
   assert.deepEqual(
     rows.map((r) => r.place.id),
-    ["test"],
+    ["test", "unknown", "unverified"],
   );
   assert.equal(rows[0].cost, 125);
 });
@@ -351,4 +353,53 @@ test("fresh available spaces stay visible outside clusters and expire back into 
   assert.equal(groupParking([place, available], 0.01, 0.01, null).length, 2);
   available.availability!.expiresAt = new Date(now - 1).toISOString();
   assert.equal(groupParking([place, available], 0.01, 0.01, null).length, 1);
+});
+
+test("cheapest uses fresh driver prices including free parking, with unknowns last", () => {
+  const now = Date.parse("2026-10-01T12:00:00Z");
+  const report = { firstHour: 0, nextHour: 20, reports: 1, observedAt: new Date(now).toISOString() };
+  const reported = { ...place, id: "reported", communityPrice: report };
+  const rows = rankParking([
+    { ...place, id: "unknown", tariff: null }, place, reported,
+    { ...place, id: "customers", access: "customers" },
+    { ...place, id: "unknown-access", access: "unknown" },
+    { ...place, id: "far", coordinate: { ...point, latitude: point.latitude + 1 } },
+  ], point, 120, 1000, "cheapest", now);
+  assert.deepEqual(rows.map(r => [r.place.id, r.cost, r.costEvidence]), [
+    ["reported", 20, "community"], ["test", 125, "official"], ["unknown", null, null],
+  ]);
+  assert.equal(rankParking([reported], point, 60, 1000, "cheapest", now)[0].cost, 0);
+  assert.equal(parkingPrice(reported, now)?.firstHour, 0);
+  assert.equal(rankParking([{ ...reported, tariff: { ...tariff, maxStayMinutes: 60 } }], point, 120, 1000, "cheapest", now)[0].cost, null);
+});
+
+test("invalid or expired cached reports fall back to published rates", () => {
+  const now = Date.parse("2026-10-01T12:00:00Z");
+  const report = { firstHour: 0, nextHour: 0, reports: 1, observedAt: new Date(now).toISOString() };
+  for (const invalid of [
+    { observedAt: new Date(now - PRICE_REPORT_TTL_MS).toISOString() },
+    { observedAt: new Date(now + 1).toISOString() }, { observedAt: "invalid" },
+    { reports: 0 }, { reports: 1.5 }, { firstHour: -1 }, { nextHour: Infinity },
+    { firstHour: NaN }, { nextHour: 10001 },
+  ]) {
+    const p = { ...place, communityPrice: { ...report, ...invalid } };
+    assert.equal(parkingPrice(p, now)?.evidence, "official");
+    assert.equal(rankParking([p], point, 60, 1000, "cheapest", now)[0].cost, 75);
+    assert.equal(rankParking([{ ...p, tariff: null }], point, 60, 1000, "cheapest", now)[0].cost, null);
+  }
+  const p = { ...place, communityPrice: { ...report, observedAt: new Date(now - PRICE_REPORT_TTL_MS + 1).toISOString() } };
+  assert.equal(rankParking([p], point, 60, 1000, "cheapest", now)[0].cost, 0);
+});
+
+test("unknown and equal-price ordering is stable by straight-line distance then id", () => {
+  const near = { ...place, id: "a", tariff: null };
+  const far = { ...near, id: "far", coordinate: { ...point, latitude: point.latitude + 0.001 } };
+  const tie = { ...near, id: "b" };
+  const input = [far, tie, near];
+  const rows = rankParking(input, point, 60, 1000, "cheapest");
+  assert.deepEqual(rows.map(r => r.place.id), ["a", "b", "far"]);
+  assert.deepEqual(input.map(p => p.id), ["far", "b", "a"]);
+  assert.ok(rows[2].distance > 110 && rows[2].distance < 112);
+  assert.deepEqual(rankParking([far, { ...near, tariff }], point, 60, 1000, "nearest").map(r => r.place.id), ["a", "far"]);
+  assert.deepEqual(rankParking(input.map(p => ({ ...p, tariff })), point, 60, 1000, "cheapest").map(r => r.place.id), ["a", "b", "far"]);
 });

@@ -1,5 +1,21 @@
 # Validation — 30 September 2026
 
+## Crash and cloud audit — 1 October 2026
+
+Found and fixed an import-time native startup exception in `src/services/api.ts`: React Native defines `window` without `window.location`, but the API module accessed `window.location.hostname` before selecting the configured HTTPS URL. The regression loads the actual transpiled module with Android/iOS globals and checks both configured and development URLs. Phone logcat is still needed to confirm whether this is the only crash on the reported device.
+
+Added a PostgreSQL pool error listener so an idle connection outage does not terminate the API process. A regression verifies the event is handled without logging private connection details. This server change requires a new Render deployment; the currently deployed API was tested separately below.
+
+Repeated the live public HTTPS smoke test with two temporary accounts: registration, a physical pin, free pricing, an availability report, a zone label, another user's perimeter edit, photo upload/readback and shared catalog all passed. Cleanup returned the database to 914 records. Verified a unique username index and RLS on all 14 private tables; Supabase's security advisors returned no findings.
+
+Uploaded a synthetic parking sign through the actual Render API. Render's durable worker completed a Gemini 3.8 Flash reading in 4.8 seconds, extracting B2, MKD, 40/hour and the charging hours. These appeared in the shared catalog. All test records/photos/accounts were removed. An earlier attempt stayed pending during the two-minute check; the next attempt passed. This verifies deployed credentials and the complete pipeline, not recognition accuracy on every real sign.
+
+All 51 tests, lint and typecheck passed; Expo Doctor passed 21/21 checks. Dependency audit reports 13 moderate transitive Expo/Router/tooling findings, zero high/critical. Automatic fixes propose incompatible Expo/Router downgrades; these were not applied. Review patched compatible upstream dependencies before public release.
+
+The local Gradle build exposed mixed SUBST/real-path autolinking and Ninja's 260-character filename limit. The build script now uses a clean source snapshot in a short real directory and an Expo config plugin sets CMake's object path limit. No generated native source was edited by hand. The corrected script built `preview/Parkino-connected.apk` successfully (618 Gradle tasks, ARM64/ARMv7, min API 24, target API 36). APK v2 signature and ZIP integrity passed. The Render HTTPS URL is present in the Hermes bundle; scanning every decompressed APK entry found none of the configured database URL/password or Gemini key. File size: 61,527,164 bytes. SHA-256: `65b27138e5cb7fc7348aa31441de34ee5d423b71fee6879f73ce1788f8afc6d0`. The download helper now serves this connected build rather than the old offline APK.
+
+No Android device or emulator is currently connected/installed for runtime testing, and browser control is disconnected. Actual phone startup, physical GPS/permission recovery, camera/gallery UI and two-phone mobile-data interactions remain required before declaring the APK ready for the group. EAS build 8e654116-b593-40cd-9ec0-0d8ceba82fda is canceled; it is not an available verified APK.
+
 - Thirteen domain/API regression tests pass: cost rounding, time limits, unknown-price exclusion, distances, zone normalization, report expiry, conflicting reports, distinct-session confirmations, proposal deduplication, operator ownership/freshness/capacity/order, identity deletion, HTTP validation, imported geometry, map grouping, automatic publication through API refresh after session maturity, and moderation.
 - TypeScript strict checking passes.
 - Expo ESLint passes.

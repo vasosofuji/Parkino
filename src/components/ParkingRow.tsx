@@ -2,19 +2,21 @@ import { useTheme, type ThemeColors } from "../state/ThemeContext";
 import React, { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ParkingPlace } from "../domain/types";
-import { currentAvailability, parkingPrice } from "../domain/parking";
+import { currentAvailability } from "../domain/parking";
 import { Icon } from "./ui";
 import { useParking } from "../state/ParkingContext";
 export default function ParkingRow({
   place,
   distance,
   cost,
+  costEvidence,
   selected,
   onPress,
 }: {
   place: ParkingPlace;
   distance: number;
   cost: number | null;
+  costEvidence: "official" | "community" | "sign" | null;
   selected: boolean;
   onPress: (place: ParkingPlace) => void;
 }) {
@@ -29,8 +31,7 @@ export default function ParkingRow({
     unknown: t("No recent report", "Нема свежа пријава"),
   }[available.status];
   const handlePress = useCallback(() => onPress(place), [onPress, place]);
-  const price = parkingPrice(place);
-  const displayCost = price?.firstHour ?? cost ?? null;
+  const displayCost = cost;
   const name = language === "en" ? (place.nameEn ?? place.name) : place.name;
   return (
     <Pressable
@@ -55,7 +56,7 @@ export default function ParkingRow({
           {name}
         </Text>
         <Text style={s.meta}>
-          {Math.round(distance)} m ·{" "}
+          {Math.round(distance)} {t("m straight-line", "м воздушно")} ·{" "}
           {place.kind === "garage"
             ? t("Garage", "Катна гаража")
             : place.kind === "underground"
@@ -84,8 +85,8 @@ export default function ParkingRow({
         <Text style={s.currency}>
           {displayCost === null
             ? t("unknown", "непознато")
-            : price?.evidence !== "official"
-              ? t("MKD/h · reported", "ден./ч. · пријава")
+            : costEvidence !== "official"
+              ? t("MKD / first hr · reported", "ден. / прв ч. · пријава")
               : t("MKD / first hr", "ден. / прв ч.")}
         </Text>
       </View>

@@ -15,6 +15,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   },
   plugins: [
     ...(config.plugins ?? []),
+    "./plugins/with-short-cmake-paths",
     "expo-secure-store",
     [
       "expo-image-picker",

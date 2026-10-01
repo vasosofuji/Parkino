@@ -57,6 +57,7 @@ export default function MapScreen() {
     s = styles(colors);
   const { catalog, connected, language, t, refresh, now } = useParking();
   const gps = useArrival(catalog.places);
+  const [sort, setSort] = useState<"nearest" | "cheapest">("nearest");
   const [destination, setDestination] = useState<Destination | null>(null);
   const [center, setCenter] = useState<Coordinate>(SKOPJE);
   const [cameraRevision, setCameraRevision] = useState(0);
@@ -97,8 +98,8 @@ export default function MapScreen() {
   );
   const rows = useMemo(
     () =>
-      target ? rankParking(catalog.places, target, 60, 1500, "nearest") : [],
-    [catalog.places, target],
+      target ? rankParking(catalog.places, target, 60, 1500, sort, now) : [],
+    [catalog.places, target, sort, now],
   );
   const selectedPlace = catalog.places.find((place) => place.id === selected);
   const followupPlace = catalog.places.find((place) => place.id === followupId);
@@ -598,12 +599,32 @@ export default function MapScreen() {
                         )
                       : t("Parking near you", "Паркинг во близина")}
                   </Text>
+                  <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16 }}>
+                    {(["nearest", "cheapest"] as const).map(value => (
+                      <Pressable
+                        key={value}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: sort === value }}
+                        onPress={() => setSort(value)}
+                        style={{ flex: 1, minHeight: 44, justifyContent: "center", alignItems: "center", borderRadius: 10, backgroundColor: sort === value ? colors.mint : colors.paper }}
+                      >
+                        <Text style={{ color: colors.ink, fontWeight: sort === value ? "700" : "400" }}>
+                          {value === "nearest" ? t("Nearest", "Најблиску") : t("Cheapest", "Најевтино")}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {sort === "cheapest" ? <Text style={s.caption}>{t(
+                    "Public parking · first-hour estimates · unknown prices last. Check signs for restrictions.",
+                    "Јавен паркинг · процена за првиот час · непознати цени на крај. Проверете ги знаците за ограничувања.",
+                  )}</Text> : null}
                   {rows.slice(0, 3).map((row) => (
                     <ParkingRow
                       key={row.place.id}
                       place={row.place}
                       distance={row.distance}
                       cost={row.cost}
+                      costEvidence={row.costEvidence}
                       selected={selected === row.place.id}
                       onPress={(place) => {
                         select(place);

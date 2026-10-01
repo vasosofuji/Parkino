@@ -53,6 +53,11 @@ export class PgDatabase {
           : {}),
       },
     });
+    // pg emits idle connection failures outside a query promise. Without a
+    // listener, a transient pooler/network outage terminates the Node process.
+    this.pool.on("error", () => {
+      console.warn("An idle database connection closed; the pool will reconnect.");
+    });
   }
   private async initialize(client: PoolClient) {
     if (this.initialized.has(client)) return;

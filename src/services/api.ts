@@ -16,7 +16,10 @@ import type {
 } from "../domain/types";
 const developmentHost =
   Constants.expoConfig?.hostUri?.split(":")[0] ?? "localhost";
-const webHost = typeof window !== "undefined" ? window.location.hostname : "localhost";
+// React Native aliases `window` to its global object; it has no browser location.
+const webHost = Platform.OS === "web" && typeof window !== "undefined"
+  ? window.location?.hostname ?? "localhost"
+  : "localhost";
 const API =
   process.env.EXPO_PUBLIC_API_URL ??
   `http://${Platform.OS === "web" ? webHost : developmentHost}:3001`;
