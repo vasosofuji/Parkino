@@ -9,12 +9,14 @@ export default function ParkingPreview({
   place,
   point,
   mapHeight,
+  drawerHeight,
   onUpdate,
   onClose,
 }: {
   place: ParkingPlace;
   point: { x: number; y: number };
   mapHeight: number;
+  drawerHeight: number;
   onUpdate: () => void;
   onClose: () => void;
 }) {
@@ -43,7 +45,7 @@ export default function ParkingPreview({
         left,
         top: Math.max(
           128,
-          Math.min(mapHeight - height - 45, point.y - height - 18),
+          Math.min(mapHeight - drawerHeight - height - 12, point.y - height - 18),
         ),
         borderRadius: 16,
         padding: 12,

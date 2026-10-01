@@ -34,6 +34,7 @@ export default function MapDrawer({
   const [level, setLevel] = useState(1);
   const [visible] = useState(() => new Animated.Value(actions));
   const previousExpanded = useRef(expanded);
+  const locateVisible = useRef(true);
   useEffect(() => {
     if (previousExpanded.current !== expanded && level === 2) {
       visible.setValue(expanded);
@@ -46,6 +47,7 @@ export default function MapDrawer({
     (value: number, nextLevel: number) => {
       setDragging(false);
       setLevel(nextLevel);
+      locateVisible.current = value <= 100;
       onHeightChange?.(value);
       Animated.spring(visible, {
         toValue: value,
@@ -56,6 +58,30 @@ export default function MapDrawer({
     },
     [visible, onHeightChange],
   );
+  const startDrag = useCallback(() => {
+    setDragging(true);
+    visible.stopAnimation((value) => {
+      gesture.current = { start: value, current: value };
+    });
+  }, [visible]);
+  const drag = useCallback((dy: number) => {
+    gesture.current.current = Math.max(lip, Math.min(expanded, gesture.current.start - dy));
+    visible.setValue(gesture.current.current);
+    // Animate each movement without rerendering the map. Notify it only when
+    // the location control crosses the visibility threshold.
+    const showLocate = gesture.current.current <= 100;
+    if (showLocate !== locateVisible.current) {
+      locateVisible.current = showLocate;
+      onHeightChange?.(gesture.current.current);
+    }
+  }, [expanded, visible, onHeightChange]);
+  const endDrag = useCallback((velocity: number) => {
+    const snapPoints = [lip, actions, expanded];
+    const projected = gesture.current.current - velocity * 160;
+    const next = snapPoints.reduce((best, value, i) =>
+      Math.abs(value - projected) < Math.abs(snapPoints[best] - projected) ? i : best, 0);
+    snap(snapPoints[next], next);
+  }, [expanded, snap]);
   return (
     <View pointerEvents="box-none" style={[s.frame, { height: expanded }]}>
       <Animated.View
@@ -83,40 +109,18 @@ export default function MapDrawer({
             const next = (level + 1) % 3;
             snap(stops[next], next);
           }}
-          onStart={() => {
-            setDragging(true);
-            visible.stopAnimation((value) => {
-              gesture.current = { start: value, current: value };
-            });
-          }}
-          onDrag={(dy) => {
-            gesture.current.current = Math.max(
-              lip,
-              Math.min(expanded, gesture.current.start - dy),
-            );
-            visible.setValue(gesture.current.current);
-            onHeightChange?.(gesture.current.current);
-          }}
-          onEnd={(velocity) => {
-            setDragging(false);
-            const projected = gesture.current.current - velocity * 160;
-            const next = stops.reduce(
-              (best, value, i) =>
-                Math.abs(value - projected) < Math.abs(stops[best] - projected)
-                  ? i
-                  : best,
-              0,
-            );
-            snap(stops[next], next);
-          }}
+          onStart={startDrag}
+          onDrag={drag}
+          onEnd={endDrag}
         />
         <View
+          pointerEvents={level === 0 && !dragging ? "none" : "auto"}
           aria-hidden={level === 0}
           accessibilityElementsHidden={level === 0}
           importantForAccessibility={
             level === 0 ? "no-hide-descendants" : "auto"
           }
-          style={[s.actions, { opacity: level === 0 && !dragging ? 0 : 1 }]}
+          style={[s.actions, { paddingBottom: level === 2 ? 8 : 20, opacity: level === 0 && !dragging ? 0 : 1 }]}
         >
           <Button
             style={s.flex}
@@ -139,6 +143,7 @@ export default function MapDrawer({
           />
         </View>
         <ScrollView
+          pointerEvents={level === 2 ? "auto" : "none"}
           showsVerticalScrollIndicator={false}
           showsHorizontalScrollIndicator={false}
           aria-hidden={level !== 2}

@@ -562,6 +562,7 @@ export default function MapScreen() {
                 place={selectedPlace}
                 point={selectedPoint}
                 mapHeight={mapHeight}
+                drawerHeight={drawerHeight}
                 onClose={clearSelection}
                 onUpdate={() => setDetailsId(selectedPlace.id)}
               />

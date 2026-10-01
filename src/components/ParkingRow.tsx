@@ -36,7 +36,7 @@ export default function ParkingRow({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${name}, ${cost ?? t("price unknown", "непозната цена")}`}
+      accessibilityLabel={`${name}, ${Math.round(distance)} ${t("metres straight-line", "метри воздушно")}, ${cost === 0 ? t("free parking", "бесплатен паркинг") : cost === null ? t("price unknown", "непозната цена") : `${cost} ${t("MKD per first hour", "денари за прв час")}`}, ${status}`}
       onPress={handlePress}
       style={[s.row, selected ? s.selected : null]}
     >
@@ -51,12 +51,12 @@ export default function ParkingRow({
         />
       </View>
       <View style={s.main}>
-        <Text numberOfLines={2} style={s.name}>
+        <Text numberOfLines={1} style={s.name}>
           {place.zoneCode ? `${place.zoneCode} · ` : ""}
           {name}
         </Text>
-        <Text style={s.meta}>
-          {Math.round(distance)} {t("m straight-line", "м воздушно")} ·{" "}
+        <Text numberOfLines={1} style={s.meta}>
+          {Math.round(distance)} {t("m", "м")} ·{" "}
           {place.kind === "garage"
             ? t("Garage", "Катна гаража")
             : place.kind === "underground"
@@ -77,18 +77,19 @@ export default function ParkingRow({
               },
             ]}
           />
-          <Text style={s.statusText}>{status}</Text>
+          <Text numberOfLines={1} style={s.statusText}>{status}</Text>
         </View>
       </View>
       <View style={s.price}>
-        <Text style={s.amount}>{displayCost === null ? "—" : displayCost}</Text>
-        <Text style={s.currency}>
+        <Text numberOfLines={1} style={[s.amount, displayCost === 0 && s.freeAmount]}>{displayCost === null ? "—" : displayCost === 0 ? t("Free", "Бесплатно") : displayCost}</Text>
+        {displayCost !== 0 ? <Text style={s.currency}>
           {displayCost === null
             ? t("unknown", "непознато")
-            : costEvidence !== "official"
-              ? t("MKD / first hr · reported", "ден. / прв ч. · пријава")
-              : t("MKD / first hr", "ден. / прв ч.")}
-        </Text>
+            : t("MKD / first hr", "ден. / прв ч.")}
+        </Text> : null}
+        {displayCost !== null && costEvidence !== "official" ? (
+          <Text style={s.currency}>{t("Reported", "Пријавено")}</Text>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -96,9 +97,8 @@ export default function ParkingRow({
 const styles = (colors: ThemeColors) =>
   StyleSheet.create({
     row: {
-      padding: 16,
-      paddingVertical: 12,
-      gap: 12,
+      padding: 8,
+      gap: 8,
       flexDirection: "row",
       alignItems: "center",
       borderBottomWidth: 1,
@@ -107,20 +107,21 @@ const styles = (colors: ThemeColors) =>
     },
     selected: { backgroundColor: colors.mint },
     symbol: {
-      width: 42,
-      height: 44,
-      borderRadius: 12,
+      width: 32,
+      height: 36,
+      borderRadius: 10,
       backgroundColor: colors.mint,
       alignItems: "center",
       justifyContent: "center",
     },
-    main: { flex: 1, gap: 5 },
-    name: { fontSize: 15, fontWeight: "700", color: colors.ink },
+    main: { flex: 1, minWidth: 0, gap: 3 },
+    name: { fontSize: 14, fontWeight: "700", color: colors.ink },
     meta: { fontSize: 12, color: colors.muted },
     status: { flexDirection: "row", gap: 5, alignItems: "center" },
     dot: { width: 6, height: 6, borderRadius: 3 },
-    statusText: { color: colors.muted, fontSize: 11 },
-    price: { alignItems: "flex-end", gap: 4 },
-    amount: { fontSize: 22, fontWeight: "800", color: colors.ink },
+    statusText: { color: colors.muted, fontSize: 11, flexShrink: 1 },
+    price: { width: 76, alignItems: "flex-end", gap: 2 },
+    amount: { fontSize: 18, fontWeight: "700", color: colors.ink },
+    freeAmount: { fontSize: 14 },
     currency: { fontSize: 10, color: colors.muted },
   });

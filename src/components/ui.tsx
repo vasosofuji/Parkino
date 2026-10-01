@@ -199,6 +199,7 @@ export function Note({ children }: { children: React.ReactNode }) {
 const styles = (colors: ThemeColors) =>
   StyleSheet.create({
     button: {
+      minWidth: 0,
       minHeight: 44,
       paddingHorizontal: 14,
       paddingVertical: 10,
@@ -211,7 +212,7 @@ const styles = (colors: ThemeColors) =>
     primary: { backgroundColor: colors.green },
     secondary: { backgroundColor: colors.mint },
     danger: { backgroundColor: "#FBEDEC" },
-    buttonText: { fontSize: 14, fontWeight: "600" },
+    buttonText: { fontSize: 14, fontWeight: "600", flexShrink: 1, textAlign: "center" },
     iconButton: {
       width: 44,
       height: 44,
