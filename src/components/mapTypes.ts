@@ -7,6 +7,7 @@ export type ParkingMapProps = {
   onSelectedPosition?: (point: { x: number; y: number } | null) => void;
   onCenterChange?: (coordinate: Coordinate) => void;
   onBlankPress?: () => void;
+  isInteractionCurrent?: (sentAt: number) => boolean;
   selectionEnabled?: boolean;
   destination: Coordinate;
   cameraRevision?: number;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { SKOPJE } from "../domain/parking";
@@ -6,10 +6,15 @@ import { groupParking } from "../domain/clusters";
 import { parkingMarker, parkingMarkerHtml } from "../domain/marker-appearance";
 import type { ParkingMapProps } from "./mapTypes";
 import { mapHtml } from "./offlineMapHtml";
+import { dismissMapKeyboard } from "../../modules/parkino-map-keyboard";
 const SOURCE = { html: mapHtml };
 const ORIGINS = ["*"];
 export default function OpenStreetParkingMap(props: ParkingMapProps) {
   const web = useRef<WebView>(null);
+  const callbacks = useRef(props);
+  const mounted = useRef(false);
+  useLayoutEffect(() => { callbacks.current = props; });
+  useLayoutEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [ready, setReady] = useState(false);
   const [zoom, setZoom] = useState(15);
   const [failed, setFailed] = useState(false);
@@ -137,6 +142,16 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       return;
     }
     if (!message || typeof message !== "object") return;
+    const interact = (action: (current: ParkingMapProps) => void) => {
+      const sentAt = message.sentAt;
+      const isCurrent = () => mounted.current && Number.isFinite(sentAt) && callbacks.current.isInteractionCurrent?.(sentAt) !== false;
+      if (!isCurrent()) return;
+      void dismissMapKeyboard().then(accepted => {
+        // Search can regain focus while the native guard is in flight. Keep its
+        // text/keyboard intact instead of forwarding an obsolete blank tap.
+        if (accepted && isCurrent()) action(callbacks.current);
+      });
+    };
     if (message.type === "ready") setReady(true);
     if (
       message.type === "zoom" &&
@@ -145,8 +160,9 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       message.zoom <= 19
     )
       setZoom(message.zoom);
-    if (message.type === "pan") props.onPan?.();
-    if (message.type === "blank") props.onBlankPress?.();
+    if (message.type === "pan") interact(current => current.onPan?.());
+    if (message.type === "blank") interact(current => current.onBlankPress?.());
+    if (message.type === "interaction") interact(() => {});
     if (message.type === "position") {
       if (message.selectionId !== props.selectedId) return;
       if (props.selectedAnchor && (message.anchor?.[0] !== props.selectedAnchor.latitude || message.anchor?.[1] !== props.selectedAnchor.longitude)) return;
@@ -168,14 +184,19 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       });
     if (message.type === "select") {
       const place = props.places.find((p) => p.id === message.id);
-      if (place && props.selectionEnabled !== false)
-        props.onSelect(
-          place,
-          Number.isFinite(message.latitude) &&
-            Number.isFinite(message.longitude)
-            ? { latitude: message.latitude, longitude: message.longitude }
-            : place.coordinate,
-        );
+      if (place && props.selectionEnabled !== false) {
+        interact(current => {
+          if (current.selectionEnabled === false) return;
+          const latest = current.places.find(p => p.id === place.id);
+          if (!latest) return;
+          current.onSelect(
+            latest,
+            Number.isFinite(message.latitude) && Number.isFinite(message.longitude)
+              ? { latitude: message.latitude, longitude: message.longitude }
+              : latest.coordinate,
+          );
+        });
+      }
     }
     if (
       (message.type === "pick" || message.type === "vertex") &&
@@ -189,14 +210,14 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
         latitude: message.latitude,
         longitude: message.longitude,
       };
-      if (message.type === "pick") props.onPick(point);
+      if (message.type === "pick") interact(current => { if (current.picking) current.onPick(point); });
       else if (
         props.drawing &&
         Number.isInteger(message.index) &&
         message.index >= 0 &&
         message.index < (props.draftCoordinates?.length ?? 0)
       )
-        props.onMoveVertex?.(message.index, point);
+        interact(current => { if (current.picking && current.drawing && message.index < (current.draftCoordinates?.length ?? 0)) current.onMoveVertex?.(message.index, point); });
     }
   }
   return (

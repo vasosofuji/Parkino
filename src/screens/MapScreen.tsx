@@ -73,6 +73,7 @@ export default function MapScreen() {
   const [query, setQuery] = useState(""),
     [searching, setSearching] = useState(false);
   const searchInput = useRef<TextInput>(null);
+  const latestSearchFocus = useRef(0);
   const [remote, setRemote] = useState<Destination[]>([]),
     searchVersion = useRef(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -118,6 +119,8 @@ export default function MapScreen() {
   const arrivalPlace = followupPlace ?? gps.arrival;
   const notificationPriority = gps.arrivalFromNotification || followupFromNotification;
   const suspendSheets = notificationPriority || notificationClosing;
+  const arrivalVisible = Boolean(arrivalPlace) && (notificationPriority || (!selected && !detailsId && !menu && !legend && !proposal && !picking && !locationHelp));
+  const mapBlockedBySheet = suspendSheets || arrivalVisible || menu || legend || locationHelp || (!picking && Boolean(detailsId || proposal));
   const clearSelection = useCallback(() => {
     setSelected(null);
     setAnchor(null);
@@ -438,6 +441,7 @@ export default function MapScreen() {
           onSelectedPosition={projectSelection}
           onCenterChange={centerChanged}
           onBlankPress={blankMap}
+          isInteractionCurrent={(sentAt) => !mapBlockedBySheet && sentAt > latestSearchFocus.current}
           selectionEnabled={!picking}
           destination={center}
           destinationMarker={
@@ -475,6 +479,7 @@ export default function MapScreen() {
                 <Icon name="search" />
                 <TextInput
                   ref={searchInput}
+                  onFocus={() => { latestSearchFocus.current = Date.now(); }}
                   style={s.input}
                   value={query}
                   placeholder={
@@ -876,16 +881,7 @@ export default function MapScreen() {
         <Note>{t("A 0 badge means no parking fee, even when full. Small green/red badges show recent reports on pins that still need review. Gold/violet borders are contributor rewards.", "Ознаката 0 значи бесплатно, дури и кога е полно. Малите зелени/црвени ознаки покажуваат свежи пријави на паркинзи што чекаат проверка. Златните/виолетовите рабови се награди.")}</Note>
       </Sheet>
       <Sheet
-        visible={
-          Boolean(arrivalPlace) && (notificationPriority || (
-          !selected &&
-          !detailsId &&
-          !menu &&
-          !legend &&
-          !proposal &&
-          !picking &&
-          !locationHelp))
-        }
+        visible={arrivalVisible}
         title={
           followupPlace || arrivalPlace?.kind === "zone"
             ? t("One more thing — is it free?", "Уште нешто — бесплатно ли е?")

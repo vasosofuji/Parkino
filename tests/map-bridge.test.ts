@@ -5,7 +5,7 @@ import { mapHtml } from "../src/components/offlineMapHtml";
 
 type Callback = (value?: unknown) => void;
 function bridge() {
-  const messages: { type: string; selectionId?: string; anchor?: number[]; point?: unknown }[] = [];
+  const messages: { type: string; sentAt: number; selectionId?: string; anchor?: number[]; point?: unknown }[] = [];
   const mapEvents = new Map<string, Callback>(), windowEvents = new Map<string, Callback>();
   const markers: { options: Record<string, unknown>; events: Map<string, Callback> }[] = [];
   const invalidations: unknown[] = [];
@@ -56,4 +56,15 @@ test("blank taps and boundary picks stay separate; one-second GPS updates move t
   assert.equal(view.counts().userDots, 1);
   assert.equal(view.counts().clears, clears);
   assert.equal(view.counts().moves, 18);
+});
+
+test("cluster and destination taps send explicit interaction events, while programmatic camera updates do not", () => {
+  const view = bridge();
+  view.window.renderParking({ ...payload, pins: [{ ...payload.pins[0], cluster: true }], destinationMarker: [42, 21] });
+  assert.ok(!view.messages.some(message => message.type === "interaction"));
+  view.markers[0].events.get("click")?.();
+  assert.equal(view.messages.at(-1)?.type, "interaction");
+  assert.ok(Number.isFinite(view.messages.at(-1)?.sentAt));
+  view.markers[1].events.get("click")?.();
+  assert.equal(view.messages.filter(message => message.type === "interaction").length, 2);
 });

@@ -3,6 +3,7 @@ const tileUrl =
   process.env.EXPO_PUBLIC_TILE_URL ??
   "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 export const mapHtml = `<!doctype html><html><head>
+<title>Parkino parking map</title>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>${leafletStyles}html,body,#map{height:100%;width:100%;margin:0}.leaflet-container{touch-action:none}.leaflet-bottom{bottom:2px}.leaflet-control-attribution{font-size:10px!important;background:rgba(255,255,255,.85)!important}.dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.72) saturate(.65)}.dark.leaflet-container{background:#281f1b}</style>
 <style>
@@ -18,7 +19,7 @@ export const mapHtml = `<!doctype html><html><head>
 </style></head><body><div id="map" aria-label="Skopje parking map"></div>
 <script>${leafletScript}</script><script>
 (function(){
-const send = (message) => window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(message));
+const send = (message) => window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({...message,sentAt:Date.now()}));
 const map = L.map('map',{zoomControl:false,attributionControl:false,minZoom:3}).setView([41.9961,21.4316],15);
 L.tileLayer(${JSON.stringify(tileUrl)},{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
 const group = L.layerGroup().addTo(map);
@@ -73,7 +74,7 @@ window.renderParking = function(next) {
     const marker=L.marker(pin.point,{autoPanOnFocus:false,icon,title:pin.title,zIndexOffset:pin.selected?1000:pin.spaces?800:0});
     marker.on('click',()=>{
       if(next.selectionEnabled===false&&!next.picking)return;
-      if(!next.picking && pin.cluster)map.setView(pin.point,Math.min(19,map.getZoom()+1),{animate:false});
+      if(!next.picking && pin.cluster){send({type:'interaction'});map.setView(pin.point,Math.min(19,map.getZoom()+1),{animate:false});}
       else select(pin.id,{lat:pin.point[0],lng:pin.point[1]});
     });
     marker.addTo(group);
@@ -94,7 +95,7 @@ window.renderParking = function(next) {
   });
   if(next.destinationMarker&&!next.drawing){
     const label=document.createElement('span');label.textContent=next.destinationName;
-    L.marker(next.destinationMarker,{zIndexOffset:2000,title:next.destinationName,icon:L.divIcon({className:'destination-pin',html:'<span></span>',iconSize:[34,44],iconAnchor:[17,44]})}).bindTooltip(label,{permanent:true,direction:'top',offset:[0,-44],className:'destination-label'}).addTo(group);
+    L.marker(next.destinationMarker,{zIndexOffset:2000,title:next.destinationName,icon:L.divIcon({className:'destination-pin',html:'<span></span>',iconSize:[34,44],iconAnchor:[17,44]})}).on('click',()=>send({type:'interaction'})).bindTooltip(label,{permanent:true,direction:'top',offset:[0,-44],className:'destination-label'}).addTo(group);
   }
   if(userDot)userDot.bringToFront();
   const key=next.destination.join(',')+':'+(next.cameraRevision||0);
