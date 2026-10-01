@@ -1,10 +1,10 @@
 # Private APK cloud rollout
 
-The deployment uses one free Render Node web service and the existing Parkino Supabase database. `render.yaml` fixes Node 24.16.0, installs the lockfile, runs typecheck/tests before deploying, binds the platform-provided port, and checks database readiness at `/health`. Deploys are manual until the first rollout is verified. The portfolio domain is not required; use Render's HTTPS service address initially.
+The live deployment at https://parkino-api.onrender.com uses one free Render Node web service and the existing Parkino Supabase database. `render.yaml` fixes Node 24.16.0, installs the lockfile, runs typecheck/tests before deploying, binds the platform-provided port, and checks database readiness at `/health`. Deploys are manual until the first rollout is verified. The portfolio domain is not required; use Render's HTTPS service address initially.
 
 ## Access and deployment
 
-1. Sign in to Render and connect a private Git repository containing this project. There is currently no Git remote configured. Keep `.env`, `data/runtime`, APKs and keys out of the repository. The public Supabase CA in `certs/` is intentionally included; it is not a private credential.
+1. Sign in to Render and connect the public https://github.com/vasosofuji/Parkino repository. The origin remote is configured. Keep `.env`, `data/runtime`, APKs and keys out of the repository. The public Supabase CA in `certs/` is intentionally included; it is not a private credential.
 2. Create the Blueprint from `render.yaml`. Confirm the service uses the **free** compute plan. Keep Supabase as the database; do not create a temporary Render database.
 3. Set `DATABASE_URL` privately from the current server's `.env`. The dedicated `parkino_api` login is sufficient. `DATABASE_CA_FILE=certs/supabase-ca.crt` enables certificate verification. Schema migrations require a separate administrator connection; they are not run during startup.
 4. Optionally set `GEMINI_API_KEY` in Render's secret environment settings, with `GEMINI_MODELS=gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash`. Without a key, photos remain saved/viewable and extraction waits. Never put this key into EAS public variables.

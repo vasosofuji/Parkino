@@ -3,5 +3,7 @@
   "apiUrl": "https://parkino-api.onrender.com",
   "renderServiceId": "srv-dav6pvh42hec73d7lpj0",
   "region": "frankfurt",
-  "plan": "free"
+  "plan": "free",
+  "expoProjectId": "1db9c740-4542-43bb-8c08-b919e51febdf",
+  "apkBuildUrl": "https://expo.dev/accounts/parkino/projects/parkskopje/builds/8e654116-b593-40cd-9ec0-0d8ceba82fda"
 }
