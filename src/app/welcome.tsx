@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from "react-native";
+import LoadingIndicator from "../components/LoadingIndicator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../components/ui";
@@ -71,7 +72,7 @@ export default function Welcome() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, padding: 24, maxWidth: 440, width: "100%", alignSelf: "center" }}>
         <View style={{ flex: 1, justifyContent: "center", gap: 24, paddingVertical: 28 }}>
-          {!step ? <ActivityIndicator color={colors.accentText} /> : <>
+          {!step ? <LoadingIndicator size="large" label="Parkino" /> : <>
             <Text style={{ color: colors.muted, fontSize: 13 }}>{step === "language" ? "1 / 4" : step === "theme" ? "2 / 4" : "3 / 4"}</Text>
             <Text accessibilityRole="header" style={{ color: colors.ink, fontSize: 30, fontWeight: "700" }}>{title}</Text>
             {step === "language" ? <>

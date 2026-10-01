@@ -1,5 +1,6 @@
 import type { Coordinate, ParkingPlace } from "../domain/types";
 export type ParkingMapProps = {
+  now: number;
   places: ParkingPlace[];
   selectedId: string | null;
   selectedAnchor?: Coordinate | null;

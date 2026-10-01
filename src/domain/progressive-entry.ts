@@ -1,4 +1,5 @@
 import type { Contribution, Geometry, ParkingPlace } from "./types";
+import { validZone } from "./geometry";
 
 export type EntryApi = {
   contribute: (value: Contribution) => Promise<ParkingPlace>;
@@ -13,11 +14,12 @@ export type EntrySnapshot = { id?: string; code: string | null; total: number | 
 /** One editor owns one writer. Successful steps remain saved even if a later one fails. */
 export function createProgressiveEntry(api: EntryApi, initial: {
   place?: ParkingPlace;
+  placeId?: string;
   contribution?: Contribution;
   onSaved?: (id: string) => void;
   snapshot?: EntrySnapshot;
 }) {
-  let id = initial.snapshot?.id ?? initial.place?.id;
+  let id = initial.snapshot?.id ?? initial.place?.id ?? initial.placeId;
   let creating: Promise<string> | undefined;
   let code = initial.snapshot?.code ?? initial.place?.zoneCode ?? null;
   let total = initial.snapshot?.total ?? initial.place?.capacity ?? null;
@@ -85,4 +87,29 @@ export function spacesInput(capacity: string, free: string, knownCapacity: numbe
   const effectiveTotal = total ?? knownCapacity;
   if (effectiveTotal !== null && available !== null && available > effectiveTotal) throw new Error("spaces-exceed-capacity");
   return { total, available };
+}
+
+/** Explicit requirements for manual forms; zero is a price/free count, never blank. */
+export function manualPriceInput(first: string, next: string) {
+  const value = priceInput(first, next);
+  if (!value) throw new Error("price-required");
+  return value;
+}
+export function manualSpacesInput(capacity: string, free: string) {
+  const value = spacesInput(capacity, free);
+  if (value.total === null || value.available === null) throw new Error("spaces-required");
+  return value as { total: number; available: number };
+}
+
+/** Legacy/unfinished drafts cannot claim completion merely by restoring 'done'. */
+export function incompleteManualStep(snapshot: EntrySnapshot, options: {
+  detailed: boolean; zone: boolean; afterSign: boolean; geometry?: Geometry; existingGeometry?: Geometry;
+}): "price" | "spaces" | "perimeter" | null {
+  if (!options.afterSign && !snapshot.price) return "price";
+  if (options.detailed && !options.zone && (snapshot.total === null || snapshot.free === undefined)) return "spaces";
+  // Catalog areas can have holes. An unchanged imported perimeter is already
+  // public and should not be replaced merely to fit the single-ring drawing UI.
+  const existing = options.geometry && options.existingGeometry && JSON.stringify(options.geometry) === JSON.stringify(options.existingGeometry);
+  if (options.detailed && (!options.geometry || (!existing && !validZone(options.geometry)))) return "perimeter";
+  return null;
 }

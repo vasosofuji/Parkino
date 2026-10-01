@@ -3,9 +3,9 @@ import L from "leaflet";
 import "./leaflet.css";
 import "./map.css";
 import type { ParkingMapProps } from "./mapTypes";
-import { currentAvailability, SKOPJE } from "../domain/parking";
+import { SKOPJE } from "../domain/parking";
 import { groupParking } from "../domain/clusters";
-import { accentColor } from "../domain/cosmetics";
+import { parkingMarker, parkingMarkerHtml } from "../domain/marker-appearance";
 
 export default function ParkingMap(props: ParkingMapProps) {
   const host = useRef<HTMLDivElement>(null),
@@ -57,7 +57,7 @@ export default function ParkingMap(props: ParkingMapProps) {
         });
       else callbacks.current.onBlankPress?.();
     });
-    const resize = new ResizeObserver(() => instance.invalidateSize());
+    const resize = new ResizeObserver(() => instance.invalidateSize({ pan: false }));
     resize.observe(host.current);
     return () => {
       resize.disconnect();
@@ -109,6 +109,7 @@ export default function ParkingMap(props: ParkingMapProps) {
           const label = document.createElement("span");
           label.textContent = place.zoneCode ?? place.name;
           L.marker([place.coordinate.latitude, place.coordinate.longitude], {
+            autoPanOnFocus: false,
             icon: L.divIcon({
               className: "zone-label" + (!place.geometry ? " approximate" : ""),
               html: label,
@@ -145,37 +146,21 @@ export default function ParkingMap(props: ParkingMapProps) {
       latitudeStep,
       longitudeStep,
       props.selectedId,
+      props.now,
     )) {
       const place = members[0],
         selected = place.id === props.selectedId,
         cluster = members.length > 1;
-      const availability = currentAvailability(place.availability);
-      const color = cluster
-        ? "#392c25"
-        : availability.status === "spaces"
-          ? "#087958"
-          : availability.status === "full"
-            ? "#B83A36"
-            : place.access === "restricted"
-              ? "#88948D"
-              : "#392c25";
-      const label = cluster ? String(members.length) : "P";
-      const accent = cluster ? undefined : accentColor(place.contributionAccent);
+      const appearance = parkingMarker(place, members.length, props.now);
       const icon = L.divIcon({
         className:
           "parking-pin" +
           (selected ? " selected" : "") +
           (cluster ? " cluster" : "") +
-          (!cluster && availability.status === "spaces" ? " spaces" : ""),
-        html:
-          '<span style="background:' +
-          color +
-          (accent ? ";border-color:" + accent : "") +
-          '">' +
-          (!cluster && availability.status === "spaces" ? "P ✓" : label) +
-          "</span>",
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
+          (appearance.spaces ? " spaces" : ""),
+        html: parkingMarkerHtml(appearance),
+        iconSize: [60, 48],
+        iconAnchor: [30, 24],
       });
       const title = cluster
         ? members.length +
@@ -184,11 +169,12 @@ export default function ParkingMap(props: ParkingMapProps) {
           ? (place.nameEn ?? place.name)
           : place.name;
       L.marker([place.coordinate.latitude, place.coordinate.longitude], {
+        autoPanOnFocus: false,
         icon,
         title,
         zIndexOffset: selected
           ? 1000
-          : availability.status === "spaces"
+          : appearance.spaces
             ? 800
             : 0,
       })
@@ -248,6 +234,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     };
   }, [
     props.places,
+    props.now,
     props.selectedId,
     props.selectedAnchor,
     props.destination,

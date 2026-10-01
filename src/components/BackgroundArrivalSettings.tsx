@@ -3,6 +3,7 @@ import { AppState, Linking, Platform, Text, View } from "react-native";
 import { useParking } from "../state/ParkingContext";
 import { useTheme } from "../state/ThemeContext";
 import { Button } from "./ui";
+import LoadingIndicator from "./LoadingIndicator";
 import { saveArrivalCatalog } from "../services/arrivalStorage";
 import {
   disableBackgroundArrival,
@@ -43,7 +44,7 @@ export default function BackgroundArrivalSettings({ onInfo }: { onInfo: () => vo
   };
   return <View style={{ gap: 8, marginTop: 6 }}>
     <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>{t("Parking reminders", "Потсетници за паркирање")}</Text>
-    {loading ? <Text style={{ color: colors.muted, fontSize: 12 }}>{t("Checking…", "Се проверува…")}</Text> : status.supported ? <>
+    {loading ? <LoadingIndicator size="small" inline label={t("Checking…", "Се проверува…")} /> : status.supported ? <>
       <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
         {status.enabled ? t("On · background location and notifications", "Вклучени · локација во заднина и известувања") : t("Optional · uses background location and notifications", "По избор · користи локација во заднина и известувања")}
       </Text>

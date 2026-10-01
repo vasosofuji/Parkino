@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Image,
   Platform,
@@ -15,21 +15,20 @@ import { useParking } from "../state/ParkingContext";
 import { useTheme } from "../state/ThemeContext";
 import { Button, Note, Sheet } from "./ui";
 import PhotoPicker from "./PhotoPicker";
-import SignReviewSheet from "./SignReviewSheet";
 import DigitalParkingSign from "./DigitalParkingSign";
-export default function SignPhotos({ placeId, visible = true }: { placeId: string; visible?: boolean }) {
+export default function SignPhotos({ placeId, visible = true, onCancel, onBusyChange, onReview }: { placeId: string; visible?: boolean; onCancel?: () => void; onBusyChange?: (busy: boolean) => void; onReview: (photo: SignPhoto) => void }) {
   const { t, refresh } = useParking(),
     { colors } = useTheme();
   const [photos, setPhotos] = useState<SignPhoto[]>([]),
     [chosen, setChosen] = useState<ChosenPhoto | null>(null),
-    [view, setView] = useState<SignPhoto | null>(null),
-    [review, setReview] = useState<SignPhoto | null>(null);
+    [view, setView] = useState<SignPhoto | null>(null);
   const { height } = useWindowDimensions();
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [version, setVersion] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const [reviewShown, setReviewShown] = useState(false);
+  const reviewAfterView = useRef<SignPhoto | null>(null);
+  useEffect(() => { onBusyChange?.(busy || photoBusy); return () => onBusyChange?.(false); }, [busy, photoBusy, onBusyChange]);
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
@@ -65,8 +64,7 @@ export default function SignPhotos({ placeId, visible = true }: { placeId: strin
     setMessage("");
     try {
       const uploaded = await api.uploadSign(placeId, chosen);
-      setReviewShown(true);
-      setReview(uploaded);
+      onReview(uploaded);
       setChosen(null);
       setVersion((v) => v + 1);
       await refresh();
@@ -97,6 +95,8 @@ export default function SignPhotos({ placeId, visible = true }: { placeId: strin
             : t("Reading sign…", "Се чита таблата…");
   return (
     <View style={{ gap: 12 }}>
+      <PhotoPicker value={chosen} onChange={setChosen} disabled={busy} onBusyChange={setPhotoBusy} onCancel={onCancel} />
+      {chosen ? <Button title={busy ? t("Uploading…", "Се прикачува…") : t("Read sign & review", "Прочитај и провери табла")} disabled={busy || photoBusy} onPress={() => void upload()} /> : null}
       {photos.length ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -112,7 +112,7 @@ export default function SignPhotos({ placeId, visible = true }: { placeId: strin
                 "Погледни паркинг табла",
               )}
               key={p.id}
-              onPress={() => { if (p.uploadedByMe && !p.confirmedAt) { setReviewShown(true); setReview(p); } else setView(p); }}
+              onPress={() => { if (p.uploadedByMe && !p.confirmedAt) onReview(p); else setView(p); }}
               style={{ width: 112, gap: 6 }}
             >
               <Image
@@ -132,28 +132,10 @@ export default function SignPhotos({ placeId, visible = true }: { placeId: strin
           ))}
         </ScrollView>
       ) : null}
-      <PhotoPicker
-        value={chosen}
-        onChange={setChosen}
-        disabled={busy}
-        onBusyChange={setPhotoBusy}
-        visible={visible}
-      />
-      {chosen ? (
-        <Button
-          title={
-            busy
-              ? t("Uploading…", "Се прикачува…")
-              : t("Read sign & review", "Прочитај и провери табла")
-          }
-          disabled={busy || photoBusy}
-          onPress={() => void upload()}
-        />
-      ) : null}
       {message ? <Note>{message}</Note> : null}
       <Sheet
         visible={Boolean(view) && visible}
-        onDismiss={() => { if (review) setReviewShown(true); }}
+        onDismiss={() => { if (reviewAfterView.current) { const photo = reviewAfterView.current; reviewAfterView.current = null; onReview(photo); } }}
         title={t("Parking sign", "Паркинг табла")}
         onClose={() => setView(null)}
       >
@@ -166,11 +148,10 @@ export default function SignPhotos({ placeId, visible = true }: { placeId: strin
             />
             <Note>{status(view)}</Note>
             {view.info ? <DigitalParkingSign info={view.info} preview={!view.confirmedAt} /> : null}
-            {view.uploadedByMe ? <Button title={t("Review or correct details", "Провери или поправи податоци")} variant="secondary" onPress={() => { setReviewShown(Platform.OS !== "ios"); setReview(view); setView(null); }} /> : null}
+            {view.uploadedByMe ? <Button title={t("Review or correct details", "Провери или поправи податоци")} variant="secondary" onPress={() => { if (Platform.OS === "ios") reviewAfterView.current = view; else onReview(view); setView(null); }} /> : null}
           </>
         ) : null}
       </Sheet>
-      {review ? <SignReviewSheet key={review.id} initialPhoto={review} visible={visible && reviewShown} onClose={() => { setReview(null); setVersion(value => value + 1); }} onConfirmed={() => { setReview(null); setVersion(value => value + 1); }} /> : null}
     </View>
   );
 }

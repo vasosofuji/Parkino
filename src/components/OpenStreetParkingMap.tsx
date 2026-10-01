@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import { currentAvailability, SKOPJE } from "../domain/parking";
+import { SKOPJE } from "../domain/parking";
 import { groupParking } from "../domain/clusters";
-import { accentColor } from "../domain/cosmetics";
+import { parkingMarker, parkingMarkerHtml } from "../domain/marker-appearance";
 import type { ParkingMapProps } from "./mapTypes";
 import { mapHtml } from "./offlineMapHtml";
 const SOURCE = { html: mapHtml };
@@ -22,24 +22,20 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       latitudeStep,
       longitudeStep,
       props.selectedId,
+      props.now,
     ).map((members) => {
       const place = members[0];
-      const availability = currentAvailability(place.availability);
       const cluster = members.length > 1;
-      let color = place.access === "restricted" ? "#88948D" : "#392c25";
-      if (!cluster && availability.status === "spaces") color = "#087958";
-      if (!cluster && availability.status === "full") color = "#B83A36";
+      const appearance = parkingMarker(place, members.length, props.now);
       return {
         id: place.id,
         point: [place.coordinate.latitude, place.coordinate.longitude],
         title:
           props.language === "en" ? (place.nameEn ?? place.name) : place.name,
-        label: String(cluster ? members.length : "P"),
-        color,
-        accent: cluster ? undefined : accentColor(place.contributionAccent),
+        html: parkingMarkerHtml(appearance),
         cluster,
         selected: place.id === props.selectedId,
-        spaces: !cluster && availability.status === "spaces",
+        spaces: appearance.spaces,
       };
     });
     return {
@@ -105,6 +101,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
     };
   }, [
     props.dark,
+    props.now,
     props.drawing,
     props.destinationName,
     props.draftCoordinates,
@@ -151,6 +148,8 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
     if (message.type === "pan") props.onPan?.();
     if (message.type === "blank") props.onBlankPress?.();
     if (message.type === "position") {
+      if (message.selectionId !== props.selectedId) return;
+      if (props.selectedAnchor && (message.anchor?.[0] !== props.selectedAnchor.latitude || message.anchor?.[1] !== props.selectedAnchor.longitude)) return;
       if (message.point === null) props.onSelectedPosition?.(null);
       else if (
         Number.isFinite(message.point?.x) &&

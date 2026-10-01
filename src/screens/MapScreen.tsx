@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import {
-  ActivityIndicator,
   Keyboard,
   Platform,
   Pressable,
@@ -20,6 +19,7 @@ import ParkingMap from "../components/ParkingMap";
 import MapCredit from "../components/MapCredit";
 import MapDrawer from "../components/MapDrawer";
 import LocationHelp from "../components/LocationHelp";
+import LoadingIndicator from "../components/LoadingIndicator";
 import ParkingPreview from "../components/ParkingPreview";
 import SettingsSheet from "../components/SettingsSheet";
 import { useTheme, type ThemeColors } from "../state/ThemeContext";
@@ -47,6 +47,7 @@ import type {
 import { useParking } from "../state/ParkingContext";
 import { useArrival } from "../hooks/useArrival";
 import { api } from "../services/api";
+import { MARKER_COLORS } from "../domain/marker-appearance";
 
 type NewParking = {
   coordinate: Coordinate;
@@ -71,6 +72,7 @@ export default function MapScreen() {
   const editingPerimeter = Boolean(editingBoundary && catalog.places.find((p) => p.id === editingBoundary)?.kind !== "zone");
   const [query, setQuery] = useState(""),
     [searching, setSearching] = useState(false);
+  const searchInput = useRef<TextInput>(null);
   const [remote, setRemote] = useState<Destination[]>([]),
     searchVersion = useRef(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -84,6 +86,7 @@ export default function MapScreen() {
   const [detailsEditing, setDetailsEditing] = useState(false);
   const [menu, setMenu] = useState(false),
     [locationHelp, setLocationHelp] = useState(false);
+  const [legend, setLegend] = useState(false);
   const [picking, setPicking] = useState<"destination" | "zone" | null>(null);
   const [proposal, setProposal] = useState<NewParking | null>(null);
   const [message, setMessage] = useState(""),
@@ -103,7 +106,7 @@ export default function MapScreen() {
   const target = nearbyOrigin(
     destination?.coordinate ?? null,
     gps.location,
-    Math.max(now, Date.now()),
+    Math.max(now, gps.location?.timestamp ?? now),
   );
   const rows = useMemo(
     () =>
@@ -121,9 +124,20 @@ export default function MapScreen() {
     setSelectedPoint(null);
   }, []);
   const select = useCallback((place: ParkingPlace, coordinate?: Coordinate) => {
+    searchInput.current?.blur();
+    Keyboard.dismiss();
+    searchVersion.current++;
+    setQuery(""); setRemote([]); setSearching(false);
+    if (place.id !== selected) setSelectedPoint(null);
     setSelected(place.id);
     setAnchor(coordinate ?? place.coordinate);
-  }, []);
+  }, [selected]);
+  function blankMap() {
+    searchInput.current?.blur();
+    Keyboard.dismiss();
+    clearSearch();
+    clearSelection();
+  }
   const projectSelection = useCallback(
     (point: { x: number; y: number } | null) => {
       setSelectedPoint((previous) =>
@@ -416,13 +430,14 @@ export default function MapScreen() {
         onLayout={(event) => setMapHeight(event.nativeEvent.layout.height)}
       >
         <ParkingMap
+          now={now}
           cameraRevision={cameraRevision}
           places={catalog.places}
           selectedId={selected}
           selectedAnchor={anchor}
           onSelectedPosition={projectSelection}
           onCenterChange={centerChanged}
-          onBlankPress={clearSelection}
+          onBlankPress={blankMap}
           selectionEnabled={!picking}
           destination={center}
           destinationMarker={
@@ -459,6 +474,7 @@ export default function MapScreen() {
               <View style={s.searchBox}>
                 <Icon name="search" />
                 <TextInput
+                  ref={searchInput}
                   style={s.input}
                   value={query}
                   placeholder={
@@ -540,7 +556,7 @@ export default function MapScreen() {
                     disabled={searching || query.trim().length < 3}
                   >
                     {searching ? (
-                      <ActivityIndicator color={colors.accentText} />
+                      <LoadingIndicator size="small" label="" />
                     ) : (
                       <Icon name="search" size={16} />
                     )}
@@ -589,6 +605,7 @@ export default function MapScreen() {
               />
             ) : null}
             {drawerHeight <= 100 ? <View style={[s.locate, { bottom: drawerHeight + 14 }]}>
+              <IconButton name="info" label={t("Map legend", "Легенда на мапата")} onPress={() => { Keyboard.dismiss(); setLegend(true); }} />
               <IconButton
                 name="crosshair"
                 label={t("Parking near me", "Паркинг во близина")}
@@ -848,12 +865,23 @@ export default function MapScreen() {
           setLocationHelp(true);
         }}
       />
+      <Sheet visible={legend && !suspendSheets} title={t("Map legend", "Легенда на мапата")} onClose={() => setLegend(false)}>
+        {[
+          { color: MARKER_COLORS.needsInfo, symbol: "?", label: t("Needs review or a zone label", "Треба проверка или ознака за зона") },
+          { color: MARKER_COLORS.normal, symbol: "P", label: t("Reviewed parking · availability unknown", "Проверен паркинг · непозната достапност") },
+          { color: MARKER_COLORS.free, symbol: "0", label: t("Free of charge · not a space count", "Бесплатно · не е број на слободни места") },
+          { color: MARKER_COLORS.spaces, symbol: "✓", label: t("Spaces recently reported", "Неодамна пријавени слободни места") },
+          { color: MARKER_COLORS.full, symbol: "×", label: t("Recently reported full", "Неодамна пријавен полн паркинг") },
+        ].map(item => <View key={item.symbol} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 7 }}><View style={{ width: 30, height: 30, backgroundColor: item.color, borderRadius: 15, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontWeight: "800" }}>{item.symbol}</Text></View><Text style={{ flex: 1, color: colors.ink }}>{item.label}</Text></View>)}
+        <Note>{t("A 0 badge means no parking fee, even when full. Small green/red badges show recent reports on pins that still need review. Gold/violet borders are contributor rewards.", "Ознаката 0 значи бесплатно, дури и кога е полно. Малите зелени/црвени ознаки покажуваат свежи пријави на паркинзи што чекаат проверка. Златните/виолетовите рабови се награди.")}</Note>
+      </Sheet>
       <Sheet
         visible={
           Boolean(arrivalPlace) && (notificationPriority || (
           !selected &&
           !detailsId &&
           !menu &&
+          !legend &&
           !proposal &&
           !picking &&
           !locationHelp))

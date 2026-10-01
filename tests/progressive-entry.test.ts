@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createProgressiveEntry, priceInput, spacesInput, type EntryApi } from "../src/domain/progressive-entry";
+import { createProgressiveEntry, priceInput, spacesInput, manualPriceInput, manualSpacesInput, incompleteManualStep, type EntryApi } from "../src/domain/progressive-entry";
 import { availabilityIsFresh, createEntryDraftStore, entryDraftKey, readEntryDraft, type DraftStorage, type EntryDraft } from "../src/domain/entry-drafts";
 import type { Contribution, ParkingPlace } from "../src/domain/types";
 const place = { id: "park-1", zoneCode: null, capacity: null } as ParkingPlace;
@@ -63,6 +63,12 @@ test("post-sign details update the already-created pin without repeating zone, p
   assert.deepEqual(calls.map(call => call[0]), ["capacity", "report", "boundary"]);
   assert.ok(calls.every(call => call[1] === "park-1"));
 });
+test("manual fallback reuses the photo-created identity even before catalog refresh", async () => {
+  const { calls, api } = client(), writer = createProgressiveEntry(api, { placeId: "photo-created" });
+  await writer.label("B2"); await writer.price(40, 40);
+  assert.equal(writer.id(), "photo-created");
+  assert.deepEqual(calls, [["label", "photo-created", "B2"], ["price", "photo-created", 40, 40]]);
+});
 test("failed initial creation retries the same request identity", async () => {
   const ids: string[] = [];
   const { api } = client({ contribute: async value => { ids.push(value.requestId); if (ids.length === 1) throw new Error("timeout"); return place; } });
@@ -80,6 +86,36 @@ test("price and count inputs retain zero and reject impossible counts", () => {
   assert.throws(() => spacesInput("20", "21"));
   assert.throws(() => spacesInput("", "21", 20));
   assert.throws(() => spacesInput("1.5", "1"));
+});
+test("manual entry cannot skip pricing or either detailed count, while zero is explicit", () => {
+  assert.throws(() => manualPriceInput("", ""), /price-required/);
+  assert.deepEqual(manualPriceInput("0", ""), { first: 0, next: 0 });
+  assert.deepEqual(manualPriceInput("40", ""), { first: 40, next: 40 });
+  assert.throws(() => manualSpacesInput("", ""), /spaces-required/);
+  assert.throws(() => manualSpacesInput("20", ""), /spaces-required/);
+  assert.throws(() => manualSpacesInput("", "0"), /spaces-required/);
+  assert.deepEqual(manualSpacesInput("20", "0"), { total: 20, available: 0 });
+  assert.throws(() => manualSpacesInput("20", "21"), /spaces-exceed-capacity/);
+});
+test("unfinished and legacy done drafts retain earlier saves but require missing details", () => {
+  const base = { id: "park-1", code: null, total: null, price: "", boundary: "" };
+  const simple = { detailed: false, zone: false, afterSign: false };
+  const detailed = { ...simple, detailed: true };
+  const geometry = { type: "Polygon" as const, coordinates: [[[21.43, 42], [21.431, 42], [21.431, 42.001], [21.43, 42]]] };
+  assert.equal(incompleteManualStep(base, simple), "price");
+  assert.equal(incompleteManualStep({ ...base, price: "0:0" }, simple), null);
+  assert.equal(incompleteManualStep({ ...base, price: "0:0" }, detailed), "spaces");
+  assert.equal(incompleteManualStep({ ...base, price: "0:0", total: 20 }, detailed), "spaces");
+  assert.equal(incompleteManualStep({ ...base, price: "0:0", total: 20, free: 0 }, detailed), "perimeter");
+  assert.equal(incompleteManualStep({ ...base, price: "0:0", total: 20, free: 0 }, { ...detailed, geometry }), null);
+  assert.equal(incompleteManualStep({ ...base, price: "0:0" }, { ...detailed, zone: true, geometry }), null);
+  assert.equal(incompleteManualStep({ ...base, total: 20, free: 0 }, { ...detailed, afterSign: true, geometry }), null);
+  assert.equal(incompleteManualStep({ ...base, price: "0:0", total: 20, free: 0 }, { ...detailed, geometry: { type: "Polygon", coordinates: [[[21.4, 42], [21.4, 42], [21.4, 42], [21.4, 42]]] } }), "perimeter");
+});
+test("an unchanged imported perimeter with holes fulfills detailed entry", () => {
+  const geometry = { type: "Polygon" as const, coordinates: [[[21.43, 42], [21.431, 42], [21.431, 42.001], [21.43, 42]], [[21.4301, 42.0001], [21.4302, 42.0001], [21.4302, 42.0002], [21.4301, 42.0001]]] };
+  const snapshot = { code: null, total: 20, free: 4, price: "40:40", boundary: JSON.stringify(geometry) };
+  assert.equal(incompleteManualStep(snapshot, { detailed: true, zone: false, afterSign: false, geometry, existingGeometry: geometry }), null);
 });
 function storage() {
   const values = new Map<string, string>();

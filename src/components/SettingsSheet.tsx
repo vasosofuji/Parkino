@@ -7,8 +7,10 @@ import { useAccount } from "../state/AccountContext";
 import { Button, Icon, Sheet, type IconName } from "./ui";
 import LanguagePicker from "./LanguagePicker";
 import BackgroundArrivalSettings from "./BackgroundArrivalSettings";
+import { setNavigationPreference, useNavigationPreference } from "../services/navigation";
+import { NAVIGATION_APPS, type NavigationApp } from "../domain/navigation";
 
-type Section = "appearance" | "language" | "location" | "account" | "about" | "reminders";
+type Section = "appearance" | "language" | "navigation" | "location" | "account" | "about" | "reminders";
 function SettingsRow({ title, value, icon, onPress }: { title: string; value?: string; icon: IconName; onPress: () => void }) {
   const { colors } = useTheme();
   return <Pressable accessibilityRole="button" accessibilityLabel={value ? `${title}, ${value}` : title} onPress={onPress} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 58, paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, backgroundColor: pressed ? colors.mint : colors.input })}>
@@ -29,10 +31,13 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
   const { t, language } = useParking();
   const { profile, refresh } = useAccount();
   const [section, setSection] = useState<Section | null>(null);
+  const navigationApp = useNavigationPreference();
+  const [savingNavigation, setSavingNavigation] = useState(false), [navigationError, setNavigationError] = useState("");
   useEffect(() => { if (visible) void refresh().catch(() => {}); }, [visible, refresh]);
   const titles: Record<Section, string> = {
     appearance: t("Appearance", "Изглед"),
     language: t("Language", "Јазик"),
+    navigation: t("Navigation app", "Апликација за навигација"),
     location: t("Location & reminders", "Локација и потсетници"),
     account: t("Account", "Сметка"),
     about: t("About", "Информации"),
@@ -40,6 +45,14 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
   };
   const themeName = mode === "light" ? t("Light", "Светло") : mode === "dark" ? t("Dark", "Темно") : t("System", "Систем");
   const accountName = profile?.guest ? t("Guest", "Гостин") : profile ? `@${profile.username}` : t("Your account", "Вашата сметка");
+  const navigationNames: Record<NavigationApp, string> = { default: t("Phone default", "Стандардна на телефонот"), google: "Google Maps", waze: "Waze" };
+  async function chooseNavigation(value: NavigationApp) {
+    if (savingNavigation) return;
+    setSavingNavigation(true); setNavigationError("");
+    try { await setNavigationPreference(value); }
+    catch { setNavigationError(t("Could not save this preference. Try again.", "Поставката не е зачувана. Обидете се повторно.")); }
+    finally { setSavingNavigation(false); }
+  }
   const close = () => { setSection(null); onClose(); };
   const go = (path: Href) => { close(); router.push(path); };
   return <Sheet visible={visible} title={section ? titles[section] : t("Settings", "Поставки")} onClose={close}>
@@ -47,6 +60,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
     {!section ? <View style={{ gap: 8 }}>
       <SettingsRow title={titles.appearance} value={themeName} icon="sun" onPress={() => setSection("appearance")} />
       <SettingsRow title={titles.language} value={language === "en" ? "English" : "Македонски"} icon="globe" onPress={() => setSection("language")} />
+      <SettingsRow title={titles.navigation} value={navigationNames[navigationApp]} icon="navigation" onPress={() => setSection("navigation")} />
       <SettingsRow title={titles.location} icon="map-pin" onPress={() => setSection("location")} />
       <SettingsRow title={titles.account} value={accountName} icon="user" onPress={() => setSection("account")} />
       <SettingsRow title={titles.about} icon="info" onPress={() => setSection("about")} />
@@ -55,6 +69,11 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
       {(["light", "dark", "system"] as const).map((value) => <Button key={value} title={value === "light" ? t("Light", "Светло") : value === "dark" ? t("Dark", "Темно") : t("Use phone setting", "Како на телефонот")} icon={mode === value ? "check" : value === "light" ? "sun" : value === "dark" ? "moon" : "smartphone"} variant={mode === value ? "primary" : "secondary"} onPress={() => setMode(value)} />)}
     </View> : null}
     {section === "language" ? <LanguagePicker /> : null}
+    {section === "navigation" ? <View style={{ gap: 10 }}>
+      {NAVIGATION_APPS.map(value => <Button key={value} title={navigationNames[value]} icon={navigationApp === value ? "check" : "navigation"} variant={navigationApp === value ? "primary" : "secondary"} disabled={savingNavigation} onPress={() => void chooseNavigation(value)} />)}
+      <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 20 }}>{t("Used when you tap Go on a parking pin. If the app is unavailable, directions open in your browser.", "Се користи кога ќе притиснете Оди на паркинг. Ако апликацијата не е достапна, насоките се отвораат во прелистувачот.")}</Text>
+      {navigationError ? <Text accessibilityLiveRegion="polite" style={{ color: colors.red }}>{navigationError}</Text> : null}
+    </View> : null}
     {section === "location" ? <>
       <Text accessibilityLiveRegion="polite" style={{ color: colors.muted, fontSize: 13, lineHeight: 20 }}>{locationStatus}</Text>
       <Button icon="refresh-cw" title={t("Refresh GPS", "Обнови GPS")} variant="secondary" onPress={onRefreshLocation} />

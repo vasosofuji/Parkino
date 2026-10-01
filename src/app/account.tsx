@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import Page from "../components/Page";
 import { Button, Note } from "../components/ui";
 import PasswordField from "../components/PasswordField";
+import LoadingIndicator from "../components/LoadingIndicator";
 import { useAccount } from "../state/AccountContext";
 import { useParking } from "../state/ParkingContext";
 import { useTheme } from "../state/ThemeContext";
@@ -96,7 +97,7 @@ export default function Account() {
             {failed ? <Button title={t("Retry", "Обиди се повторно")} variant="secondary" onPress={() => { setFailed(false); void reload().catch(() => setFailed(true)); }} /> : rewards?.events.length ? rewards.events.map((event) => <View key={event.id} style={{ flexDirection: "row", gap: 12, borderBottomWidth: 1, borderColor: colors.line, paddingBottom: 10 }}>
               <View style={{ flex: 1, gap: 3 }}><Text style={{ color: colors.ink }}>{labels[event.kind]}</Text><Text style={{ color: colors.muted, fontSize: 12 }}>{new Date(event.createdAt).toLocaleDateString()}</Text></View>
               <Text style={{ color: colors.accentText, fontWeight: "700" }}>+{event.points}</Text>
-            </View>) : <Note>{rewards ? t("No contributions yet", "Сè уште нема придонеси") : t("Loading…", "Се вчитува…")}</Note>}
+            </View>) : rewards ? <Note>{t("No contributions yet", "Сè уште нема придонеси")}</Note> : <LoadingIndicator inline label={t("Loading contributions…", "Се вчитуваат придонесите…")} />}
           </View> : null}
         </View>
         {account.profile?.secured ? <Button title={t("Sign out", "Одјави се")} icon="log-out" variant="secondary" disabled={busy} onPress={() => void logout()} /> : null}

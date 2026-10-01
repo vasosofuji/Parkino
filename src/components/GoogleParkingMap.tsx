@@ -8,11 +8,13 @@ import MapView, {
   type Region,
 } from "react-native-maps";
 import { groupParking } from "../domain/clusters";
-import { accentColor } from "../domain/cosmetics";
+import { parkingMarker } from "../domain/marker-appearance";
+import { createOverlayTapGate } from "../domain/map-interactions";
 import type { ParkingMapProps } from "./mapTypes";
-import { SKOPJE, currentAvailability } from "../domain/parking";
+import { SKOPJE } from "../domain/parking";
 export default function ParkingMap(props: ParkingMapProps) {
   const map = useRef<MapView>(null);
+  const [overlayTaps] = useState(() => createOverlayTapGate());
   const callbacks = useRef(props);
   useEffect(() => {
     callbacks.current = props;
@@ -27,10 +29,11 @@ export default function ParkingMap(props: ParkingMapProps) {
     }
     try {
       const point = await map.current.pointForCoordinate(p.selectedAnchor);
-      if (revision === projectionVersion.current)
+      if (revision === projectionVersion.current && p.selectedId === callbacks.current.selectedId)
         callbacks.current.onSelectedPosition?.(point);
     } catch {
-      callbacks.current.onSelectedPosition?.(null);
+      if (revision === projectionVersion.current && p.selectedId === callbacks.current.selectedId)
+        callbacks.current.onSelectedPosition?.(null);
     }
   }, []);
   const [region, setRegion] = useState<Region>({
@@ -71,6 +74,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     step,
     step,
     props.selectedId,
+    props.now,
   );
   return (
     <MapView
@@ -96,9 +100,9 @@ export default function ParkingMap(props: ParkingMapProps) {
       zoomControlEnabled={false}
       showsPointsOfInterests={false}
       onPress={(event) => {
+        if (overlayTaps.consume(event.nativeEvent.action, event.nativeEvent.coordinate)) return;
         if (props.picking) props.onPick(event.nativeEvent.coordinate);
-        else if (event.nativeEvent.action !== "marker-press")
-          props.onBlankPress?.();
+        else props.onBlankPress?.();
       }}
     >
       {!props.drawing ? visible.filter((p) => p.geometry && (region.latitudeDelta < 0.007 || p.id === props.selectedId)).map((place) => (
@@ -106,7 +110,7 @@ export default function ParkingMap(props: ParkingMapProps) {
           coordinates={place.geometry!.coordinates[0].map(([longitude, latitude]) => ({ latitude, longitude }))}
           holes={place.geometry!.coordinates.slice(1).map((ring) => ring.map(([longitude, latitude]) => ({ latitude, longitude })))}
           strokeColor="#962E2B" fillColor={place.id === props.selectedId ? "#962E2B20" : "#962E2B0B"} strokeWidth={place.id === props.selectedId ? 2.5 : 1.5}
-          tappable onPress={(event) => { if (props.selectionEnabled !== false) props.onSelect(place, event.nativeEvent.coordinate ?? place.coordinate); }}
+          tappable onPress={(event) => { const point = event.nativeEvent.coordinate ?? place.coordinate; overlayTaps.record(point); if (props.picking) props.onPick(point); else if (props.selectionEnabled !== false) props.onSelect(place, point); }}
         />
       )) : null}
       {props.showZones && !props.drawing
@@ -124,6 +128,7 @@ export default function ParkingMap(props: ParkingMapProps) {
                 lineDashPattern={[5, 5]}
                 tappable
                 onPress={(event) => {
+                  overlayTaps.record(event.nativeEvent.coordinate ?? place.coordinate);
                   if (props.picking) {
                     if (event.nativeEvent.coordinate)
                       props.onPick(event.nativeEvent.coordinate);
@@ -169,24 +174,17 @@ export default function ParkingMap(props: ParkingMapProps) {
         : null}
       {groups.map((group) => {
         const key = group[0].id;
-        const place = group.find((p) => p.id === props.selectedId) ?? group[0],
-          availability = currentAvailability(place.availability);
-        const color =
-          availability.status === "spaces"
-            ? "#087958"
-            : availability.status === "full"
-              ? "#B83A36"
-              : place.access === "restricted"
-                ? "#88948D"
-                : "#392c25";
+        const place = group.find((p) => p.id === props.selectedId) ?? group[0];
+        const appearance = parkingMarker(place, group.length, props.now);
         return (
           <Marker
             key={key}
             coordinate={place.coordinate}
+            anchor={{ x: 0.5, y: 0.5 }}
             zIndex={
               place.id === props.selectedId
                 ? 1000
-                : availability.status === "spaces"
+                : appearance.spaces
                   ? 800
                   : 0
             }
@@ -213,27 +211,21 @@ export default function ParkingMap(props: ParkingMapProps) {
               else props.onSelect(place);
             }}
           >
-            <View
+            <View style={s.markerFrame}>{place.id === props.selectedId ? <View style={[s.selectedFrame, { width: appearance.spaces ? 52 : 38 }]} /> : null}<View
               style={[
                 s.pin,
-                { backgroundColor: color },
-                place.id === props.selectedId ? s.selected : null,
-                availability.status === "spaces" && group.length === 1
+                { backgroundColor: appearance.fill, borderColor: appearance.border },
+                appearance.spaces
                   ? s.spaces
-                  : null,
-                group.length === 1 && place.id !== props.selectedId && accentColor(place.contributionAccent)
-                  ? { borderColor: accentColor(place.contributionAccent) }
                   : null,
               ]}
             >
-              <Text style={s.pinText}>
-                {group.length > 1
-                  ? group.length
-                  : availability.status === "spaces"
-                    ? "P ✓"
-                    : "P"}
+              <Text style={[s.pinText, { color: appearance.text }]}>
+                {appearance.label}
               </Text>
-            </View>
+              {appearance.badge ? <View style={s.freeBadge}><Text style={s.freeBadgeText}>0</Text></View> : null}
+              {appearance.stateBadge ? <View style={[s.stateBadge, { backgroundColor: appearance.stateColor }]}><Text style={[s.freeBadgeText, { color: "#fff" }]}>{appearance.stateBadge}</Text></View> : null}
+            </View></View>
           </Marker>
         );
       })}
@@ -320,9 +312,14 @@ export default function ParkingMap(props: ParkingMapProps) {
   );
 }
 const s = StyleSheet.create({
+  markerFrame: { width: 60, height: 48, alignItems: "center", justifyContent: "center" },
+  selectedFrame: { position: "absolute", height: 40, borderRadius: 22, borderWidth: 3, borderColor: "#d9a48d" },
+  freeBadge: { position: "absolute", right: -7, top: -8, width: 17, height: 17, borderRadius: 9, backgroundColor: "#fff", borderColor: "#087184", borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  stateBadge: { position: "absolute", left: -7, bottom: -8, width: 17, height: 17, borderRadius: 9, borderColor: "#fff", borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  freeBadgeText: { color: "#07596A", fontSize: 10, fontWeight: "800" },
   pin: {
-    minWidth: 26,
-    height: 26,
+    minWidth: 28,
+    height: 28,
     borderWidth: 2,
     borderColor: "#fff",
     borderRadius: 13,
@@ -331,14 +328,10 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
   },
   pinText: { color: "#fff", fontWeight: "800", fontSize: 12 },
-  selected: { borderColor: "#d9a48d", borderWidth: 3 },
   spaces: {
-    minWidth: 44,
-    height: 32,
+    minWidth: 42,
+    height: 30,
     borderRadius: 16,
-    borderColor: "#b5f5d0",
-    borderWidth: 3,
-    backgroundColor: "#07874f",
   },
   userDot: {
     width: 18,

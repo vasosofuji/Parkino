@@ -1,4 +1,4 @@
-import React from "react";
+import React, { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
 import {
   Pressable,
   Text,
@@ -16,6 +16,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useTheme, lightColors, type ThemeColors } from "../state/ThemeContext";
 import ModalBackdrop from "./ModalBackdrop";
+type HeaderBackAction = { onPress: () => void; label: string; disabled?: boolean };
+const SheetBackContext = createContext<((action: HeaderBackAction | null) => void) | null>(null);
+/** Register the active form's Back action without moving it into the scrollable body. */
+export function useSheetBack(action: HeaderBackAction) {
+  const register = useContext(SheetBackContext), current = useRef(action);
+  useLayoutEffect(() => { current.current = action; });
+  useLayoutEffect(() => {
+    register?.({ onPress: () => current.current.onPress(), label: action.label, disabled: action.disabled });
+    return () => register?.(null);
+  }, [register, action.label, action.disabled]);
+}
 export const colors = lightColors;
 export type IconName = React.ComponentProps<typeof Feather>["name"];
 export function Icon({
@@ -98,10 +109,14 @@ export function IconButton({
   name,
   label,
   onPress,
+  disabled,
+  compact = false,
 }: {
   name: IconName;
   label: string;
   onPress: () => void;
+  disabled?: boolean;
+  compact?: boolean;
 }) {
   const { colors } = useTheme();
   const s = styles(colors);
@@ -110,8 +125,10 @@ export function IconButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      hitSlop={name === "x" ? 6 : 2}
-      style={[s.iconButton, name === "x" && s.closeButton]}
+      disabled={disabled}
+      accessibilityState={{ disabled }}
+      hitSlop={name === "x" || compact ? 6 : 2}
+      style={[s.iconButton, (name === "x" || compact) && s.closeButton, disabled && { opacity: 0.45 }]}
     >
       <Icon name={name} size={name === "x" ? 16 : 20} />
     </Pressable>
@@ -125,6 +142,9 @@ export function Sheet({
   footer,
   onDismiss,
   onShow,
+  onBack,
+  backLabel = "Back / Назад",
+  backDisabled,
 }: {
   visible: boolean;
   title: string;
@@ -133,12 +153,18 @@ export function Sheet({
   footer?: React.ReactNode;
   onDismiss?: () => void;
   onShow?: () => void;
+  onBack?: () => void;
+  backLabel?: string;
+  backDisabled?: boolean;
 }) {
   const { colors } = useTheme();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+  const [registeredBack, registerBack] = useState<HeaderBackAction | null>(null);
+  const back = registeredBack ?? (onBack ? { onPress: onBack, label: backLabel, disabled: backDisabled } : null);
   return (
+    <SheetBackContext.Provider value={registerBack}>
     <Modal
       visible={visible}
       transparent
@@ -179,6 +205,7 @@ export function Sheet({
             <Text accessibilityRole="header" style={s.sheetTitle}>
               {title}
             </Text>
+            {back ? <IconButton name="arrow-left" compact label={back.label} disabled={back.disabled} onPress={back.onPress} /> : null}
             <IconButton name="x" label="Close / Затвори" onPress={onClose} />
           </View>
           <ScrollView
@@ -195,6 +222,7 @@ export function Sheet({
         </View>
       </KeyboardAvoidingView>
     </Modal>
+    </SheetBackContext.Provider>
   );
 }
 export function Note({ children }: { children: React.ReactNode }) {

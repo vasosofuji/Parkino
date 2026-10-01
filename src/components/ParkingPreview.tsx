@@ -1,11 +1,14 @@
 import React, { useState } from "react";
-import { Linking, Text, View, useWindowDimensions } from "react-native";
+import { ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Button, IconButton } from "./ui";
 import { useTheme } from "../state/ThemeContext";
 import { useParking } from "../state/ParkingContext";
 import { currentAvailability, parkingPrice } from "../domain/parking";
 import type { ParkingPlace } from "../domain/types";
 import DigitalParkingSign from "./DigitalParkingSign";
+import { parkingMarker } from "../domain/marker-appearance";
+import { parkingPreviewLayout } from "../domain/preview-layout";
+import { openParkingDirections } from "../services/navigation";
 export default function ParkingPreview({
   place,
   point,
@@ -24,30 +27,27 @@ export default function ParkingPreview({
   const { t, language, now } = useParking(),
     { colors } = useTheme(),
     { width } = useWindowDimensions();
-  const [height, setHeight] = useState(170),
+  const [height, setHeight] = useState(0),
     [error, setError] = useState("");
-  const cardWidth = Math.min(290, width - 24),
-    price = parkingPrice(place),
+  const price = parkingPrice(place, now),
     status = currentAvailability(place.availability, now);
-  const left = Math.max(
-    12,
-    Math.min(width - cardWidth - 12, point.x - cardWidth / 2),
-  );
-  if (point.x < 0 || point.x > width || point.y < 0 || point.y > mapHeight)
-    return null;
+  const marker = parkingMarker(place, 1, now);
+  const layout = parkingPreviewLayout(point, width, mapHeight, drawerHeight, height);
+  const visible = height > 0 && layout.visible;
   return (
     <View
       accessibilityLabel={t("Parking information", "Информации за паркингот")}
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
+      pointerEvents={visible ? "auto" : "none"}
       onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
       style={{
         position: "absolute",
         zIndex: 1050,
-        width: cardWidth,
-        left,
-        top: Math.max(
-          128,
-          Math.min(mapHeight - drawerHeight - height - 12, point.y - height - 18),
-        ),
+        width: layout.width,
+        left: layout.left,
+        top: layout.top,
+        opacity: visible ? 1 : 0,
         borderRadius: 16,
         padding: 12,
         backgroundColor: colors.paper,
@@ -57,12 +57,12 @@ export default function ParkingPreview({
         boxShadow: "0 4px 18px #10292130",
       }}
     >
-      <View
+      {layout.showArrow ? <View
         pointerEvents="none"
         style={{
           position: "absolute",
           bottom: -10,
-          left: Math.max(16, Math.min(cardWidth - 34, point.x - left - 10)),
+          left: layout.arrowLeft,
           width: 0,
           height: 0,
           borderLeftWidth: 10,
@@ -72,8 +72,10 @@ export default function ParkingPreview({
           borderRightColor: "transparent",
           borderTopColor: colors.paper,
         }}
-      />
+      /> : null}
+      <ScrollView style={{ maxHeight: Math.max(40, mapHeight - drawerHeight - 56), flexGrow: 0 }} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ minWidth: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: marker.border, backgroundColor: marker.fill, alignItems: "center", justifyContent: "center" }}><Text style={{ color: marker.text, fontWeight: "800" }}>{marker.needsInfo ? "?" : "P"}</Text></View>
         <Text
           numberOfLines={2}
           style={{
@@ -92,6 +94,7 @@ export default function ParkingPreview({
           onPress={onClose}
         />
       </View>
+      {marker.needsInfo ? <Text style={{ color: colors.muted, fontSize: 12 }}>{t("Needs review · Add a zone, price or sign", "Треба проверка · Додајте зона, цена или табла")}</Text> : null}
       <Text style={{ color: colors.ink, fontSize: 14 }}>
         {place.kind === "zone" ? t("Tariff zone", "Тарифна зона") : t("Parking", "Паркинг")} · {price
           ? price.firstHour === 0 && price.nextHour === 0
@@ -140,9 +143,8 @@ export default function ParkingPreview({
             title={t("Go", "Оди")}
             disabled={place.access === "restricted"}
             onPress={() => {
-              void Linking.openURL(
-                `https://www.google.com/maps/dir/?api=1&destination=${place.coordinate.latitude},${place.coordinate.longitude}&travelmode=driving`,
-              ).catch(() =>
+              setError("");
+              void openParkingDirections(place.coordinate).catch(() =>
                 setError(
                   t("Could not open navigation", "Навигацијата не се отвора"),
                 ),
@@ -154,6 +156,7 @@ export default function ParkingPreview({
       {error ? (
         <Text style={{ color: colors.red, fontSize: 12 }}>{error}</Text>
       ) : null}
+      </ScrollView>
     </View>
   );
 }

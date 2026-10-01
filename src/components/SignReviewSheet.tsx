@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Text, TextInput, View } from "react-native";
+import { Image, Text, TextInput, View } from "react-native";
+import LoadingIndicator from "./LoadingIndicator";
 import type { SignInfo, SignPhoto } from "../domain/types";
 import { api } from "../services/api";
 import { useParking } from "../state/ParkingContext";
@@ -109,7 +110,7 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
         {!previewInfo.isParkingSign || (!correctedInfo && photo.status === "review") ? <Note>{t("Some details were unclear. Please compare every field with the photo.", "Некои податоци не се јасни. Проверете го секое поле со сликата.")}</Note> : null}
         <Button title={t("Correct the details", "Поправи податоци")} icon="edit-2" variant="secondary" onPress={edit} disabled={busy} />
       </> : <>
-        {reading ? <ActivityIndicator color={colors.accentText} /> : null}
+        {reading ? <LoadingIndicator active={visible} label={t("Reading the sign…", "Се чита таблата…")} /> : null}
         <Note>{reading ? t("Reading your sign… You can also enter it yourself.", "Се чита таблата… Може и сами да ги внесете податоците.") : t("The photo is saved, but automatic reading is unavailable. Enter what you can read.", "Сликата е зачувана, но автоматското читање е недостапно. Внесете што читате.")}</Note>
         <Button title={t("Enter sign details", "Внеси податоци од таблата")} variant="secondary" icon="edit-2" onPress={edit} />
       </>}

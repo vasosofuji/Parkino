@@ -5,6 +5,7 @@ export function groupParking(
   latitudeStep: number,
   longitudeStep: number,
   selectedId: string | null,
+  now = Date.now(),
 ): ParkingPlace[][] {
   const cells = new Map<string, ParkingPlace[]>();
   for (const place of places) {
@@ -13,7 +14,7 @@ export function groupParking(
       !latitudeStep ||
       place.id === selectedId ||
       (place.access !== "restricted" &&
-        currentAvailability(place.availability).status === "spaces")
+        currentAvailability(place.availability, now).status === "spaces")
         ? place.id
         : `${Math.floor(place.coordinate.latitude / latitudeStep)}:${Math.floor(place.coordinate.longitude / longitudeStep)}`;
     const group = cells.get(key) ?? [];
