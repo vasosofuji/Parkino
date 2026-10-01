@@ -40,3 +40,7 @@ Parent physically observed two rapid corner taps triggering Leaflet double-click
 Map dragging, touchZoom/pinch, individual vertex dragging, camera intent and native keyboard code are unchanged. Normal exploration restores double-click zoom. Independently ran seven keyboard/Leaflet bridge tests; all pass. The new actual-script test cycles into drawing, dispatches four corner clicks with intervening redraws, confirms double-click zoom remains disabled, then confirms the handler is enabled again and normal blank taps resume.
 
 No remaining source blocker found. Owner reports all 16 focused map tests, lint and typecheck pass. Approved for parent's final incremental build and physical rapid-corner drawing check; the source regression is not a claim of a completed device retest.
+
+## Parent's completion evidence
+
+The parent subsequently built and installed final source `79a8b7a` locally, with the original test signature. Samsung blank-map taps hid the IME; four rapid corners retained their intended screen positions and corner dragging worked. No live parking record was submitted. Final 173-test/lint/typecheck/Doctor/export results and remaining physical iOS/field limits are recorded in `docs/VALIDATION.md`.
