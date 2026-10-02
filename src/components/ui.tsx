@@ -145,6 +145,7 @@ export function Sheet({
   onBack,
   backLabel = "Back / Назад",
   backDisabled,
+  fullPage = false,
 }: {
   visible: boolean;
   title: string;
@@ -156,6 +157,7 @@ export function Sheet({
   onBack?: () => void;
   backLabel?: string;
   backDisabled?: boolean;
+  fullPage?: boolean;
 }) {
   const { colors } = useTheme();
   const s = styles(colors);
@@ -171,7 +173,7 @@ export function Sheet({
       statusBarTranslucent
       navigationBarTranslucent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={fullPage && back ? () => { if (!back.disabled) back.onPress(); } : onClose}
       onDismiss={onDismiss}
       onShow={onShow}
     >
@@ -180,17 +182,18 @@ export function Sheet({
         style={[
           s.overlay,
           {
-            paddingTop: Math.max(12, insets.top),
-            paddingBottom: Math.max(12, insets.bottom),
+            paddingTop: fullPage ? insets.top : Math.max(12, insets.top),
+            paddingBottom: fullPage ? insets.bottom : Math.max(12, insets.bottom),
+            ...(fullPage ? { paddingHorizontal: 0, paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: colors.paper } : {}),
           },
         ]}
       >
-        <ModalBackdrop />
-        <Pressable
+        {!fullPage ? <ModalBackdrop /> : null}
+        {!fullPage ? <Pressable
           accessibilityLabel="Close dialog"
           onPress={onClose}
           style={StyleSheet.absoluteFill}
-        />
+        /> : null}
         <View
           accessibilityViewIsModal
           style={[
@@ -199,22 +202,24 @@ export function Sheet({
               maxHeight:
                 height - Math.max(12, insets.top) - Math.max(12, insets.bottom),
             },
+            fullPage && { flex: 1, maxHeight: undefined, maxWidth: undefined, borderRadius: 0, borderWidth: 0 },
           ]}
         >
           <View style={s.sheetTop}>
-            <Text accessibilityRole="header" style={s.sheetTitle}>
+            {fullPage ? <View style={{ width: 44 }}>{back ? <IconButton name="arrow-left" label={back.label} disabled={back.disabled} onPress={back.onPress} /> : null}</View> : null}
+            <Text accessibilityRole="header" style={[s.sheetTitle, fullPage && { textAlign: "center" }]}>
               {title}
             </Text>
-            {back ? <IconButton name="arrow-left" compact label={back.label} disabled={back.disabled} onPress={back.onPress} /> : null}
-            <IconButton name="x" label="Close / Затвори" onPress={onClose} />
+            {!fullPage && back ? <IconButton name="arrow-left" compact label={back.label} disabled={back.disabled} onPress={back.onPress} /> : null}
+            <View style={fullPage ? { width: 44, alignItems: "center" } : undefined}><IconButton name="x" label="Close / Затвори" onPress={onClose} /></View>
           </View>
           <ScrollView
             showsVerticalScrollIndicator={false}
             showsHorizontalScrollIndicator={false}
             bounces={false}
-            style={{ flexShrink: 1 }}
+            style={fullPage ? { flex: 1 } : { flexShrink: 1 }}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={s.sheetContent}
+            contentContainerStyle={[s.sheetContent, fullPage && { width: "100%", maxWidth: 680, alignSelf: "center", gap: 20, paddingBottom: 28 }]}
           >
             {children}
           </ScrollView>
