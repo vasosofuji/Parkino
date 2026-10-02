@@ -1,3 +1,11 @@
+# Settings page redesign — 2026-10-02
+
+Reviewed source: `294bdb6`. Settings follows the supplied reference with a full-page centered header, compact Back/Close controls, real profile/points summary, and rounded General, Account and Support cards. It uses existing theme colors and English/Macedonian text. Appearance, language and navigation options stay on separate subpages; account, rewards, legal, GPS and reminder controls retain their existing behavior.
+
+**193/193 tests pass**, including eight new executable Settings/Sheet interaction regressions. Final Expo lint and TypeScript pass. Independent review approved safe-area handling, section/native Back, ordinary popup lifecycle preservation, preference persistence/error states and existing routes. No APK was built or installed for this change; physical layout remains unverified while the phone is disconnected.
+
+The preceding transport fix (`e937585`) also passed independent review, seven focused transport regressions, and a full 185-test suite. React Native's installed `abort-controller` lacks `AbortSignal.timeout`; the former readiness check threw before sending requests. The client now uses an explicit controller and rejecting deadline, cleans up timers, bounds body reads, and preserves the rule against automatically replaying writes. Existing APKs require a client update to receive that fix.
+
 # Smooth parking motion and local builder shutdown — 2026-10-02
 
 Reviewed application source: `e291a08` on `codex/contribution-polish`. Separate native subagents implemented camera and popup motion, kept their plans in `docs/plans/`, and completed an independent critic loop.
