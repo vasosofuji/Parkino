@@ -1,0 +1,31 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { matchesParkingFilter, filteredParkingRows } from "../src/domain/parking-filters";
+import type { ParkingPlace } from "../src/domain/types";
+const now = Date.parse("2026-10-03T10:00:00Z");
+const place: ParkingPlace = { id: "one", name: "Parking", coordinate: {latitude:42,longitude:21.4}, kind:"surface", operator:null,zoneCode:null,access:"public",tariff:null,capacity:20,openingHours:null,verification:"osm",source:{label:"test",url:"",retrievedAt:new Date(now).toISOString()} };
+test("legend filters share marker evidence and expire availability reports", () => {
+  const available: ParkingPlace = {...place,availability:{status:"spaces",source:"community",observedAt:new Date(now).toISOString(),expiresAt:new Date(now+1000).toISOString(),reports:1}};
+  assert.equal(matchesParkingFilter(available,"spaces",now),true);
+  assert.equal(matchesParkingFilter(available,"unreviewed",now),true);
+  assert.equal(matchesParkingFilter(available,"reviewed",now),false);
+  assert.equal(matchesParkingFilter(available,"spaces",now+1000),false);
+  assert.equal(matchesParkingFilter({...available,kind:"zone"},"spaces",now),false);
+  assert.equal(matchesParkingFilter({...available,access:"restricted"},"spaces",now),false);
+  const free: ParkingPlace = {...available,communityPrice:{firstHour:0,nextHour:0,observedAt:new Date(now).toISOString(),reports:1}};
+  assert.equal(matchesParkingFilter(free,"free",now),true);
+  assert.equal(matchesParkingFilter(free,"reviewed",now),true);
+  assert.equal(matchesParkingFilter({...free,communityPrice:{...free.communityPrice!,firstHour:25,nextHour:25},paymentSchedule:{chargingHours:"Mon–Sat 07:00–23:00",freeWeekends:"sunday"}},"free",now),false);
+  assert.equal(matchesParkingFilter({...free,availability:{...available.availability!,status:"full"}},"free",now),true);
+  assert.equal(matchesParkingFilter({...available,availability:{...available.availability!,status:"full"}},"full",now),true);
+});
+test("filter results keep every matching facility, including zones and distant parking", () => {
+  const all = Array.from({length:45},(_,i):ParkingPlace=>({...place,id:String(i),kind:i===0?"zone":"garage",access:i===1?"restricted":"public",coordinate:{latitude:42+i/100,longitude:21.4}}));
+  const rows=filteredParkingRows(all,place.coordinate,now);
+  assert.equal(rows.length,45);
+  assert.equal(rows[0].place.kind,"zone");
+  assert.equal(all.filter(p=>matchesParkingFilter(p,"garage",now)).length,44);
+  assert.ok(rows.at(-1)!.distance>1500);
+  const free={...place,communityPrice:{firstHour:0,nextHour:0,reports:1,observedAt:new Date(now).toISOString()}};
+  assert.equal(filteredParkingRows([free],place.coordinate,now)[0].cost,0);
+});

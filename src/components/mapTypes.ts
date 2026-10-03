@@ -1,4 +1,5 @@
 import type { Coordinate, ParkingPlace } from "../domain/types";
+import type { Language } from "../domain/language";
 export type ParkingMapProps = {
   now: number;
   places: ParkingPlace[];
@@ -22,7 +23,7 @@ export type ParkingMapProps = {
   showZones: boolean;
   onSelect: (place: ParkingPlace, coordinate?: Coordinate) => void;
   onPick: (coordinate: Coordinate) => void;
-  language: "mk" | "en";
+  language: Language;
   dark?: boolean;
   draftCoordinates?: Coordinate[];
 };

@@ -1,15 +1,16 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { randomUUID } from "expo-crypto";
-import { Button, Icon, Note, useSheetBack } from "./ui";
+import { Button, Icon, Note, useSheetBack, useSheetContinue } from "./ui";
+import PaymentScheduleFields from "./PaymentScheduleFields";
 import LoadingIndicator from "./LoadingIndicator";
 import { useParking } from "../state/ParkingContext";
 import { useAccount } from "../state/AccountContext";
 import { useTheme, type ThemeColors } from "../state/ThemeContext";
 import { normalizeZoneCode, parkingPrice } from "../domain/parking";
 import { createProgressiveEntry, manualPriceInput, manualSpacesInput, incompleteManualStep, type EntryApi } from "../domain/progressive-entry";
-import type { Coordinate, Geometry, ParkingKind, ParkingPlace } from "../domain/types";
-import { availabilityIsFresh, createEntryDraftStore, entryDraftKey, readEntryDraft, type EntryDraft, type EntryOperation, type EntryStep } from "../services/entryDrafts";
+import type { Coordinate, Geometry, ParkingKind, ParkingPlace, PaymentSchedule } from "../domain/types";
+import { createEntryDraftStore, entryDraftKey, readEntryDraft, type EntryDraft, type EntryOperation, type EntryStep } from "../services/entryDrafts";
 import { api } from "../services/api";
 
 type Props = {
@@ -30,16 +31,15 @@ export default function ManualParkingWizard(props: Props) {
 function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeometry, initialZone, kind = "surface", initialStep, onSaved, onDone, onDrawBoundary, onBack, restored, draftKey, accountId }: Props & { restored: EntryDraft | null; draftKey: string; accountId: string }) {
   const { t, refresh } = useParking(), { colors } = useTheme(), s = styles(colors);
   const initialPrice = place ? parkingPrice(place) : null;
-  const [step, setStep] = useState<EntryStep>(restored?.step ?? (initialStep ? kind === "zone" ? "perimeter" : "spaces" : "choose")), [detailed, setDetailed] = useState(restored?.detailed ?? Boolean(initialStep));
+  const [step, setStep] = useState<EntryStep>(restored?.step ?? (initialStep ? "schedule" : "choose")), [detailed, setDetailed] = useState(restored?.detailed ?? Boolean(initialStep));
   const [code, setCode] = useState(restored?.code ?? initialZone ?? place?.zoneCode ?? "");
   const [first, setFirst] = useState(restored?.first ?? initialPrice?.firstHour.toString() ?? ""), [next, setNext] = useState(restored?.next ?? initialPrice?.nextHour.toString() ?? "");
-  const [capacity, setCapacity] = useState(restored?.capacity ?? place?.capacity?.toString() ?? ""), [freeSpaces, setFreeSpaces] = useState(restored?.freeSpaces ?? "");
-  const [freeObservedAt, setFreeObservedAt] = useState(restored?.freeObservedAt);
-  const changeFreeSpaces = useCallback((value: string) => { setFreeSpaces(value); setFreeObservedAt(Date.now()); }, []);
+  const [capacity, setCapacity] = useState(restored?.capacity ?? place?.capacity?.toString() ?? "");
+  const [schedule, setSchedule] = useState<PaymentSchedule>({ chargingHours: restored?.chargingHours !== undefined ? restored.chargingHours : place?.paymentSchedule ? place.paymentSchedule.chargingHours : place?.signInfo?.chargingHours ?? null, freeWeekends: restored?.freeWeekends !== undefined ? restored.freeWeekends : place?.paymentSchedule ? place.paymentSchedule.freeWeekends : place?.signInfo?.freeWeekends ?? null });
   const [busy, setBusy] = useState(false), [saved, setSaved] = useState(Boolean(restored?.snapshot?.id)), [message, setMessage] = useState("");
   const [failed, setFailed] = useState<EntryOperation | null>(restored?.pending ?? null);
   const [currentGeometry, setCurrentGeometry] = useState(returnedGeometry ?? restored?.geometry ?? geometry);
-  const [initialDraft] = useState<EntryDraft>(() => restored ?? { version: 1, updatedAt: Date.now(), requestId: randomUUID(), step: "choose", detailed: false, code, first, next, capacity, freeSpaces, geometry, pending: null });
+  const [initialDraft] = useState<EntryDraft>(() => restored ?? { version: 1, updatedAt: Date.now(), requestId: randomUUID(), step: "choose", detailed: false, code, first, next, capacity, freeSpaces: "", geometry, pending: null });
   const [draftStore] = useState(() => createEntryDraftStore(accountId, draftKey, initialDraft));
   const [writer] = useState(() => {
     const client = api.progressiveWriter();
@@ -48,6 +48,7 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
       contribute: value => client.then(service => service.contribute(value)),
       label: (id, value) => client.then(service => service.label(id, value)),
       price: (id, a, b) => client.then(service => service.price(id, a, b)),
+      paymentSchedule: (id, value) => client.then(service => service.paymentSchedule(id, value)),
       capacity: (id, value) => client.then(service => service.capacity(id, value)),
       report: (id, status, count) => client.then(service => service.report(id, status, count)),
       boundary: (id, value) => client.then(service => service.boundary(id, value)),
@@ -61,14 +62,8 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
   // boundary with the stored draft on remount so it is still saved immediately.
   const previousGeometry = useRef(JSON.stringify(returnedGeometry ? restored?.geometry ?? geometry : geometry));
   // Draft writes merge with save results, so typing in the next step cannot erase an in-flight operation.
-  useEffect(() => { void draftStore.update({ step, detailed, code, first, next, capacity, freeSpaces, freeObservedAt, geometry: currentGeometry }).catch(() => {}); }, [draftStore, step, detailed, code, first, next, capacity, freeSpaces, freeObservedAt, currentGeometry]);
+  useEffect(() => { void draftStore.update({ step, detailed, code, first, next, capacity, chargingHours: schedule.chargingHours ?? "", freeWeekends: schedule.freeWeekends, geometry: currentGeometry }).catch(() => {}); }, [draftStore, step, detailed, code, first, next, capacity, schedule, currentGeometry]);
   async function save(operation: EntryOperation, nextStep?: EntryStep) {
-    if (operation.type === "spaces" && operation.available !== null && !availabilityIsFresh(operation.observedAt)) {
-      setFreeSpaces(""); setFailed(null); setStep("spaces");
-      await draftStore.update({ pending: null, freeSpaces: "", step: "spaces" });
-      setMessage(t("That free-space estimate is old. Enter the current count.", "Процената за слободни места е стара. Внесете ја тековната состојба."));
-      return false;
-    }
     Keyboard.dismiss(); setMessage(""); setBusy(true); setFailed(null);
     if (nextStep) setStep(nextStep);
     try {
@@ -76,7 +71,8 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
       await draftStore.update({ pending: operation, step: nextStep ?? step });
       if (operation.type === "label") await writer.label(operation.code);
       else if (operation.type === "price") await writer.price(operation.first, operation.next);
-      else if (operation.type === "spaces") await writer.spaces(operation.total, operation.available);
+      else if (operation.type === "schedule") await writer.paymentSchedule(operation.value);
+      else if (operation.type === "spaces") await writer.spaces(operation.total, null);
       else if (operation.type === "boundary") await writer.boundary(operation.geometry);
       else await writer.ensure();
       await draftStore.update({ snapshot: writer.snapshot(), pending: null });
@@ -103,7 +99,7 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
     const incomplete = incompleteManualStep(writer.snapshot(), { detailed, zone: kind === "zone", afterSign: Boolean(initialStep), geometry: currentGeometry, existingGeometry: place?.geometry });
     if (incomplete) {
       setStep(incomplete);
-      setMessage(incomplete === "price" ? t("Enter a price or choose It's free.", "Внесете цена или изберете Бесплатно е.") : incomplete === "spaces" ? t("Enter both the total and current free-space estimate.", "Внесете го вкупниот број и процената за слободни места сега.") : t("Draw the perimeter to finish the detailed entry.", "Означете го периметарот за да го завршите деталниот внес."));
+      setMessage(incomplete === "price" ? t("Enter a price or choose It's free.", "Внесете цена или изберете Бесплатно е.") : incomplete === "spaces" ? t("Enter the total number of parking spaces.", "Внесете го вкупниот број паркинг места.") : t("Draw the perimeter to finish the detailed entry.", "Означете го периметарот за да го завршите деталниот внес."));
       return;
     }
     if (detailed && currentGeometry && writer.snapshot().boundary !== JSON.stringify(currentGeometry) && !await save({ type: "boundary", geometry: currentGeometry })) return;
@@ -112,8 +108,8 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
   function back() {
     if (busy) return;
     if (step === "choose") { onBack?.(); return; }
-    if (initialStep === "spaces" && (step === "spaces" || (kind === "zone" && step === "perimeter")) && !failed) { onBack?.(); return; }
-    const previous: EntryStep = failed?.type === "label" ? "zone" : failed?.type === "price" ? "price" : failed?.type === "spaces" ? "spaces" : failed?.type === "boundary" ? "perimeter" : step === "price" ? "zone" : step === "spaces" ? "price" : step === "perimeter" ? kind === "zone" ? "price" : "spaces" : step === "done" ? detailed ? "perimeter" : "price" : "choose";
+    if (initialStep === "spaces" && step === "schedule" && !failed) { onBack?.(); return; }
+    const previous: EntryStep = failed?.type === "label" ? "zone" : failed?.type === "price" ? "price" : failed?.type === "schedule" ? "schedule" : failed?.type === "spaces" ? "spaces" : failed?.type === "boundary" ? "perimeter" : step === "price" ? "zone" : step === "schedule" ? "price" : step === "spaces" ? "schedule" : step === "perimeter" ? kind === "zone" ? "schedule" : "spaces" : step === "done" ? detailed ? "perimeter" : "price" : "choose";
     setFailed(null); setMessage(""); setStep(previous);
     void draftStore.update({ pending: null, step: previous }).catch(() => {});
   }
@@ -125,40 +121,52 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
     } else if (step === "price") {
       try {
         const value = manualPriceInput(first, next);
-        void save({ type: "price", ...value }, detailed ? kind === "zone" ? "perimeter" : "spaces" : "done");
+        void save({ type: "price", ...value }, detailed ? "schedule" : "done");
       } catch { setMessage(t("Enter a first-hour price from 0 to 10,000 MKD, or choose It's free.", "Внесете цена за прв час од 0 до 10.000 денари или изберете Бесплатно е.")); }
+    } else if (step === "schedule") {
+      void save({ type: "schedule", value: { ...schedule, chargingHours: schedule.chargingHours?.trim() || null } }, kind === "zone" ? "perimeter" : "spaces");
     } else if (step === "spaces") {
       try {
-        const value = manualSpacesInput(capacity, freeSpaces);
-        void save({ type: "spaces", ...value, observedAt: freeObservedAt }, "perimeter");
-      } catch { setMessage(t("Enter both counts as whole numbers. Free spaces cannot exceed the total.", "Внесете ги двата броја како цели броеви. Слободните места не може да бидат повеќе од вкупните.")); }
+        const value = manualSpacesInput(capacity);
+        void save({ type: "spaces", ...value }, "perimeter");
+      } catch { setMessage(t("Enter a whole number from 0 to 100,000.", "Внесете цел број од 0 до 100.000.")); }
     }
   }
   const field = (label: string, value: string, change: (value: string) => void, numeric = false, placeholder = t("Optional", "Опционално")) => <View style={s.field}>
     <Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} value={value} onChangeText={change} style={s.input} keyboardType={numeric ? "decimal-pad" : "default"} autoCapitalize={numeric ? "none" : "characters"} maxLength={numeric ? 9 : 16} placeholder={placeholder} placeholderTextColor={colors.muted} />
   </View>;
-  const index = initialStep === "spaces" ? kind === "zone" || step === "spaces" ? 1 : 2 : step === "zone" ? 1 : step === "price" ? 2 : step === "spaces" ? 3 : kind === "zone" ? 3 : 4;
+  const ordered: EntryStep[] = initialStep ? ["schedule", ...(kind === "zone" ? [] : ["spaces" as const]), "perimeter"] : ["zone", "price", ...(detailed ? ["schedule" as const, ...(kind === "zone" ? [] : ["spaces" as const]), "perimeter" as const] : [])];
+  const index = ordered.indexOf(step) + 1;
+  const action = step === "choose" ? null : {
+    title: failed ? t("Retry saving", "Повтори зачувување") : step === "perimeter" || step === "done" ? t("Done", "Готово") : t("Next", "Следно"),
+    disabled: busy,
+    onPress: () => { if (failed) void save(failed); else if (step === "perimeter" || step === "done") void finish(); else advance(); },
+  };
+  const footerRegistered = useSheetContinue(action);
   return <View style={s.root}>
     {step === "choose" ? <>
       {([false, true] as const).map(value => <Pressable key={String(value)} accessibilityRole="button" accessibilityLabel={value ? t("Detailed entry", "Детален внес") : t("Simple entry", "Брз внес")} style={s.choice} onPress={() => { setDetailed(value); setStep("zone"); }}>
-        <View pointerEvents="none" style={s.choiceContent}><Icon name={value ? "map" : "zap"} color={colors.accentText} /><View style={s.flex}><Text style={s.title}>{value ? t("Detailed entry", "Детален внес") : t("Simple entry", "Брз внес")}</Text><Note>{value ? kind === "zone" ? t("Zone, price and perimeter", "Зона, цена и периметар") : t("Zone, price, spaces and perimeter", "Зона, цена, места и периметар") : t("Just the zone and price", "Само зона и цена")}</Note></View><Icon name="chevron-right" size={18} /></View>
+        <View pointerEvents="none" style={s.choiceContent}><Icon name={value ? "map" : "zap"} color={colors.accentText} /><View style={s.flex}><Text style={s.title}>{value ? t("Detailed entry", "Детален внес") : t("Simple entry", "Брз внес")}</Text><Note>{value ? kind === "zone" ? t("Zone, price, paying hours and perimeter", "Зона, цена, часови на наплата и периметар") : t("Zone, price, paying hours, spaces and perimeter", "Зона, цена, часови на наплата, места и периметар") : t("Just the zone and price", "Само зона и цена")}</Note></View><Icon name="chevron-right" size={18} /></View>
       </Pressable>)}
     </> : step === "done" ? <>
       <Icon name={busy ? "clock" : failed ? "alert-circle" : "check-circle"} color={colors.accentText} size={30} />
       <Text style={s.title}>{busy ? t("Saving…", "Се зачувува…") : failed ? t("One detail still needs saving", "Уште еден детал треба да се зачува") : t("Details saved", "Деталите се зачувани")}</Text>
-      <Button title={t("Done", "Готово")} disabled={busy || Boolean(failed)} onPress={() => void finish()} />
     </> : <>
-      <Text style={s.progress}>{t("Step", "Чекор")} {index} / {initialStep === "spaces" ? kind === "zone" ? 1 : 2 : detailed ? kind === "zone" ? 3 : 4 : 2}</Text>
+      <Text style={s.progress}>{t("Step", "Чекор")} {index} / {ordered.length}</Text>
       {step === "zone" ? <><Text style={s.title}>{t("What is the zone label?", "Која е ознаката на зоната?")}</Text>{field(t("Zone label", "Ознака на зона"), code, setCode, false, "B2, A0…")}</> : null}
-      {step === "price" ? <><Text style={s.title}>{t("How much does it cost?", "Колку чини?")}</Text><Button title={t("It's free", "Бесплатно е")} variant="secondary" disabled={busy || Boolean(failed)} onPress={() => { setFirst("0"); setNext("0"); void save({ type: "price", first: 0, next: 0 }, detailed ? kind === "zone" ? "perimeter" : "spaces" : "done"); }} /><View style={s.row}><View style={s.flex}>{field(t("MKD / first hour", "ден. / прв час"), first, setFirst, true, t("Required", "Задолжително"))}</View><View style={s.flex}>{field(t("Following hour", "Следен час"), next, setNext, true, first || t("Same as first hour", "Како првиот час"))}</View></View></> : null}
-      {step === "spaces" ? <><Text style={s.title}>{t("How many parking spaces?", "Колку паркинг места има?")}</Text><Note>{t("An estimate is fine.", "Може и процена.")}</Note>{field(t("Total parking spaces", "Вкупно паркинг места"), capacity, setCapacity, true, t("Required", "Задолжително"))}{field(t("Free right now", "Слободни сега"), freeSpaces, changeFreeSpaces, true, t("Required · 0 if full", "Задолжително · 0 ако е полн"))}</> : null}
-      {step === "perimeter" ? <><Text style={s.title}>{t("Mark the parking perimeter", "Означете го периметарот")}</Text><Button icon="map" title={currentGeometry ? t("Edit perimeter", "Промени периметар") : t("Draw on map", "Означи на мапата")} disabled={busy || Boolean(failed) || !onDrawBoundary} variant="secondary" onPress={() => { Keyboard.dismiss(); onDrawBoundary?.(currentGeometry); }} /><Button title={t("Done", "Готово")} disabled={busy || Boolean(failed)} onPress={() => void finish()} /></> : <View style={s.row}>
-        {step === "zone" ? <Button style={s.flex} title={t("Skip", "Прескокни")} variant="secondary" disabled={busy || Boolean(failed)} onPress={() => advance(true)} /> : null}<Button style={s.flex} title={t("Next", "Следно")} disabled={busy || Boolean(failed)} onPress={() => advance()} />
-      </View>}
+      {step === "price" ? <><Text style={s.title}>{t("How much does it cost?", "Колку чини?")}</Text><Button title={t("It's free", "Бесплатно е")} variant="secondary" disabled={busy || Boolean(failed)} onPress={() => { setFirst("0"); setNext("0"); void save({ type: "price", first: 0, next: 0 }, detailed ? "schedule" : "done"); }} /><View style={s.row}><View style={s.flex}>{field(t("MKD / first hour", "ден. / прв час"), first, setFirst, true, t("Required", "Задолжително"))}</View><View style={s.flex}>{field(t("Following hour", "Следен час"), next, setNext, true, first || t("Same as first hour", "Како првиот час"))}</View></View></> : null}
+      {step === "schedule" ? <PaymentScheduleFields value={schedule} onChange={setSchedule} disabled={busy || Boolean(failed)} /> : null}
+      {step === "spaces" ? <><Text style={s.title}>{t("How many parking spaces?", "Колку паркинг места има?")}</Text><Note>{t("An estimate is fine.", "Може и процена.")}</Note>{field(t("Total parking spaces", "Вкупно паркинг места"), capacity, setCapacity, true, t("Required", "Задолжително"))}</> : null}
+      {step === "perimeter" ? <><Text style={s.title}>{t("Mark the parking perimeter", "Означете го периметарот")}</Text><Button icon="map" title={currentGeometry ? t("Edit perimeter", "Промени периметар") : t("Draw on map", "Означи на мапата")} disabled={busy || Boolean(failed) || !onDrawBoundary} variant="secondary" onPress={() => { Keyboard.dismiss(); onDrawBoundary?.(currentGeometry); }} /></> : null}
+      {step === "zone" ? <Button title={t("Skip", "Прескокни")} variant="secondary" disabled={busy || Boolean(failed)} onPress={() => advance(true)} /> : null}
     </>}
     {busy ? <Note>{t("Saving this step…", "Се зачувува чекорот…")}</Note> : saved && step !== "done" ? <Note>{t("Completed steps saved", "Завршените чекори се зачувани")}</Note> : null}
     {message ? <Note>{message}</Note> : null}
-    {failed ? <><Note>{t("Retry to save this step. Earlier completed steps are kept.", "Повторете го зачувувањето. Претходно завршените чекори се задржани.")}</Note><Button title={t("Retry saving", "Повтори зачувување")} disabled={busy} onPress={() => void save(failed)} /></> : null}
+    {failed ? <Note>{t("Retry to save this step. Earlier completed steps are kept.", "Повторете го зачувувањето. Претходно завршените чекори се задржани.")}</Note> : null}
+    {!footerRegistered && action ? <View style={s.row}>
+      <Button style={s.flex} title={t("Back", "Назад")} variant="secondary" disabled={busy} onPress={back} />
+      <Button style={s.flex} title={action.title} disabled={action.disabled} onPress={action.onPress} />
+    </View> : null}
   </View>;
 }
 const styles = (colors: ThemeColors) => StyleSheet.create({

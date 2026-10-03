@@ -15,6 +15,8 @@ import { TERMS_VERSION } from "../src/domain/account";
 import { PostgresParkingStore } from "./postgres/store";
 import { PostgresCommunityStore } from "./postgres/community";
 import { PostgresAccountStore } from "./postgres/accounts";
+import { SharedRequestBudget, sharedRateLimitStore } from "./postgres/rate-limits";
+import { usernameKey } from "../src/domain/account";
 const coordinate = z.object({
   latitude: z.number().min(41.91).max(42.08),
   longitude: z.number().min(21.3).max(21.58),
@@ -53,7 +55,9 @@ export async function buildApp(
     origins?: string[];
     signExtractor?: SignExtractor;
     requireOnboarding?: boolean;
-    trustedProxies?: string[];
+    trustedProxies?: string[] | ((address: string, hop: number) => boolean);
+    backgroundTask?: (task: Promise<void>) => void;
+    cronSecret?: string;
   } = {},
 ) {
   const app = Fastify({ logger: false, bodyLimit: 256 * 1024, requestTimeout: 15000, connectionTimeout: 15000, trustProxy: options.trustedProxies ?? false });
@@ -76,17 +80,22 @@ export async function buildApp(
     allowedHeaders: ["Content-Type", "Authorization", "X-Operator-Key"],
     methods: ["GET", "HEAD", "POST", "PUT", "DELETE"],
   });
-  await app.register(rateLimit, { max: 180, timeWindow: "1 minute" });
-  const requestBudget = new RequestBudget();
+  const sharedBudget = options.backgroundTask && store instanceof PostgresParkingStore
+    ? new SharedRequestBudget(store.db) : undefined;
+  await app.register(rateLimit, { max: 180, timeWindow: "1 minute",
+    ...(sharedBudget ? { store: sharedRateLimitStore(sharedBudget) } : {}) });
+  const requestBudget = sharedBudget ?? new RequestBudget();
   app.addHook("onRequest", async (request, reply) => {
     // These aggregate limits still apply when a route has a custom IP limit.
-    requestBudget.consume("process", "all", 3000, 60000);
-    requestBudget.consume("ip", request.ip, 300, 60000);
+    await requestBudget.consume("process", "all", 3000, 60000);
+    await requestBudget.consume("ip", request.ip, 300, 60000);
     reply.header("X-Content-Type-Options", "nosniff");
     if (request.headers.authorization || request.url.startsWith("/v1/auth/") || request.url === "/v1/sessions")
       reply.header("Cache-Control", "no-store");
   });
-  registerAccountRoutes(app, accounts);
+  registerAccountRoutes(app, accounts, sharedBudget ? {
+    consume: (username: string) => sharedBudget.consume("login", usernameKey(username), 8, 15 * 60000),
+  } : undefined);
   app.addHook("preHandler", async (request) => {
     if (!["POST", "PUT"].includes(request.method))
       return;
@@ -102,12 +111,12 @@ export async function buildApp(
       return;
     const auth = token(request.headers.authorization);
     const user = await store.session(auth);
-    requestBudget.consume("writes", user.id, 60, 60000);
+    await requestBudget.consume("writes", user.id, 60, 60000);
     const route = request.routeOptions.url;
     if (route === "/v1/places/:id/signs") {
-      requestBudget.consume("uploads-hour", user.id, 10, 3600000);
-      requestBudget.consume("uploads-day", user.id, 30, 86400000);
-    } else if (route === "/v1/contributions") requestBudget.consume("contributions", user.id, 20, 3600000);
+      await requestBudget.consume("uploads-hour", user.id, 10, 3600000);
+      await requestBudget.consume("uploads-day", user.id, 30, 86400000);
+    } else if (route === "/v1/contributions") await requestBudget.consume("contributions", user.id, 20, 3600000);
     if (options.requireOnboarding) {
       const profile = await accounts.profile(auth);
       if (!profile || profile.termsVersion !== TERMS_VERSION)
@@ -324,6 +333,10 @@ export async function buildApp(
   app.get<{ Params: { id: string } }>("/v1/places/:id/signs", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (request) =>
     community.photos(request.params.id, token(request.headers.authorization) || undefined),
   );
+  app.put<{Params:{id:string}}>("/v1/places/:id/payment-schedule", {config:{rateLimit:{max:20,timeWindow:"1 minute"}}}, async request => {
+    const value = z.object({ chargingHours: z.string().trim().max(500).nullable(), freeWeekends: z.enum(["both", "sunday", "neither"]).nullable() }).strict().parse(request.body);
+    return community.paymentSchedule(request.params.id, token(request.headers.authorization), value);
+  });
   app.put<{Params:{id:string}}>("/v1/places/:id/capacity", {config:{rateLimit:{max:20,timeWindow:"1 minute"}}}, async request => {
     const {capacity} = z.object({capacity:z.number().int().min(0).max(100000)}).parse(request.body);
     const auth = token(request.headers.authorization);
@@ -336,7 +349,7 @@ export async function buildApp(
   }, async request => {
     const auth = token(request.headers.authorization);
     const details = signSchema.refine(info => Boolean(info.zoneCode?.trim() || info.firstHour !== null || info.nextHour !== null ||
-      info.chargingHours?.trim() || info.paymentInstructions?.trim() || info.restrictions?.trim() || info.rawText.trim().length >= 3),
+      info.freeWeekends || info.chargingHours?.trim() || info.paymentInstructions?.trim() || info.restrictions?.trim() || info.rawText.trim().length >= 3),
     "Add at least one detail from the sign.").parse(request.body);
     const photo = await community.confirmSign(request.params.id, auth, details);
     await accounts.award(auth, `sign:${photo.placeId}`, "sign");
@@ -360,7 +373,7 @@ export async function buildApp(
         token(request.headers.authorization),
         input,
       );
-      worker?.wake();
+      if (!options.backgroundTask) worker?.wake();
       return reply.code(201).send(result);
     },
   );
@@ -489,7 +502,20 @@ export async function buildApp(
       return store.moderate(request.params.id);
     },
   );
-  app.addHook("onReady", async () => worker?.start());
+  if (options.backgroundTask) {
+    // A function can suspend immediately after responding. Register the job
+    // promise with its request lifecycle instead of relying on resident timers.
+    app.addHook("onResponse", async () => {
+      if (worker) options.backgroundTask!(worker.wake(2));
+    });
+    app.get("/internal/sign-jobs", async (request, reply) => {
+      if (!secretMatches(token(request.headers.authorization), options.cronSecret))
+        return reply.code(401).send({ error: "Worker credentials required." });
+      await sharedBudget?.prune();
+      await worker?.wake(2);
+      return { status: "ok" };
+    });
+  } else app.addHook("onReady", async () => worker?.start());
   app.addHook("onClose", async () => {
     await worker?.stop();
     await store.close();

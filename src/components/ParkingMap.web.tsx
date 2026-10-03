@@ -1,3 +1,4 @@
+import { translate } from "../domain/language";
 import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "./leaflet.css";
@@ -186,8 +187,8 @@ export default function ParkingMap(props: ParkingMapProps) {
       });
       const title = cluster
         ? members.length +
-          (props.language === "mk" ? " паркинг локации" : " parking places")
-        : props.language === "en"
+          (translate(props.language, " parking places", " паркинг локации"))
+        : props.language !== "mk"
           ? (place.nameEn ?? place.name)
           : place.name;
       L.marker([place.coordinate.latitude, place.coordinate.longitude], {
@@ -221,7 +222,7 @@ export default function ParkingMap(props: ParkingMapProps) {
       const title = document.createElement("span");
       title.textContent =
         props.destinationName ??
-        (props.language === "mk" ? "Дестинација" : "Destination");
+        (translate(props.language, "Destination", "Дестинација"));
       L.marker([markerPoint.latitude, markerPoint.longitude], {
         icon: L.divIcon({
           className: "destination-pin",
@@ -315,7 +316,7 @@ export default function ParkingMap(props: ParkingMapProps) {
         autoPan: true,
         zIndexOffset: 3000,
         title:
-          (callbacks.current.language === "mk" ? "Агол " : "Corner ") +
+          (translate(callbacks.current.language, "Corner ", "Агол ")) +
           (index + 1),
         icon: L.divIcon({
           className: "zone-vertex",
@@ -392,9 +393,7 @@ export default function ParkingMap(props: ParkingMapProps) {
       ref={host}
       className={props.dark ? "parking-map-dark" : ""}
       aria-label={
-        props.language === "mk"
-          ? "Мапа на паркинзи во Скопје"
-          : "Skopje parking map"
+        translate(props.language, "Skopje parking map", "Мапа на паркинзи во Скопје")
       }
       style={{
         width: "100%",

@@ -1,4 +1,5 @@
 import test from "node:test";
+import { translate } from "../src/domain/language";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import ts from "typescript";
@@ -28,6 +29,7 @@ test("web camera transitions run once per intent, hide moving projections, cance
   const exports: { default?: (props: ParkingMapProps) => { props: { ref: { current: object | null } } } } = {};
   const source = ts.transpileModule(readFileSync("src/components/ParkingMap.web.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
   vm.runInNewContext(source, { exports, process: { env: {} }, window: { matchMedia: () => motion }, ResizeObserver: class { observe() {} disconnect() {} }, require(name: string) {
+    if (name === "../domain/language") return { translate };
     if (name === "react") return { ...react, default: react, __esModule: true };
     if (name === "leaflet") return { __esModule: true, default: { map: () => map, tileLayer: layer, layerGroup: layer, polyline: layer, polygon: layer } };
     if (name.endsWith(".css")) return {};

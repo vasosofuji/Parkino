@@ -33,7 +33,7 @@ export default function ParkingRow({
   }[available.status];
   const handlePress = useCallback(() => onPress(place), [onPress, place]);
   const displayCost = cost;
-  const name = language === "en" ? (place.nameEn ?? place.name) : place.name;
+  const name = language !== "mk" ? (place.nameEn ?? place.name) : place.name;
   return (
     <Pressable
       accessibilityRole="button"

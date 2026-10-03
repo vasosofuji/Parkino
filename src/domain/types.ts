@@ -29,7 +29,9 @@ export type Availability = {
   reports: number;
   freeSpaces?: number;
 };
+export type PaymentSchedule = { chargingHours: string | null; freeWeekends: "both" | "sunday" | "neither" | null };
 export type ParkingPlace = {
+  paymentSchedule?: PaymentSchedule;
   id: string;
   name: string;
   nameEn?: string;
@@ -59,6 +61,7 @@ export type ParkingPlace = {
   contributionAccent?: Exclude<ContributionAccent, "default">;
 };
 export type SignInfo = {
+  freeWeekends?: PaymentSchedule["freeWeekends"];
   isParkingSign: boolean;
   confidence: number;
   zoneCode: string | null;

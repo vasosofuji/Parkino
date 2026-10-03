@@ -13,7 +13,7 @@ import type { Catalog, Proposal } from "../domain/types";
 import { api } from "../services/api";
 import { confirmedSignCatalog } from "../domain/parking";
 import { createRefreshCoordinator } from "../domain/refresh-coordinator";
-type Language = "mk" | "en";
+import { isLanguage, translate as translateText, type Language } from "../domain/language";
 type State = {
   catalog: Catalog;
   proposals: Proposal[];
@@ -72,7 +72,7 @@ export function ParkingProvider({ children }: { children: React.ReactNode }) {
             setProposals(value.proposals ?? []);
           }
         }
-        if (locale === "en" || locale === "mk") updateLanguage(locale);
+        if (isLanguage(locale)) updateLanguage(locale);
       } catch {
         /* The bundled source catalog remains available. */
       }
@@ -94,10 +94,10 @@ export function ParkingProvider({ children }: { children: React.ReactNode }) {
   }, [requestRefresh]);
   const setLanguage = useCallback((lang: Language) => {
     updateLanguage(lang);
-    void AsyncStorage.setItem("parkskopje-language", lang);
+    void AsyncStorage.setItem("parkskopje-language", lang).catch(() => {});
   }, []);
   const translate = useCallback(
-    (en: string, mk: string) => (language === "mk" ? mk : en),
+    (en: string, mk: string) => translateText(language, en, mk),
     [language],
   );
   const value = useMemo<State>(

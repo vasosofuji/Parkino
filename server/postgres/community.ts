@@ -5,6 +5,7 @@ import type {
   Contribution,
   Geometry,
   ParkingPlace,
+  PaymentSchedule,
   PhotoUpload,
   SignInfo,
   SignPhoto,
@@ -108,6 +109,12 @@ export class PostgresCommunityStore {
       )
       .run(id, JSON.stringify(geometry), Date.now());
     return { saved: true };
+  }
+  async paymentSchedule(id: string, token: string, value: PaymentSchedule) {
+    const user = await this.store.session(token);
+    await this.store.place(id);
+    await this.store.db.prepare("INSERT INTO payment_schedules(place_id,session_id,details,updated) VALUES (?,?,?,?) ON CONFLICT(place_id,session_id) DO UPDATE SET details=excluded.details,updated=excluded.updated").run(id,user.id,JSON.stringify(value),Date.now());
+    return { ok: true };
   }
   async capacity(id: string, token: string, capacity: number) {
     const user = await this.store.session(token);
@@ -236,7 +243,10 @@ export class PostgresCommunityStore {
     const capacities = (await this.store.db.prepare("SELECT place_id,capacity FROM capacity_reports ORDER BY updated DESC,session_id DESC").all()) as {place_id:string;capacity:number}[];
     const latest = new Map<string,number>();
     for (const row of capacities) if (!latest.has(row.place_id)) latest.set(row.place_id,row.capacity);
-    return enrichSigns(places.map(place => ({...place,capacity:latest.get(place.id) ?? place.capacity,contributionAccent:accents.get(place.id)})), boundaries, labels, photos);
+    const schedules = (await this.store.db.prepare("SELECT place_id,details FROM payment_schedules ORDER BY updated DESC,session_id DESC").all()) as {place_id:string;details:string}[];
+    const payments = new Map<string, PaymentSchedule>();
+    for (const row of schedules) if (!payments.has(row.place_id)) payments.set(row.place_id, JSON.parse(row.details));
+    return enrichSigns(places.map(place => ({...place,paymentSchedule:payments.get(place.id) ?? place.paymentSchedule,capacity:latest.get(place.id) ?? place.capacity,contributionAccent:accents.get(place.id)})), boundaries, labels, photos);
   }
   async claim() {
     const now = Date.now();

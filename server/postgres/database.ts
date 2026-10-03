@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { readFileSync } from "node:fs";
-import { Pool, type PoolClient, types } from "pg";
+import { Pool, type PoolClient, type QueryResult, types } from "pg";
+import { attachDatabasePool } from "@vercel/functions";
 
 // Millisecond timestamps and counters are within JavaScript's safe integer range.
 types.setTypeParser(20, (value) => {
@@ -35,14 +36,16 @@ export class PgDatabase {
   readonly pool: Pool;
   private local = new AsyncLocalStorage<PoolClient>();
   private initialized = new WeakSet<PoolClient>();
-  constructor(url: string) {
+  private transactionPool: boolean;
+  constructor(url: string, poolMode = process.env.DATABASE_POOL_MODE ?? "session") {
+    this.transactionPool = poolMode === "transaction";
     const connection = new URL(url);
     // Keep TLS verification enabled; do not let URL sslmode silently override it.
     for (const key of ["sslmode", "sslcert", "sslkey", "sslrootcert"])
       connection.searchParams.delete(key);
     this.pool = new Pool({
       connectionString: connection.toString(),
-      max: 8,
+      max: process.env.VERCEL ? 3 : 8,
       statement_timeout: 10000,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
@@ -53,6 +56,7 @@ export class PgDatabase {
           : {}),
       },
     });
+    if (process.env.VERCEL) attachDatabasePool(this.pool);
     // pg emits idle connection failures outside a query promise. Without a
     // listener, a transient pooler/network outage terminates the Node process.
     this.pool.on("error", () => {
@@ -66,9 +70,12 @@ export class PgDatabase {
     await client.query("SET search_path TO parkskopje");
     this.initialized.add(client);
   }
-  async query(sql: string, values: unknown[] = []) {
+  async query(sql: string, values: unknown[] = []): Promise<QueryResult> {
     const current = this.local.getStore();
     if (current) return current.query(postgresSql(sql), values);
+    // Transaction poolers can change the underlying server session between
+    // queries. SET LOCAL must run inside the same transaction as the query.
+    if (this.transactionPool) return this.transaction(() => this.query(sql, values));
     const client = await this.pool.connect();
     try {
       await this.initialize(client);
@@ -94,9 +101,10 @@ export class PgDatabase {
     const client = await this.pool.connect();
     let begun = false;
     try {
-      await this.initialize(client);
+      if (!this.transactionPool) await this.initialize(client);
       await client.query("BEGIN");
       begun = true;
+      if (this.transactionPool) await client.query("SET LOCAL search_path TO parkskopje");
       const result = await this.local.run(client, work);
       await client.query("COMMIT");
       return result;

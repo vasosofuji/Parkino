@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { LANGUAGES, translate, type Language } from "../src/domain/language";
 
 type Element = { type: unknown; props: Record<string, unknown>; children: unknown[] };
 type Component = (props: Record<string, unknown>) => Element;
@@ -65,10 +66,25 @@ function settings(guest = false) {
     if (name === "react-native") return { Pressable: "Pressable", Text: "Text", View: "View", StyleSheet: { create: (value: unknown) => value } };
     if (name === "expo-router") return { router: { push(path: string) { routeEvents.push(path); } } };
     if (name === "../state/ThemeContext") return { useTheme: () => ({ colors: palette, mode, setMode(value: string) { preferenceCalls.push(["theme", value]); mode = value; } }) };
-    if (name === "../state/ParkingContext") return { useParking: () => ({ language, t: (en: string, mk: string) => language === "mk" ? mk : en, setLanguage(value: string) { preferenceCalls.push(["language", value]); language = value; } }) };
+    if (name === "../state/ParkingContext") return { useParking: () => ({ language, t: (en: string, mk: string) => translate(language as Language, en, mk), setLanguage(value: string) { preferenceCalls.push(["language", value]); language = value; } }) };
     if (name === "../state/AccountContext") return { useAccount: () => ({ profile: { id: "profile-one", username: "driver", points: 125, guest, secured: true }, refresh }) };
     if (name === "./ui") return { Button: "Button", Icon: "Icon", Sheet: "Sheet" };
     if (name === "./BackgroundArrivalSettings") return { __esModule: true, default: "BackgroundArrivalSettings" };
+    if (name === "../domain/language") return { LANGUAGES };
+    if (name === "./LanguagePicker") {
+      const picker = { default: undefined as unknown as Component };
+      vm.runInNewContext(transpile("src/components/LanguagePicker.tsx"), { exports: picker, require(dependency: string) {
+        if (dependency === "react") return { ...runtime.react, default: runtime.react, __esModule: true };
+        if (dependency === "react-native") return { Pressable: "Pressable", Image: "Image", Text: "Text", View: "View" };
+        if (dependency === "../domain/language") return { LANGUAGES };
+        if (dependency === "../state/ParkingContext") return { useParking: () => ({ language, t: (en: string, mk: string) => translate(language as Language, en, mk), setLanguage(value: string) { preferenceCalls.push(["language", value]); language = value; } }) };
+        if (dependency === "../state/ThemeContext") return { useTheme: () => ({ colors: palette }) };
+        if (dependency === "./ui") return { Icon: "Icon" };
+        if (dependency.endsWith(".png")) return dependency;
+        throw new Error(`Unexpected picker dependency: ${dependency}`);
+      } });
+      return { __esModule: true, default: picker.default };
+    }
     if (name === "../domain/navigation") return { NAVIGATION_APPS: ["default", "google", "waze"] };
     if (name === "../services/navigation") return { useNavigationPreference: () => navigation, setNavigationPreference: (value: string) => { preferenceCalls.push(["navigation", value]); return new Promise<void>((resolve, reject) => navigationWrites.push({ value, resolve() { navigation = value; resolve(); }, reject() { reject(new Error("storage unavailable")); } })); } };
     throw new Error(`Unexpected settings dependency: ${name}`);
@@ -132,6 +148,20 @@ test("appearance and language choices call existing setters and expose the selec
   view.tap(tree, "Македонски"); tree = view.render(); assert.equal(tree.props.title, "Јазик");
   assert.equal((view.actionable(tree, "Македонски").props.accessibilityState as { checked: boolean }).checked, true);
   assert.deepEqual(view.preferenceCalls, [["theme", "dark"], ["language", "mk"]]);
+});
+
+test("Turkish and Albanian choices translate settings and retain the correct language summary", () => {
+  const view = settings();
+  for (const [name, code, title] of [["Türkçe", "tr", "Dil"], ["Shqip", "sq", "Gjuha"]] as const) {
+    let tree = view.render();
+    view.tap(tree, translate(code === "tr" ? "en" : "tr", "Language", "Јазик"));
+    tree = view.render(); view.tap(tree, name); tree = view.render();
+    assert.equal(tree.props.title, title);
+    assert.equal((view.actionable(tree, name).props.accessibilityState as { checked: boolean }).checked, true);
+    invoke(tree, "onBack"); tree = view.render();
+    assert.ok(view.actionable(tree, title).props.accessibilityLabel?.toString().includes(name));
+  }
+  assert.deepEqual(view.preferenceCalls, [["language", "tr"], ["language", "sq"]]);
 });
 
 test("navigation waits for persistence, locks choices while saving and keeps a failed choice retryable", async () => {

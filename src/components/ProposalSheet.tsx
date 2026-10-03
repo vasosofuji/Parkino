@@ -5,6 +5,7 @@ import { Button, Icon, Note, Sheet } from "./ui";
 import PhotoPicker from "./PhotoPicker";
 import SignReviewSheet from "./SignReviewSheet";
 import ManualParkingWizard from "./ManualParkingWizard";
+import StepActions from "./StepActions";
 import { type ChosenPhoto } from "../services/photos";
 import type { Coordinate, Geometry, ParkingKind, ParkingPlace, SignPhoto } from "../domain/types";
 import { useParking } from "../state/ParkingContext";
@@ -63,7 +64,8 @@ export default function ProposalSheet({ coordinate, geometry, visible = true, on
       onShow={() => { sourcePresented.current = true; }}
       onDismiss={() => { sourcePresented.current = false; if (review && !afterSign) setReviewShown(true); }}
       onClose={() => { if (!photoBusy && !busy) finish(); }}
-      onBack={!afterSign && mode ? () => setMode(null) : undefined} backDisabled={photoBusy || busy}>
+      onBack={!afterSign && mode ? () => setMode(null) : undefined} backDisabled={photoBusy || busy}
+      footer={mode === "photo" && !afterSign ? <StepActions onBack={() => setMode(null)} backDisabled={busy || photoBusy} title={busy ? t("Saving…", "Се зачувува…") : t("Read sign & review", "Прочитај и провери табла")} disabled={!photo || busy || photoBusy} onContinue={() => void submitPhoto()} /> : undefined}>
       {afterSign === "offer" ? <>
         <Text style={s.title}>{t("Add a little more?", "Да додадеме уште нешто?")}</Text>
         <Note>{t("The sign details are saved. Spaces and the perimeter are optional.", "Податоците од таблата се зачувани. Местата и периметарот се по избор.")}</Note>
@@ -75,7 +77,6 @@ export default function ProposalSheet({ coordinate, geometry, visible = true, on
         {choice("manual", t("Enter manually", "Внеси рачно"), t("Simple or detailed, one step at a time", "Брзо или детално, чекор по чекор"), "edit-2")}
       </> : mode === "manual" ? <ManualParkingWizard place={followupPlace ?? undefined} existingPlaceId={savedId ?? undefined} coordinate={followupPlace?.coordinate ?? coordinate} geometry={followupPlace?.geometry} returnedGeometry={geometry} initialZone={initial?.zoneCode} kind={followupPlace?.kind ?? initial?.kind} onDrawBoundary={onDrawBoundary} onSaved={saved} onDone={finish} onBack={() => setMode(null)} /> : <>
         <PhotoPicker value={photo} onChange={setPhoto} disabled={busy} onBusyChange={setPhotoBusy} onCancel={() => setMode(null)} />
-        {photo ? <Button title={busy ? t("Saving…", "Се зачувува…") : t("Read sign & review", "Прочитај и провери табла")} disabled={busy || photoBusy} onPress={() => void submitPhoto()} /> : null}
         {message ? <Note>{message}</Note> : null}
       </>}
     </Sheet>

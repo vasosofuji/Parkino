@@ -1,4 +1,4 @@
-export const PUBLIC_API_URL = "https://parkino-api.onrender.com";
+export const PUBLIC_API_URL = "https://parkino-api-vaso.vercel.app";
 
 export function apiEndpoint(options: {
   configured?: string;

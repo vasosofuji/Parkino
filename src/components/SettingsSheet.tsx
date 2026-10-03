@@ -8,6 +8,8 @@ import { Button, Icon, Sheet, type IconName } from "./ui";
 import BackgroundArrivalSettings from "./BackgroundArrivalSettings";
 import { setNavigationPreference, useNavigationPreference } from "../services/navigation";
 import { NAVIGATION_APPS, type NavigationApp } from "../domain/navigation";
+import { LANGUAGES } from "../domain/language";
+import LanguagePicker from "./LanguagePicker";
 
 type Section = "appearance" | "language" | "navigation" | "location" | "reminders";
 function SettingsCard({ title, children }: { title?: string; children: React.ReactNode }) {
@@ -42,7 +44,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
   onPermissions: () => void;
 }) {
   const { colors, mode, setMode } = useTheme();
-  const { t, language, setLanguage } = useParking();
+  const { t, language } = useParking();
   const { profile, refresh } = useAccount();
   const [section, setSection] = useState<Section | null>(null);
   const navigationApp = useNavigationPreference();
@@ -89,7 +91,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
       </SettingsCard>
       <SettingsCard title={t("General", "Општо")}>
         <SettingsRow title={titles.appearance} value={themeName} icon="sun" onPress={() => setSection("appearance")} />
-        <SettingsRow title={titles.language} value={language === "en" ? "English" : "Македонски"} icon="globe" onPress={() => setSection("language")} />
+        <SettingsRow title={titles.language} value={LANGUAGES.find(({ code }) => code === language)?.name} icon="globe" onPress={() => setSection("language")} />
         <SettingsRow title={titles.navigation} value={navigationNames[navigationApp]} icon="navigation" onPress={() => setSection("navigation")} />
         <SettingsRow title={titles.location} icon="map-pin" last onPress={() => setSection("location")} />
       </SettingsCard>
@@ -106,9 +108,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
     {section === "appearance" ? <SettingsCard>
       {(["light", "dark", "system"] as const).map((value, index) => <SettingsRow key={value} title={value === "light" ? t("Light", "Светло") : value === "dark" ? t("Dark", "Темно") : t("Use phone setting", "Како на телефонот")} icon={value === "light" ? "sun" : value === "dark" ? "moon" : "smartphone"} selected={mode === value} last={index === 2} onPress={() => setMode(value)} />)}
     </SettingsCard> : null}
-    {section === "language" ? <SettingsCard>
-      {(["en", "mk"] as const).map((value, index) => <SettingsRow key={value} title={value === "en" ? "English" : "Македонски"} icon="globe" selected={language === value} last={index === 1} onPress={() => setLanguage(value)} />)}
-    </SettingsCard> : null}
+    {section === "language" ? <LanguagePicker /> : null}
     {section === "navigation" ? <View style={{ gap: 16 }}>
       <SettingsCard>{NAVIGATION_APPS.map((value, index) => <SettingsRow key={value} title={navigationNames[value]} icon="navigation" selected={navigationApp === value} last={index === NAVIGATION_APPS.length - 1} disabled={savingNavigation} onPress={() => void chooseNavigation(value)} />)}</SettingsCard>
       <Text style={{ paddingHorizontal: 5, color: colors.muted, fontSize: 13, lineHeight: 20 }}>{t("Used when you tap Go on a parking pin. If the app is unavailable, directions open in your browser.", "Се користи кога ќе притиснете Оди на паркинг. Ако апликацијата не е достапна, насоките се отвораат во прелистувачот.")}</Text>

@@ -31,7 +31,7 @@ test("an idle PostgreSQL connection failure does not crash the API or expose cre
 });
 
 test("PostgreSQL pool initializes the private schema and keeps a transaction on one connection", async (t) => {
-  const db = new PgDatabase("postgresql://test:test@localhost:5432/test");
+  const db = new PgDatabase("postgresql://test:test@localhost:5432/test", "session");
   const queries: { sql: string; values?: unknown[] }[] = [];
   let releases = 0;
   const client = {
@@ -330,7 +330,7 @@ for (const backend of ["sqlite", "postgres"] as const) {
         const all = await app.inject("/v1/catalog");
         assert.equal(all.statusCode, 200, all.body);
         assert.ok(
-          db.count <= 11, // Includes one bulk original-contributor cosmetics lookup.
+          db.count <= 12, // Includes bulk contributor cosmetics and payment schedule lookups.
           `catalog should use bulk queries, used ${db.count}`,
         );
         assert.ok(all.json().places.length >= realCatalog.places.length);

@@ -1,3 +1,4 @@
+import { translate } from "../domain/language";
 import React, { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, StyleSheet, View, Text } from "react-native";
 import MapView, {
@@ -231,7 +232,7 @@ export default function ParkingMap(props: ParkingMapProps) {
                   : 0
             }
             accessibilityLabel={
-              props.language === "en"
+              props.language !== "mk"
                 ? (place.nameEn ?? place.name)
                 : place.name
             }
@@ -292,7 +293,7 @@ export default function ParkingMap(props: ParkingMapProps) {
           anchor={{ x: 0.5, y: 0.5 }}
           draggable={props.drawing}
           zIndex={3000}
-          title={(props.language === "mk" ? "Агол " : "Corner ") + (i + 1)}
+          title={(translate(props.language, "Corner ", "Агол ")) + (i + 1)}
           onDragEnd={(event) =>
             props.onMoveVertex?.(i, event.nativeEvent.coordinate)
           }
@@ -317,13 +318,13 @@ export default function ParkingMap(props: ParkingMapProps) {
           zIndex={2000}
           title={
             props.destinationName ??
-            (props.language === "mk" ? "Дестинација" : "Destination")
+            (translate(props.language, "Destination", "Дестинација"))
           }
         >
           <View style={s.destination}>
             <Text numberOfLines={1} style={s.destinationText}>
               {props.destinationName ??
-                (props.language === "mk" ? "Дестинација" : "Destination")}
+                (translate(props.language, "Destination", "Дестинација"))}
             </Text>
             <View style={s.destinationDot} />
             <View style={s.destinationTip} />

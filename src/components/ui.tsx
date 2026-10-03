@@ -18,6 +18,19 @@ import { useTheme, lightColors, type ThemeColors } from "../state/ThemeContext";
 import ModalBackdrop from "./ModalBackdrop";
 type HeaderBackAction = { onPress: () => void; label: string; disabled?: boolean };
 const SheetBackContext = createContext<((action: HeaderBackAction | null) => void) | null>(null);
+type ContinueAction = { onPress: () => void; title: string; disabled?: boolean };
+const SheetContinueContext = createContext<((action: ContinueAction | null) => void) | null>(null);
+/** Keep step actions outside the scrolling form, including above the keyboard. */
+export function useSheetContinue(action: ContinueAction | null) {
+  const register = useContext(SheetContinueContext), current = useRef(action);
+  useLayoutEffect(() => { current.current = action; });
+  const active = Boolean(action), title = action?.title, disabled = action?.disabled;
+  useLayoutEffect(() => {
+    register?.(active ? { onPress: () => current.current?.onPress(), title: title!, disabled } : null);
+    return () => register?.(null);
+  }, [register, active, title, disabled]);
+  return Boolean(register);
+}
 /** Register the active form's Back action without moving it into the scrollable body. */
 export function useSheetBack(action: HeaderBackAction) {
   const register = useContext(SheetBackContext), current = useRef(action);
@@ -164,9 +177,11 @@ export function Sheet({
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const [registeredBack, registerBack] = useState<HeaderBackAction | null>(null);
+  const [registeredContinue, registerContinue] = useState<ContinueAction | null>(null);
   const back = registeredBack ?? (onBack ? { onPress: onBack, label: backLabel, disabled: backDisabled } : null);
   return (
     <SheetBackContext.Provider value={registerBack}>
+    <SheetContinueContext.Provider value={registerContinue}>
     <Modal
       visible={visible}
       transparent
@@ -210,7 +225,7 @@ export function Sheet({
             <Text accessibilityRole="header" style={[s.sheetTitle, fullPage && { textAlign: "center" }]}>
               {title}
             </Text>
-            {!fullPage && back ? <IconButton name="arrow-left" compact label={back.label} disabled={back.disabled} onPress={back.onPress} /> : null}
+            {!fullPage && back && !registeredContinue ? <IconButton name="arrow-left" compact label={back.label} disabled={back.disabled} onPress={back.onPress} /> : null}
             <View style={fullPage ? { width: 44, alignItems: "center" } : undefined}><IconButton name="x" label="Close / Затвори" onPress={onClose} /></View>
           </View>
           <ScrollView
@@ -223,10 +238,14 @@ export function Sheet({
           >
             {children}
           </ScrollView>
-          {footer ? <View style={s.sheetFooter}>{footer}</View> : null}
+          {registeredContinue ? <View style={[s.sheetFooter, { flexDirection: "row", gap: 12 }]}>
+            {back ? <Button style={{ flex: 1, minHeight: 52 }} title={back.label} variant="secondary" disabled={back.disabled} onPress={back.onPress} /> : null}
+            <Button style={{ flex: 1.6, minHeight: 52 }} title={registeredContinue.title} disabled={registeredContinue.disabled} onPress={registeredContinue.onPress} />
+          </View> : footer ? <View style={s.sheetFooter}>{footer}</View> : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
+    </SheetContinueContext.Provider>
     </SheetBackContext.Provider>
   );
 }

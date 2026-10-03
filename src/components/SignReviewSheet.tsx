@@ -7,6 +7,8 @@ import { useParking } from "../state/ParkingContext";
 import { useTheme } from "../state/ThemeContext";
 import { Button, Note, Sheet } from "./ui";
 import DigitalParkingSign from "./DigitalParkingSign";
+import PaymentScheduleFields from "./PaymentScheduleFields";
+import StepActions from "./StepActions";
 
 type Fields = { zoneCode: string; operator: string; currency: string; firstHour: string; nextHour: string; maxStayMinutes: string; chargingHours: string; paymentInstructions: string; restrictions: string; rawText: string };
 const fieldsFrom = (info: SignInfo | null): Fields => ({
@@ -25,6 +27,7 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
   const { t, refresh } = useParking(), { colors } = useTheme();
   const [photo, setPhoto] = useState(initialPhoto);
   const [editing, setEditing] = useState(false), [fields, setFields] = useState(() => fieldsFrom(initialPhoto.info));
+  const [freeWeekends, setFreeWeekends] = useState<SignInfo["freeWeekends"]>(initialPhoto.info?.freeWeekends ?? null);
   const [correctedInfo, setCorrectedInfo] = useState<SignInfo | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   useEffect(() => {
@@ -49,7 +52,7 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
   }, [initialPhoto.id, initialPhoto.placeId, initialPhoto.status, t]);
   const reading = ["queued", "processing"].includes(photo.status);
   const previewInfo = correctedInfo ?? photo.info;
-  function edit() { setFields(fieldsFrom(previewInfo)); setEditing(true); setError(""); }
+  function edit() { setFreeWeekends(previewInfo?.freeWeekends ?? null); setFields(fieldsFrom(previewInfo)); setEditing(true); setError(""); }
   async function confirm() {
     let info = previewInfo;
     if (editing) {
@@ -63,10 +66,10 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
         isParkingSign: true, confidence: photo.info?.confidence ?? 1,
         zoneCode: fields.zoneCode.trim() || null, operator: fields.operator.trim() || null, currency: fields.currency.trim().toUpperCase() || null,
         firstHour: first, nextHour: next, maxStayMinutes: max,
-        chargingHours: fields.chargingHours.trim() || null, paymentInstructions: fields.paymentInstructions.trim() || null,
+        freeWeekends, chargingHours: fields.chargingHours.trim() || null, paymentInstructions: fields.paymentInstructions.trim() || null,
         restrictions: fields.restrictions.trim() || null, rawText: fields.rawText.trim(),
       };
-      if (!info.zoneCode && info.firstHour === null && info.nextHour === null && !info.chargingHours && !info.paymentInstructions && !info.restrictions && info.rawText.length < 3) {
+      if (!info.zoneCode && info.firstHour === null && info.nextHour === null && !info.freeWeekends && !info.chargingHours && !info.paymentInstructions && !info.restrictions && info.rawText.length < 3) {
         setError(t("Add at least one detail from the sign.", "Додајте барем еден податок од таблата.")); return;
       }
       setCorrectedInfo(info);
@@ -91,7 +94,7 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
   );
   return (
     <Sheet visible={visible} onDismiss={onDismiss} title={t("Is this sign correct?", "Дали таблата е точна?")} onClose={() => { if (!busy) onClose(); }}
-      footer={editing || previewInfo ? <Button title={busy ? t("Confirming…", "Се потврдува…") : editing ? t("Preview corrected sign", "Прегледај поправена табла") : t("Yes, this is correct", "Да, точно е")} disabled={busy || (!editing && !previewInfo?.isParkingSign)} onPress={() => void confirm()} /> : undefined}>
+      footer={editing || previewInfo ? <StepActions onBack={() => { if (editing && previewInfo) setEditing(false); else onClose(); }} backDisabled={busy} title={busy ? t("Confirming…", "Се потврдува…") : editing ? t("Preview corrected sign", "Прегледај поправена табла") : t("Yes, this is correct", "Да, точно е")} disabled={busy || (!editing && !previewInfo?.isParkingSign)} onContinue={() => void confirm()} /> : <Button title={t("Review later", "Провери подоцна")} variant="secondary" disabled={busy} onPress={onClose} />}>
       <Image source={{ uri: api.imageUrl(photo.id) }} accessibilityLabel={t("Original sign photo", "Оригинална слика од табла")} resizeMode="contain" style={{ width: "100%", height: 180, borderRadius: 10, backgroundColor: colors.mint }} />
       <Note>{t("Only the details you confirm become the public digital sign. Leave anything unclear blank.", "Само потврдените податоци стануваат јавна дигитална табла. Оставете ги нејасните полиња празни.")}</Note>
       {editing ? <>
@@ -99,7 +102,7 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
         <View style={{ flexDirection: "row", gap: 8 }}><View style={{ flex: 1 }}>{field("firstHour", t("First hour", "Прв час"), true)}</View><View style={{ flex: 1 }}>{field("nextHour", t("Following hour", "Следен час"), true)}</View></View>
         <Button variant="secondary" title={t("The sign says free", "На таблата пишува бесплатно")} disabled={busy} onPress={() => setFields(previous => ({ ...previous, firstHour: "0", nextHour: "0", currency: "MKD" }))} />
         {field("currency", t("Currency", "Валута"), false, false, 3)}
-        {field("chargingHours", t("Charging hours", "Часови на наплата"))}
+        {<PaymentScheduleFields value={{ chargingHours: fields.chargingHours, freeWeekends: freeWeekends ?? null }} disabled={busy} onChange={value => { setFields(previous => ({ ...previous, chargingHours: value.chargingHours ?? "" })); setFreeWeekends(value.freeWeekends); }} />}
         {field("maxStayMinutes", t("Maximum stay (minutes)", "Максимален престој (минути)"), true)}
         {field("paymentInstructions", t("How to pay", "Начин на плаќање"), false, true, 600)}
         {field("restrictions", t("Restrictions", "Ограничувања"), false, true, 1000)}
@@ -115,7 +118,6 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
         <Button title={t("Enter sign details", "Внеси податоци од таблата")} variant="secondary" icon="edit-2" onPress={edit} />
       </>}
       {error ? <Note>{error}</Note> : null}
-      <Button title={t("Review later", "Провери подоцна")} variant="secondary" disabled={busy} onPress={onClose} />
     </Sheet>
   );
 }

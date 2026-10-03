@@ -27,7 +27,8 @@ function wizard(initial: Record<string, unknown> = {}) {
     if (name === "react") return { ...react, default: react, __esModule: true };
     if (name === "react-native") return { Keyboard: { dismiss() {} }, Pressable: "Pressable", Text: "Text", TextInput: "TextInput", View: "View", StyleSheet: { create: (value: unknown) => value } };
     if (name === "expo-crypto") return { randomUUID: () => "fixed-request" };
-    if (name === "./ui") return { Button: "Button", Icon: "Icon", Note: "Note", useSheetBack: (action: typeof back) => { back = action; } };
+    if (name === "./ui") return { Button: "Button", Icon: "Icon", Note: "Note", useSheetBack: (action: typeof back) => { back = action; }, useSheetContinue: () => false };
+    if (name === "./PaymentScheduleFields") return { default: "PaymentScheduleFields" };
     if (name === "./LoadingIndicator") return { default: "LoadingIndicator" };
     if (name === "../state/ParkingContext") return { useParking: () => ({ t: (en: string) => en, refresh: async () => {} }) };
     if (name === "../state/AccountContext") return { useAccount: () => ({ profile: { id: "account-a" } }) };
@@ -35,7 +36,7 @@ function wizard(initial: Record<string, unknown> = {}) {
     if (name === "../domain/parking") return { normalizeZoneCode: (value: string) => value.trim().toUpperCase(), parkingPrice: () => null };
     if (name === "../domain/progressive-entry") return entry;
     if (name === "../services/entryDrafts") return { availabilityIsFresh, createEntryDraftStore: () => ({ update: async (patch: unknown) => { calls.push(["draft", patch]); }, clear: async () => { cleared++; } }) };
-    if (name === "../services/api") return { api: { progressiveWriter: async () => ({ contribute: async () => ({ id: "park-1", zoneCode: null, capacity: null } as ParkingPlace), ...Object.fromEntries(["label", "price", "capacity", "report", "boundary"].map(method => [method, async (...args: unknown[]) => { calls.push([method, ...args]); }])) }) } };
+    if (name === "../services/api") return { api: { progressiveWriter: async () => ({ contribute: async () => ({ id: "park-1", zoneCode: null, capacity: null } as ParkingPlace), ...Object.fromEntries(["label", "price", "paymentSchedule", "capacity", "report", "boundary"].map(method => [method, async (...args: unknown[]) => { calls.push([method, ...args]); }])) }) } };
     throw new Error(`Unexpected wizard dependency: ${name}`);
   } };
   vm.runInNewContext(source, context);
@@ -49,7 +50,7 @@ test("simple manual flow only exposes zone Skip and requires paid or free pricin
   const form = wizard(); let tree = form.render(); form.tap(tree, "Simple entry"); tree = form.render();
   form.tap(tree, "Skip"); await flush(); tree = form.render();
   assert.ok(!form.nodes(tree).some(item => item.props.title === "Skip"));
-  assert.ok(!form.nodes(tree).some(item => item.props.title === "Back"));
+  assert.ok(form.nodes(tree).some(item => item.props.title === "Back"));
   form.tap(tree, "Next"); await flush(); tree = form.render();
   assert.equal(form.calls.filter(call => call[0] === "price").length, 0);
   form.tap(tree, "It's free"); await flush(); tree = form.render();
@@ -60,8 +61,9 @@ test("detailed flow blocks empty counts and missing perimeter without discarding
   const form = wizard(); let tree = form.render(); form.tap(tree, "Detailed entry"); tree = form.render(); form.tap(tree, "Skip"); await flush(); tree = form.render(); form.tap(tree, "It's free"); await flush(); tree = form.render();
   form.tap(tree, "Next"); await flush(); tree = form.render();
   assert.equal(form.calls.filter(call => call[0] === "capacity").length, 0);
-  form.input(tree, "Total parking spaces", "20"); form.input(tree, "Free right now", "0"); tree = form.render(); form.tap(tree, "Next"); await flush(); tree = form.render();
-  assert.deepEqual(form.calls.find(call => call[0] === "report"), ["report", "park-1", "full", 0]);
+  assert.ok(!form.nodes(tree).some(item => item.props.accessibilityLabel === "Free right now"));
+  form.input(tree, "Total parking spaces", "20"); tree = form.render(); form.tap(tree, "Next"); await flush(); tree = form.render();
+  assert.equal(form.calls.find(call => call[0] === "report"), undefined);
   form.tap(tree, "Done"); await flush(); assert.deepEqual(form.stats(), { cleared: 0, done: 0 });
   assert.equal(form.calls.filter(call => call[0] === "price").length, 1);
   form.back(); tree = form.render(); assert.ok(form.nodes(tree).some(item => item.props.accessibilityLabel === "Total parking spaces"));

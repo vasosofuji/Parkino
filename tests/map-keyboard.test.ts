@@ -5,6 +5,7 @@ import ts from "typescript";
 import { readFileSync } from "node:fs";
 import type { ParkingMapProps } from "../src/components/mapTypes";
 import { SKOPJE } from "../src/domain/parking";
+import { translate } from "../src/domain/language";
 
 function compile(path: string) {
   return ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
@@ -41,6 +42,7 @@ test("current Leaflet taps wait for native acceptance but pan intent is immediat
   };
   const exports: { default?: (props: ParkingMapProps) => Element } = {};
   vm.runInNewContext(compile("src/components/OpenStreetParkingMap.tsx"), { exports, require(name: string) {
+    if (name === "../domain/language") return { translate };
     if (name === "react") return { ...react, default: react, __esModule: true };
     if (name === "react-native") return { StyleSheet: { create: (value: unknown) => value }, View: "View", Text: "Text" };
     if (name === "react-native-webview") return { WebView: "WebView" };

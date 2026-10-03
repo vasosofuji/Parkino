@@ -182,3 +182,33 @@ Expo authenticated successfully; linked @parkino/parkskopje and submitted EAS AP
 - Evidence: `preview/parking-photo-menu.png`, `preview/parking-photo-route.png`; command logs: `preview/final-tests.log`, `preview/final-lint.log`, `preview/final-typecheck.log`, `preview/device-rebuild-final.log`, `preview/all-platform-export.log`. The test APK is `preview/Parkino-device-test.apk`; its USB API must remain available for network operations.
 - Remaining physical checks: a real arrival notification delivered after an actual parking stop and opened into its popup, vendor battery restrictions/long background runs, iOS runtime behavior, camera/gallery capture/upload, and actual Macedonian sign OCR accuracy. The sign parser/confirmation workflow is tested with fixtures; no generated image or real sign extraction accuracy claim is made. Email password reset is not implemented; recovery uses the saved username/password.
 - The new migration is checked in but **not applied to the hosted database**, and the updated backend/client are **not publicly deployed**. Apply the migration and deploy the matching API before distributing the connected production-package APK. A browser development-preview launch was rejected by automatic approval review with “blocked by policy”; installed Android testing and successful web bundle export supplied the available verification.
+
+## Vercel hosting migration — 2026-10-03
+
+- Created and deployed `vaso/parkino-api` using Node 24 in Frankfurt. Public `https://parkino-api-vaso.vercel.app/health` and `https://parkino-api.vercel.app/health` return `{"status":"ok","schemaVersion":1}` without Vercel login. Deployment: `dpl_ALdgx52vaY4BQZdX3PRAr7BrL46G`.
+- All **198 tests passed locally with transaction pooling enabled and again during the Vercel production build**. Local lint, typecheck and whitespace checks passed. Vercel's secondary function transpilation emitted Zod nullability diagnostics despite the preceding successful strict typecheck; the function built and live JSON validation passed.
+- Added a function adapter, database initialization retry, read-only production startup, verified TLS, three-connection lifecycle-managed pools, Supabase transaction-pooler compatibility, bounded request-lifecycle sign jobs and a secret-protected daily recovery worker.
+- Applied the private shared request-limit migration and recorded it in the application migration table. Route, IP, account and login counters survive separate function instances; regression checks cover atomic counters, expiry, route isolation, bounded drain, concurrent task reuse and cron authentication.
+- Updated mobile defaults, EAS release profiles, EAS preview/production environment variables, local configuration and current deployment docs. Removed the Render blueprint. Existing Render-hosted APKs still embed their old address; Render remains available until signed replacement builds are distributed. No APK was rebuilt or installed in this hosting task.
+- Public HTTPS smoke checks passed for health, 914 catalog places, localhost CORS preflight, unauthorized photo writes, unauthorized worker calls, session creation, guest Terms onboarding, authenticated profile/reward reads, duplicate sign upload and original image readback. The temporary session was deleted, and the original photo bytes remained identical.
+- The existing database remains shared. Provider OCR accuracy, new APK device behavior and immediate processing of a large unattended sign backlog are not established by these hosting checks; the daily Hobby cron is a fallback, while active requests drive normal retries.
+
+## Browser app published — 2026-10-03
+
+Published the Expo browser app at `https://parkino-api-vaso.vercel.app/` (also `https://parkino-api.vercel.app/`) in deployment `dpl_hGyPWP4JMwLkQqhGBsL7EAkjQ9TQ`. Root and app paths serve the SPA; `/health`, `/v1/*` and `/internal/*` still reach the API. Hosted app origins are now explicitly allowed. All 198 build tests, lint, typecheck and web export passed. Public checks confirmed root/deep-link HTML, JavaScript, CSS and favicon content types, 914 catalog places and hosted-origin CORS. The in-app browser rendered the Language onboarding screen with no captured console errors. It was left open for the user; no Terms consent or browser location permission was submitted.
+
+### Custom domain — 2026-10-03
+
+- Added https://parking.vasojevich.com to Vercel production and preview ALLOWED_ORIGINS, preserving existing entries.
+- Redeployed production as dpl_C4CApTxRXXdJJrDSfZR1CPvRazG5; Vercel reports Ready and aliases the custom domain.
+- Verified HTTPS app routes, JS/CSS assets, healthy API, 914-place catalog, and cross-origin API preflight from the custom domain.
+- Browser renders onboarding on the custom domain with no captured console errors. Local lint and typecheck passed; the deployment's typecheck and test build completed successfully.
+
+## Parking signs, schedules and map filters — 2026-10-03
+
+- `npm test`: 206/206 pass. Lint, typecheck and Expo web export pass. Focused sign, filter and manual-entry tests pass again after the final timeout adjustment.
+- Live Gemini reading of the supplied Macedonian D8 photo returned zone D8, 25 MKD first/following hour, Monday–Saturday 07:00–23:00, Sunday free, and public holidays free in restrictions. That successful reading took approximately 16 seconds, exceeding the former 5.5-second timeout. Later attempts received provider HTTP 503 high-demand errors; availability is not guaranteed by this validation.
+- Reader now allows 45 seconds per model within a 75-second overall budget, below the 120-second job lease. Empty readings retry another model. Conditional free days no longer erase a readable paid tariff.
+- Payment schedules persist separately from opening hours. SQLite and migrated PGlite checks cover saving, catalog retrieval, invalid weekend values and unauthorized writes. Migration `20261003114043_payment_schedules.sql` is prepared and tested locally; it has not been applied to the hosted database by this change.
+- An isolated in-memory API and exported web build were tested at 390 × 844. Verified selectable legend counts, automatic filtered result lists, all 17 garages including distant matches, drawer collapse on selection, hours/Sunday choice persistence, capacity-only entry and paired bottom Back/Next buttons. Test writes never reached the hosted API. Preview server stopped afterward.
+- Evidence: `preview/paying-hours.jpg`, `preview/parking-legend.jpg`; logs: `preview/parking-tests.log`, `preview/parking-focused.log`, `preview/parking-lint.log`, `preview/parking-types.log`, `preview/parking-export.log`. No production deployment or native APK build was performed for these changes.

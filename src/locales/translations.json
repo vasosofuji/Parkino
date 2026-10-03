@@ -1,0 +1,1758 @@
+{
+  "Add a parking": {
+    "tr": "Otopark ekle",
+    "sq": "Shto një parking"
+  },
+  "Draw its boundary": {
+    "tr": "Sınırını çiz",
+    "sq": "Vizato kufirin e tij"
+  },
+  "Add prices or mark free": {
+    "tr": "Fiyat ekle veya ücretsiz olarak işaretle",
+    "sq": "Shto çmimet ose shënoje si falas"
+  },
+  "Add total spaces": {
+    "tr": "Toplam park yeri ekle",
+    "sq": "Shto numrin e vendeve"
+  },
+  "Check a scanned sign": {
+    "tr": "Taranan tabelayı kontrol et",
+    "sq": "Kontrollo tabelën e skanuar"
+  },
+  "Share available spaces": {
+    "tr": "Boş yerleri paylaş",
+    "sq": "Ndaj vendet e lira"
+  },
+  "Signed in": {
+    "tr": "Oturum açıldı",
+    "sq": "U identifikuat"
+  },
+  "Account saved": {
+    "tr": "Hesap kaydedildi",
+    "sq": "Llogaria u ruajt"
+  },
+  "Could not save. Try again.": {
+    "tr": "Kaydedilemedi. Tekrar deneyin.",
+    "sq": "Nuk u ruajt. Provoni përsëri."
+  },
+  "Could not sign out. Try again.": {
+    "tr": "Çıkış yapılamadı. Tekrar deneyin.",
+    "sq": "Nuk mund të dilni. Provoni përsëri."
+  },
+  "Your account": {
+    "tr": "Hesabınız",
+    "sq": "Llogaria juaj"
+  },
+  "Guest": {
+    "tr": "Misafir",
+    "sq": "Vizitor"
+  },
+  "points": {
+    "tr": "puan",
+    "sq": "pikë"
+  },
+  "Sign in": {
+    "tr": "Giriş yap",
+    "sq": "Identifikohu"
+  },
+  "Create account": {
+    "tr": "Hesap oluştur",
+    "sq": "Krijo llogari"
+  },
+  "Add a password": {
+    "tr": "Şifre ekle",
+    "sq": "Shto fjalëkalim"
+  },
+  "Guest points won't transfer to an existing account.": {
+    "tr": "Misafir puanları mevcut bir hesaba aktarılmaz.",
+    "sq": "Pikët e vizitorit nuk transferohen në një llogari ekzistuese."
+  },
+  "Keep your points when you change phones.": {
+    "tr": "Telefon değiştirdiğinizde puanlarınızı koruyun.",
+    "sq": "Ruani pikët kur ndërroni telefonin."
+  },
+  "Username": {
+    "tr": "Kullanıcı adı",
+    "sq": "Emri i përdoruesit"
+  },
+  "At least 10 characters · Save your password": {
+    "tr": "En az 10 karakter · Şifrenizi saklayın",
+    "sq": "Të paktën 10 karaktere · Ruani fjalëkalimin"
+  },
+  "Please wait…": {
+    "tr": "Lütfen bekleyin…",
+    "sq": "Ju lutemi prisni…"
+  },
+  "Save account": {
+    "tr": "Hesabı kaydet",
+    "sq": "Ruaj llogarinë"
+  },
+  "Create a new account instead": {
+    "tr": "Bunun yerine yeni hesap oluştur",
+    "sq": "Krijo një llogari të re"
+  },
+  "Sign in to an existing account": {
+    "tr": "Mevcut hesaba giriş yap",
+    "sq": "Identifikohu në një llogari ekzistuese"
+  },
+  "Rewards & appearance": {
+    "tr": "Ödüller ve görünüm",
+    "sq": "Shpërblimet dhe pamja"
+  },
+  "Ways to earn": {
+    "tr": "Puan kazanma yolları",
+    "sq": "Mënyrat për të fituar pikë"
+  },
+  "Details: once per parking. Availability: once per parking each day.": {
+    "tr": "Bilgiler: otopark başına bir kez. Doluluk: her otopark için günde bir kez.",
+    "sq": "Detajet: një herë për parking. Disponueshmëria: një herë në ditë për parking."
+  },
+  "Recent contributions": {
+    "tr": "Son katkılar",
+    "sq": "Kontributet e fundit"
+  },
+  "Retry": {
+    "tr": "Tekrar dene",
+    "sq": "Provo përsëri"
+  },
+  "No contributions yet": {
+    "tr": "Henüz katkı yok",
+    "sq": "Ende nuk ka kontribute"
+  },
+  "Loading contributions…": {
+    "tr": "Katkılar yükleniyor…",
+    "sq": "Kontributet po ngarkohen…"
+  },
+  "Sign out": {
+    "tr": "Çıkış yap",
+    "sq": "Dil"
+  },
+  "Privacy & delete account": {
+    "tr": "Gizlilik ve hesap silme",
+    "sq": "Privatësia dhe fshirja e llogarisë"
+  },
+  "Confirmed and added to the map.": {
+    "tr": "Onaylandı ve haritaya eklendi.",
+    "sq": "U konfirmua dhe u shtua në hartë."
+  },
+  "Your confirmation is recorded.": {
+    "tr": "Onayınız kaydedildi.",
+    "sq": "Konfirmimi juaj u regjistrua."
+  },
+  "Could not confirm.": {
+    "tr": "Onaylanamadı.",
+    "sq": "Nuk u konfirmua."
+  },
+  "Community": {
+    "tr": "Topluluk",
+    "sq": "Komuniteti"
+  },
+  "A better map starts\nwith what you know.": {
+    "tr": "Daha iyi bir harita\nbildiklerinizle başlar.",
+    "sq": "Një hartë më e mirë fillon\nme atë që dini."
+  },
+  "Your contributions appear on the map immediately.": {
+    "tr": "Katkılarınız hemen haritada görünür.",
+    "sq": "Kontributet tuaja shfaqen menjëherë në hartë."
+  },
+  "Confirm only parking places you know. Three established contributor sessions add a location to the map. Repeated confirmations from one session count once.": {
+    "tr": "Yalnızca bildiğiniz otoparkları onaylayın. Üç yerleşik katkıcı oturumu bir konumu haritaya ekler. Aynı oturumdan tekrarlanan onaylar bir kez sayılır.",
+    "sq": "Konfirmoni vetëm parkingjet që njihni. Tri sesione kontribuesish të konsoliduar shtojnë një vendndodhje në hartë. Konfirmimet e përsëritura nga një sesion numërohen një herë."
+  },
+  "No places awaiting confirmation": {
+    "tr": "Onay bekleyen yer yok",
+    "sq": "Nuk ka vende që presin konfirmim"
+  },
+  "Know a parking place we missed? Add its exact position from the map.": {
+    "tr": "Eksik bir otopark biliyor musunuz? Tam konumunu haritadan ekleyin.",
+    "sq": "Njihni një parking që mungon? Shtoni pozicionin e saktë nga harta."
+  },
+  "Back to the map": {
+    "tr": "Haritaya dön",
+    "sq": "Kthehu te harta"
+  },
+  "On the map": {
+    "tr": "Haritada",
+    "sq": "Në hartë"
+  },
+  "Pending": {
+    "tr": "Beklemede",
+    "sq": "Në pritje"
+  },
+  "No sign code supplied": {
+    "tr": "Tabela kodu belirtilmedi",
+    "sq": "Nuk është dhënë kodi i tabelës"
+  },
+  "eligible confirmations": {
+    "tr": "geçerli onay",
+    "sq": "konfirmime të vlefshme"
+  },
+  "total": {
+    "tr": "toplam",
+    "sq": "gjithsej"
+  },
+  "Confirming…": {
+    "tr": "Onaylanıyor…",
+    "sq": "Po konfirmohet…"
+  },
+  "I know this parking place": {
+    "tr": "Bu otoparkı biliyorum",
+    "sq": "E njoh këtë parking"
+  },
+  "Could not sign out.": {
+    "tr": "Çıkış yapılamadı.",
+    "sq": "Nuk mund të dilni."
+  },
+  "Updated terms": {
+    "tr": "Güncellenen koşullar",
+    "sq": "Kushtet e përditësuara"
+  },
+  "Review the terms to continue.": {
+    "tr": "Devam etmek için koşulları inceleyin.",
+    "sq": "Lexoni kushtet për të vazhduar."
+  },
+  "Review terms": {
+    "tr": "Koşulları incele",
+    "sq": "Lexo kushtet"
+  },
+  "Data & coverage": {
+    "tr": "Veriler ve kapsam",
+    "sq": "Të dhënat dhe mbulimi"
+  },
+  "Parking zones & sources": {
+    "tr": "Park bölgeleri ve kaynaklar",
+    "sq": "Zonat e parkimit dhe burimet"
+  },
+  "parking features": {
+    "tr": "park alanı",
+    "sq": "zona parkimi"
+  },
+  "mapped zone boundaries": {
+    "tr": "haritalanmış bölge sınırı",
+    "sq": "kufij zonash të hartëzuara"
+  },
+  "named parking zones": {
+    "tr": "adlandırılmış park bölgesi",
+    "sq": "zona parkimi me emër"
+  },
+  "Coverage is incomplete. OpenStreetMap includes public, customer, restricted and unknown-access parking. POC polygons mark tariff sectors, not individual legal spaces.": {
+    "tr": "Kapsam eksiktir. OpenStreetMap herkese açık, müşterilere özel, kısıtlı ve erişimi bilinmeyen otoparkları içerir. POC çokgenleri tek tek yasal park yerlerini değil, tarife alanlarını gösterir.",
+    "sq": "Mbulimi është i paplotë. OpenStreetMap përfshin parkingje publike, për klientë, të kufizuara dhe me qasje të panjohur. Poligonet POC shënojnë sektorët tariforë, jo vendet individuale të ligjshme."
+  },
+  "Published tariffs and driver price reports are shown separately. Check signs for charging hours and restrictions. Distances are straight-line, not walking routes.": {
+    "tr": "Yayımlanan tarifeler ve sürücü fiyat bildirimleri ayrı gösterilir. Ücret saatleri ve kısıtlamalar için tabelaları kontrol edin. Mesafeler kuş uçuşudur, yürüme rotası değildir.",
+    "sq": "Tarifat e publikuara dhe raportimet e shoferëve shfaqen veçmas. Kontrolloni tabelat për oraret dhe kufizimet. Distancat janë në vijë të drejtë, jo rrugë ecjeje."
+  },
+  "Snapshot": {
+    "tr": "Veri görüntüsü",
+    "sq": "Pamja e të dhënave"
+  },
+  "Official POC map and prices": {
+    "tr": "Resmî POC haritası ve fiyatları",
+    "sq": "Harta dhe çmimet zyrtare POC"
+  },
+  "Official city parking tariffs": {
+    "tr": "Resmî şehir otopark tarifeleri",
+    "sq": "Tarifat zyrtare të parkimit në qytet"
+  },
+  "Privacy & contributor data": {
+    "tr": "Gizlilik ve katkıcı verileri",
+    "sq": "Privatësia dhe të dhënat e kontribuesve"
+  },
+  "Published sign-code inventory": {
+    "tr": "Yayımlanan tabela kodları",
+    "sq": "Lista e publikuar e kodeve të tabelave"
+  },
+  "Gradski zones include A0, B2 and Karpoš’s D40, D42 and D62. Thirty labels use the operator’s map coordinates; the others use street or landmark references. These points do not define boundaries. A02 has no map position; A42 is unverified.": {
+    "tr": "Gradski bölgeleri A0, B2 ve Karpoš D40, D42 ve D62'yi içerir. Otuz etiket işletmecinin harita koordinatlarını, diğerleri sokak veya yer işareti referanslarını kullanır. Bu noktalar sınırları tanımlamaz. A02'nin harita konumu yoktur; A42 doğrulanmamıştır.",
+    "sq": "Zonat Gradski përfshijnë A0, B2 dhe D40, D42 e D62 të Karpošit. Tridhjetë etiketa përdorin koordinatat e hartës së operatorit; të tjerat përdorin rrugë ose pika referimi. Këto pika nuk përcaktojnë kufijtë. A02 nuk ka pozicion në hartë; A42 nuk është verifikuar."
+  },
+  "Search sign codes": {
+    "tr": "Tabela kodu ara",
+    "sq": "Kërko kodet e tabelave"
+  },
+  "Search C9, B2, street…": {
+    "tr": "C9, B2, sokak ara…",
+    "sq": "Kërko C9, B2, rrugë…"
+  },
+  "Exact geometry awaiting survey": {
+    "tr": "Kesin sınırlar ölçüm bekliyor",
+    "sq": "Kufijtë e saktë presin matjen"
+  },
+  "hour limit": {
+    "tr": "saat sınırı",
+    "sq": "kufizim orësh"
+  },
+  "No published duration limit": {
+    "tr": "Yayımlanan süre sınırı yok",
+    "sq": "Nuk ka kufizim kohor të publikuar"
+  },
+  "MKD/hour": {
+    "tr": "MKD/saat",
+    "sq": "MKD/orë"
+  },
+  "Your account, points, reports and confirmations were deleted.": {
+    "tr": "Hesabınız, puanlarınız, bildirimleriniz ve onaylarınız silindi.",
+    "sq": "Llogaria, pikët, raportimet dhe konfirmimet tuaja u fshinë."
+  },
+  "Could not delete. Connect and try again.": {
+    "tr": "Silinemedi. Bağlanıp tekrar deneyin.",
+    "sq": "Nuk u fshi. Lidhuni dhe provoni përsëri."
+  },
+  "Privacy": {
+    "tr": "Gizlilik",
+    "sq": "Privatësia"
+  },
+  "Location": {
+    "tr": "Konum",
+    "sq": "Vendndodhja"
+  },
+  "GPS finds nearby parking and can ask a quick question after about 10 seconds of accurate, stationary readings. Optional background reminders use location even when the app is minimized; your phone controls delivery timing, and force-closing can stop them. The latest arrival location and reminder cooldowns stay on this device and are cleared when you turn reminders off or sign out. Adding a parking place shares its coordinates; an availability report shares the parking ID. Address searches, maps and navigation use their providers’ services.": {
+    "tr": "GPS yakın otoparkları bulur ve yaklaşık 10 saniyelik doğru, sabit ölçümden sonra kısa bir soru sorabilir. İsteğe bağlı arka plan hatırlatıcıları uygulama küçültülmüşken bile konumu kullanır; bildirim zamanını telefonunuz belirler ve zorla kapatma bunları durdurabilir. Son varış konumu ve hatırlatıcı bekleme süreleri bu cihazda kalır ve hatırlatıcıları kapattığınızda veya çıkış yaptığınızda silinir. Otopark eklemek koordinatlarını paylaşır; doluluk bildirimi otopark kimliğini paylaşır. Adres aramaları, haritalar ve navigasyon kendi sağlayıcılarının hizmetlerini kullanır.",
+    "sq": "GPS gjen parkingjet afër dhe mund të bëjë një pyetje të shkurtër pas rreth 10 sekondash matjesh të sakta e të palëvizshme. Kujtesat opsionale në sfond përdorin vendndodhjen edhe kur aplikacioni minimizohet; telefoni kontrollon kohën e dërgimit dhe mbyllja me forcë mund t'i ndalojë. Vendndodhja e fundit e mbërritjes dhe intervalet e kujtesave ruhen në këtë pajisje dhe fshihen kur çaktivizoni kujtesat ose dilni. Shtimi i një parkingu ndan koordinatat; raportimi i disponueshmërisë ndan ID-në e parkingut. Kërkimet e adresave, hartat dhe navigimi përdorin shërbimet e ofruesve të tyre."
+  },
+  "Sign photos and drawn zones are public. Photos are sent to Google Gemini to read prices and sign details. Upload only the sign, without faces or registration plates.": {
+    "tr": "Tabela fotoğrafları ve çizilen bölgeler herkese açıktır. Fiyatları ve tabela bilgilerini okumak için fotoğraflar Google Gemini'ye gönderilir. Yalnızca tabelayı, yüz veya plaka olmadan yükleyin.",
+    "sq": "Fotot e tabelave dhe zonat e vizatuara janë publike. Fotot dërgohen te Google Gemini për të lexuar çmimet dhe detajet. Ngarkoni vetëm tabelën, pa fytyra ose targa."
+  },
+  "What is saved": {
+    "tr": "Kaydedilen veriler",
+    "sq": "Çfarë ruhet"
+  },
+  "The server stores your username, a salted password hash if you set a password, hashed sign-in tokens, contribution points and history, parking reports, prices, coordinates, boundaries and confirmations. Your password is never stored as plain text. Price reports and location confirmations are displayed for 90 days. Shared parking details and confirmation counts are public. Do not include names, registration plates or other personal information in notes. Availability reports expire after 15 minutes.": {
+    "tr": "Sunucu kullanıcı adınızı, şifre belirlediyseniz tuzlanmış şifre özetini, özetlenmiş giriş belirteçlerini, katkı puanlarını ve geçmişini, park bildirimlerini, fiyatları, koordinatları, sınırları ve onayları saklar. Şifreniz asla düz metin olarak saklanmaz. Fiyat bildirimleri ve konum onayları 90 gün gösterilir. Paylaşılan otopark bilgileri ve onay sayıları herkese açıktır. Notlara ad, plaka veya başka kişisel bilgi eklemeyin. Doluluk bildirimleri 15 dakika sonra geçersiz olur.",
+    "sq": "Serveri ruan emrin tuaj të përdoruesit, një hash të fjalëkalimit me salt nëse vendosni fjalëkalim, tokenët e identifikimit të hash-uar, pikët dhe historinë e kontributeve, raportimet, çmimet, koordinatat, kufijtë dhe konfirmimet. Fjalëkalimi nuk ruhet kurrë si tekst i thjeshtë. Raportimet e çmimeve dhe konfirmimet e vendndodhjeve shfaqen për 90 ditë. Detajet e ndara dhe numrat e konfirmimeve janë publikë. Mos përfshini emra, targa ose informacione personale në shënime. Raportimet e disponueshmërisë skadojnë pas 15 minutash."
+  },
+  "Delete contributor data": {
+    "tr": "Katkıcı verilerini sil",
+    "sq": "Fshi të dhënat e kontribuesit"
+  },
+  "Deleting removes your username, password, all sign-in sessions, points, uploaded photos, zone-label edits, price and availability reports and confirmations. Published parking locations and boundaries remain on the shared map. To keep your account and use it later, sign out from Your account instead.": {
+    "tr": "Silme işlemi kullanıcı adınızı, şifrenizi, tüm giriş oturumlarını, puanları, yüklenen fotoğrafları, bölge etiketi düzenlemelerini, fiyat ve doluluk bildirimlerini ve onayları kaldırır. Yayımlanan otopark konumları ve sınırları ortak haritada kalır. Hesabınızı koruyup sonra kullanmak için Hesabınız bölümünden çıkış yapın.",
+    "sq": "Fshirja heq emrin, fjalëkalimin, të gjitha sesionet, pikët, fotot e ngarkuara, ndryshimet e etiketave të zonave, raportimet e çmimeve dhe disponueshmërisë dhe konfirmimet. Vendndodhjet dhe kufijtë e publikuar mbeten në hartën e përbashkët. Për të ruajtur llogarinë dhe për ta përdorur më vonë, dilni nga Llogaria juaj."
+  },
+  "Deleting…": {
+    "tr": "Siliniyor…",
+    "sq": "Po fshihet…"
+  },
+  "Delete my contributor data": {
+    "tr": "Katkıcı verilerimi sil",
+    "sq": "Fshi të dhënat e mia të kontribuesit"
+  },
+  "Delete your account?": {
+    "tr": "Hesabınız silinsin mi?",
+    "sq": "Ta fshini llogarinë?"
+  },
+  "Your username, points and private account data will be permanently removed. You cannot sign back in to this account after deletion.": {
+    "tr": "Kullanıcı adınız, puanlarınız ve özel hesap verileriniz kalıcı olarak silinecek. Silme işleminden sonra bu hesaba tekrar giriş yapamazsınız.",
+    "sq": "Emri, pikët dhe të dhënat private të llogarisë do të hiqen përgjithmonë. Pas fshirjes nuk mund të identifikoheni më në këtë llogari."
+  },
+  "Delete account permanently": {
+    "tr": "Hesabı kalıcı olarak sil",
+    "sq": "Fshi llogarinë përgjithmonë"
+  },
+  "Keep my account": {
+    "tr": "Hesabımı koru",
+    "sq": "Mbaje llogarinë time"
+  },
+  "Classic": {
+    "tr": "Klasik",
+    "sq": "Klasike"
+  },
+  "Ocean": {
+    "tr": "Okyanus",
+    "sq": "Oqean"
+  },
+  "Plum": {
+    "tr": "Erik",
+    "sq": "Kumbull"
+  },
+  "Gold": {
+    "tr": "Altın",
+    "sq": "Ari"
+  },
+  "Violet": {
+    "tr": "Menekşe",
+    "sq": "Vjollcë"
+  },
+  "Appearance saved": {
+    "tr": "Görünüm kaydedildi",
+    "sq": "Pamja u ruajt"
+  },
+  "Saved. Reopen Rewards to refresh your appearance.": {
+    "tr": "Kaydedildi. Görünümü yenilemek için Ödüller'i tekrar açın.",
+    "sq": "U ruajt. Rihapni Shpërblimet për të rifreskuar pamjen."
+  },
+  "Selected": {
+    "tr": "Seçili",
+    "sq": "E zgjedhur"
+  },
+  "Use": {
+    "tr": "Kullan",
+    "sq": "Përdor"
+  },
+  "Rewards": {
+    "tr": "Ödüller",
+    "sq": "Shpërblimet"
+  },
+  "points earned": {
+    "tr": "kazanılan puan",
+    "sq": "pikë të fituara"
+  },
+  "Help drivers. Unlock a little more color. Your points are never spent.": {
+    "tr": "Sürücülere yardım edin. Daha fazla renk açın. Puanlarınız harcanmaz.",
+    "sq": "Ndihmoni shoferët. Zhbllokoni më shumë ngjyra. Pikët tuaja nuk shpenzohen."
+  },
+  "App palette": {
+    "tr": "Uygulama paleti",
+    "sq": "Paleta e aplikacionit"
+  },
+  "Your parking pins": {
+    "tr": "Otopark işaretleriniz",
+    "sq": "Shënuesit tuaj të parkimit"
+  },
+  "An accent on parking places you added. Green still means spaces; red still means full.": {
+    "tr": "Eklediğiniz otoparklara vurgu rengi. Yeşil yine boş yer, kırmızı yine dolu demektir.",
+    "sq": "Një ngjyrë theksuese për parkingjet që shtuat. E gjelbra tregon vende të lira; e kuqja tregon plot."
+  },
+  "Saving…": {
+    "tr": "Kaydediliyor…",
+    "sq": "Po ruhet…"
+  },
+  "Restore classic appearance": {
+    "tr": "Klasik görünümü geri yükle",
+    "sq": "Rikthe pamjen klasike"
+  },
+  "Create an account in your profile to keep your rewards when you change phones.": {
+    "tr": "Telefon değiştirdiğinizde ödüllerinizi korumak için profilinizden hesap oluşturun.",
+    "sq": "Krijoni llogari në profil për të ruajtur shpërblimet kur ndërroni telefonin."
+  },
+  "Terms of Service": {
+    "tr": "Kullanım Koşulları",
+    "sq": "Kushtet e Shërbimit"
+  },
+  "Demo terms": {
+    "tr": "Demo koşulları",
+    "sq": "Kushtet e demonstrimit"
+  },
+  "Could not continue. Try again.": {
+    "tr": "Devam edilemedi. Tekrar deneyin.",
+    "sq": "Nuk mund të vazhdoni. Provoni përsëri."
+  },
+  "Choose your appearance": {
+    "tr": "Görünümünüzü seçin",
+    "sq": "Zgjidhni pamjen"
+  },
+  "Welcome to Parkino": {
+    "tr": "Parkino'ya hoş geldiniz",
+    "sq": "Mirë se vini në Parkino"
+  },
+  "Continue": {
+    "tr": "Devam et",
+    "sq": "Vazhdo"
+  },
+  "Use phone setting": {
+    "tr": "Telefon ayarını kullan",
+    "sq": "Përdor cilësimin e telefonit"
+  },
+  "Light": {
+    "tr": "Açık",
+    "sq": "E çelët"
+  },
+  "Dark": {
+    "tr": "Koyu",
+    "sq": "E errët"
+  },
+  "Back": {
+    "tr": "Geri",
+    "sq": "Mbrapa"
+  },
+  "Continue as guest": {
+    "tr": "Misafir olarak devam et",
+    "sq": "Vazhdo si vizitor"
+  },
+  "Username taken": {
+    "tr": "Kullanıcı adı alınmış",
+    "sq": "Emri është i zënë"
+  },
+  "Checking…": {
+    "tr": "Kontrol ediliyor…",
+    "sq": "Po kontrollohet…"
+  },
+  "Available": {
+    "tr": "Kullanılabilir",
+    "sq": "I disponueshëm"
+  },
+  "3–20 letters, numbers or underscores": {
+    "tr": "3–20 harf, rakam veya alt çizgi",
+    "sq": "3–20 shkronja, numra ose viza të poshtme"
+  },
+  "At least 10 characters": {
+    "tr": "En az 10 karakter",
+    "sq": "Të paktën 10 karaktere"
+  },
+  "Couldn't change reminders. Please try again.": {
+    "tr": "Hatırlatıcılar değiştirilemedi. Tekrar deneyin.",
+    "sq": "Kujtesat nuk u ndryshuan. Provoni përsëri."
+  },
+  "Parking reminders": {
+    "tr": "Park hatırlatıcıları",
+    "sq": "Kujtesat e parkimit"
+  },
+  "On · background location and notifications": {
+    "tr": "Açık · arka plan konumu ve bildirimler",
+    "sq": "Aktive · vendndodhja në sfond dhe njoftimet"
+  },
+  "Optional · uses background location and notifications": {
+    "tr": "İsteğe bağlı · arka plan konumu ve bildirimleri kullanır",
+    "sq": "Opsionale · përdor vendndodhjen në sfond dhe njoftimet"
+  },
+  "Turn reminders off": {
+    "tr": "Hatırlatıcıları kapat",
+    "sq": "Çaktivizo kujtesat"
+  },
+  "Enable parking reminders": {
+    "tr": "Park hatırlatıcılarını aç",
+    "sq": "Aktivizo kujtesat e parkimit"
+  },
+  "Return to the map to start reminders.": {
+    "tr": "Hatırlatıcıları başlatmak için haritaya dönün.",
+    "sq": "Kthehuni te harta për të nisur kujtesat."
+  },
+  "Background reminders are available in the phone app.": {
+    "tr": "Arka plan hatırlatıcıları telefon uygulamasında kullanılabilir.",
+    "sq": "Kujtesat në sfond janë të disponueshme në aplikacionin e telefonit."
+  },
+  "Install the updated Parking build to use background reminders.": {
+    "tr": "Arka plan hatırlatıcıları için güncel Parking sürümünü yükleyin.",
+    "sq": "Instaloni versionin e përditësuar të Parking për të përdorur kujtesat në sfond."
+  },
+  "About reminders": {
+    "tr": "Hatırlatıcılar hakkında",
+    "sq": "Rreth kujtesave"
+  },
+  "Open phone settings": {
+    "tr": "Telefon ayarlarını aç",
+    "sq": "Hap cilësimet e telefonit"
+  },
+  "Digital parking sign": {
+    "tr": "Dijital park tabelası",
+    "sq": "Tabela digjitale e parkimit"
+  },
+  "ZONE": {
+    "tr": "BÖLGE",
+    "sq": "ZONA"
+  },
+  "PARKING": {
+    "tr": "OTOPARK",
+    "sq": "PARKING"
+  },
+  "FREE PARKING": {
+    "tr": "ÜCRETSİZ OTOPARK",
+    "sq": "PARKING FALAS"
+  },
+  "first hour": {
+    "tr": "ilk saat",
+    "sq": "ora e parë"
+  },
+  "Price not shown": {
+    "tr": "Fiyat gösterilmiyor",
+    "sq": "Çmimi nuk shfaqet"
+  },
+  "following hour": {
+    "tr": "sonraki saat",
+    "sq": "ora pasuese"
+  },
+  "Maximum stay": {
+    "tr": "Azami kalış",
+    "sq": "Qëndrimi maksimal"
+  },
+  "min": {
+    "tr": "dk",
+    "sq": "min"
+  },
+  "Preview · check against the photo": {
+    "tr": "Önizleme · fotoğrafla karşılaştırın",
+    "sq": "Parapamje · krahasojeni me foton"
+  },
+  "Sign details confirmed by a contributor": {
+    "tr": "Tabela bilgileri bir katkıcı tarafından onaylandı",
+    "sq": "Detajet e tabelës u konfirmuan nga një kontribues"
+  },
+  "Language": {
+    "tr": "Dil",
+    "sq": "Gjuha"
+  },
+  "Allow location for this site in your browser settings, then try again.": {
+    "tr": "Tarayıcı ayarlarından bu site için konuma izin verip tekrar deneyin.",
+    "sq": "Lejoni vendndodhjen për këtë faqe në cilësimet e shfletuesit dhe provoni përsëri."
+  },
+  "Allow location while using the app and enable Precise Location in your phone’s settings.": {
+    "tr": "Uygulamayı kullanırken konuma izin verin ve telefon ayarlarından Kesin Konum'u açın.",
+    "sq": "Lejoni vendndodhjen gjatë përdorimit dhe aktivizoni Vendndodhjen e Saktë në cilësimet e telefonit."
+  },
+  "Location Services are switched off. Turn on your phone’s Location/GPS setting, then return here.": {
+    "tr": "Konum Hizmetleri kapalı. Telefonunuzun Konum/GPS ayarını açıp buraya dönün.",
+    "sq": "Shërbimet e vendndodhjes janë të fikura. Aktivizoni Vendndodhjen/GPS në telefon dhe kthehuni këtu."
+  },
+  "Browser location requires HTTPS. Open the secure app URL or use the Android/iOS app.": {
+    "tr": "Tarayıcı konumu HTTPS gerektirir. Güvenli uygulama adresini açın veya Android/iOS uygulamasını kullanın.",
+    "sq": "Vendndodhja në shfletues kërkon HTTPS. Hapni adresën e sigurt të aplikacionit ose përdorni aplikacionin Android/iOS."
+  },
+  "This browser could not determine your position. Enable system Location Services and site access. If its location provider is unavailable, use the Android/iOS app for native GPS.": {
+    "tr": "Bu tarayıcı konumunuzu belirleyemedi. Sistem Konum Hizmetlerini ve site erişimini açın. Konum sağlayıcısı kullanılamıyorsa yerel GPS için Android/iOS uygulamasını kullanın.",
+    "sq": "Ky shfletues nuk mund të përcaktonte pozicionin tuaj. Aktivizoni shërbimet e vendndodhjes dhe qasjen e faqes. Nëse ofruesi nuk është i disponueshëm, përdorni aplikacionin Android/iOS për GPS."
+  },
+  "Waiting for a GPS signal. Move near a window or outdoors. Location will recover automatically when a signal is available.": {
+    "tr": "GPS sinyali bekleniyor. Pencereye yakın veya açık bir yere geçin. Sinyal geldiğinde konum otomatik düzelir.",
+    "sq": "Po pritet sinjali GPS. Afrohuni te një dritare ose dilni jashtë. Vendndodhja do të rikthehet automatikisht kur të ketë sinjal."
+  },
+  "Your location": {
+    "tr": "Konumunuz",
+    "sq": "Vendndodhja juaj"
+  },
+  "Open settings": {
+    "tr": "Ayarları aç",
+    "sq": "Hap cilësimet"
+  },
+  "Try again": {
+    "tr": "Tekrar dene",
+    "sq": "Provo përsëri"
+  },
+  "Opening entry…": {
+    "tr": "Giriş açılıyor…",
+    "sq": "Po hapet formulari…"
+  },
+  "Parking zone": {
+    "tr": "Park bölgesi",
+    "sq": "Zona e parkimit"
+  },
+  "Parking": {
+    "tr": "Otopark",
+    "sq": "Parking"
+  },
+  "That free-space estimate is old. Enter the current count.": {
+    "tr": "Boş yer tahmini eski. Güncel sayıyı girin.",
+    "sq": "Vlerësimi i vendeve të lira është i vjetër. Shkruani numrin aktual."
+  },
+  "Enter a price or choose It's free.": {
+    "tr": "Fiyat girin veya Ücretsiz seçin.",
+    "sq": "Shkruani çmimin ose zgjidhni Falas."
+  },
+  "Enter both the total and current free-space estimate.": {
+    "tr": "Toplam ve mevcut boş yer sayısını girin.",
+    "sq": "Shkruani numrin total dhe vlerësimin e vendeve të lira aktuale."
+  },
+  "Draw the perimeter to finish the detailed entry.": {
+    "tr": "Ayrıntılı girişi bitirmek için sınırı çizin.",
+    "sq": "Vizatoni kufirin për të përfunduar regjistrimin e detajuar."
+  },
+  "Correct this step": {
+    "tr": "Bu adımı düzelt",
+    "sq": "Korrigjo këtë hap"
+  },
+  "Enter a first-hour price from 0 to 10,000 MKD, or choose It's free.": {
+    "tr": "0 ile 10.000 MKD arasında ilk saat fiyatı girin veya Ücretsiz seçin.",
+    "sq": "Shkruani çmimin e orës së parë nga 0 deri në 10 000 MKD, ose zgjidhni Falas."
+  },
+  "Enter both counts as whole numbers. Free spaces cannot exceed the total.": {
+    "tr": "İki sayıyı da tam sayı olarak girin. Boş yer sayısı toplamı aşamaz.",
+    "sq": "Shkruani të dy numrat si numra të plotë. Vendet e lira nuk mund të tejkalojnë totalin."
+  },
+  "Optional": {
+    "tr": "İsteğe bağlı",
+    "sq": "Opsionale"
+  },
+  "Detailed entry": {
+    "tr": "Ayrıntılı giriş",
+    "sq": "Regjistrim i detajuar"
+  },
+  "Simple entry": {
+    "tr": "Basit giriş",
+    "sq": "Regjistrim i thjeshtë"
+  },
+  "Zone, price and perimeter": {
+    "tr": "Bölge, fiyat ve sınır",
+    "sq": "Zona, çmimi dhe kufiri"
+  },
+  "Zone, price, spaces and perimeter": {
+    "tr": "Bölge, fiyat, yerler ve sınır",
+    "sq": "Zona, çmimi, vendet dhe kufiri"
+  },
+  "Just the zone and price": {
+    "tr": "Yalnızca bölge ve fiyat",
+    "sq": "Vetëm zona dhe çmimi"
+  },
+  "One detail still needs saving": {
+    "tr": "Bir bilgi daha kaydedilmeli",
+    "sq": "Një detaj duhet ende të ruhet"
+  },
+  "Details saved": {
+    "tr": "Bilgiler kaydedildi",
+    "sq": "Detajet u ruajtën"
+  },
+  "Done": {
+    "tr": "Tamam",
+    "sq": "U krye"
+  },
+  "Step": {
+    "tr": "Adım",
+    "sq": "Hapi"
+  },
+  "What is the zone label?": {
+    "tr": "Bölge etiketi nedir?",
+    "sq": "Cila është etiketa e zonës?"
+  },
+  "Zone label": {
+    "tr": "Bölge etiketi",
+    "sq": "Etiketa e zonës"
+  },
+  "How much does it cost?": {
+    "tr": "Ücreti ne kadar?",
+    "sq": "Sa kushton?"
+  },
+  "It's free": {
+    "tr": "Ücretsiz",
+    "sq": "Është falas"
+  },
+  "MKD / first hour": {
+    "tr": "MKD / ilk saat",
+    "sq": "MKD / ora e parë"
+  },
+  "Required": {
+    "tr": "Zorunlu",
+    "sq": "E detyrueshme"
+  },
+  "Following hour": {
+    "tr": "Sonraki saat",
+    "sq": "Ora pasuese"
+  },
+  "Same as first hour": {
+    "tr": "İlk saat ile aynı",
+    "sq": "Njësoj si ora e parë"
+  },
+  "How many parking spaces?": {
+    "tr": "Kaç park yeri var?",
+    "sq": "Sa vende parkimi ka?"
+  },
+  "An estimate is fine.": {
+    "tr": "Tahmin yeterlidir.",
+    "sq": "Një vlerësim mjafton."
+  },
+  "Total parking spaces": {
+    "tr": "Toplam park yeri",
+    "sq": "Vendet totale të parkimit"
+  },
+  "Free right now": {
+    "tr": "Şu anda boş",
+    "sq": "Të lira tani"
+  },
+  "Required · 0 if full": {
+    "tr": "Zorunlu · doluysa 0",
+    "sq": "E detyrueshme · 0 nëse është plot"
+  },
+  "Mark the parking perimeter": {
+    "tr": "Otopark sınırını işaretleyin",
+    "sq": "Shënoni kufirin e parkingut"
+  },
+  "Edit perimeter": {
+    "tr": "Sınırı düzenle",
+    "sq": "Ndrysho kufirin"
+  },
+  "Draw on map": {
+    "tr": "Haritada çiz",
+    "sq": "Vizato në hartë"
+  },
+  "Skip": {
+    "tr": "Atla",
+    "sq": "Kalo"
+  },
+  "Next": {
+    "tr": "İleri",
+    "sq": "Tjetra"
+  },
+  "Saving this step…": {
+    "tr": "Bu adım kaydediliyor…",
+    "sq": "Po ruhet ky hap…"
+  },
+  "Completed steps saved": {
+    "tr": "Tamamlanan adımlar kaydedildi",
+    "sq": "Hapat e përfunduar u ruajtën"
+  },
+  "Retry to save this step. Earlier completed steps are kept.": {
+    "tr": "Bu adımı kaydetmek için tekrar deneyin. Önceki tamamlanan adımlar korunur.",
+    "sq": "Provoni përsëri për ta ruajtur këtë hap. Hapat e përfunduar më parë ruhen."
+  },
+  "Retry saving": {
+    "tr": "Kaydetmeyi tekrar dene",
+    "sq": "Provo ruajtjen përsëri"
+  },
+  "Show menu": {
+    "tr": "Menüyü göster",
+    "sq": "Shfaq menynë"
+  },
+  "Expand menu": {
+    "tr": "Menüyü genişlet",
+    "sq": "Zgjero menynë"
+  },
+  "Hide menu": {
+    "tr": "Menüyü gizle",
+    "sq": "Fshih menynë"
+  },
+  "Destination": {
+    "tr": "Hedef",
+    "sq": "Destinacioni"
+  },
+  "Add parking": {
+    "tr": "Otopark ekle",
+    "sq": "Shto parking"
+  },
+  "Draw a tariff zone": {
+    "tr": "Tarife bölgesi çiz",
+    "sq": "Vizato një zonë tarifore"
+  },
+  "Parking sign photo": {
+    "tr": "Park tabelası fotoğrafı",
+    "sq": "Foto e tabelës së parkimit"
+  },
+  "Photograph a sign": {
+    "tr": "Tabelayı fotoğrafla",
+    "sq": "Fotografo një tabelë"
+  },
+  "Take a photo or choose one from your gallery": {
+    "tr": "Fotoğraf çekin veya galeriden seçin",
+    "sq": "Bëni një foto ose zgjidhni nga galeria"
+  },
+  "Enter manually": {
+    "tr": "Elle gir",
+    "sq": "Shkruaj manualisht"
+  },
+  "Simple or detailed, one step at a time": {
+    "tr": "Basit veya ayrıntılı, adım adım",
+    "sq": "Thjesht ose me detaje, hap pas hapi"
+  },
+  "Nearby parking with space": {
+    "tr": "Yakında boş yeri olan otoparklar",
+    "sq": "Parkingje afër me vende të lira"
+  },
+  "free": {
+    "tr": "boş",
+    "sq": "të lira"
+  },
+  "Current parking details": {
+    "tr": "Güncel otopark bilgileri",
+    "sq": "Detajet aktuale të parkingut"
+  },
+  "Free parking": {
+    "tr": "Ücretsiz otopark",
+    "sq": "Parking falas"
+  },
+  "Price unknown": {
+    "tr": "Fiyat bilinmiyor",
+    "sq": "Çmimi i panjohur"
+  },
+  "MKD / following hour": {
+    "tr": "MKD / sonraki saat",
+    "sq": "MKD / ora pasuese"
+  },
+  "total spaces": {
+    "tr": "toplam yer",
+    "sq": "vende gjithsej"
+  },
+  "free recently": {
+    "tr": "yakın zamanda boş",
+    "sq": "të lira së fundmi"
+  },
+  "Restricted access": {
+    "tr": "Kısıtlı erişim",
+    "sq": "Qasje e kufizuar"
+  },
+  "Customer parking": {
+    "tr": "Müşteri otoparkı",
+    "sq": "Parking për klientë"
+  },
+  "Parking information": {
+    "tr": "Otopark bilgileri",
+    "sq": "Informacionet e parkimit"
+  },
+  "Close parking info": {
+    "tr": "Otopark bilgilerini kapat",
+    "sq": "Mbyll informacionet e parkimit"
+  },
+  "Needs review · Add a zone, price or sign": {
+    "tr": "İnceleme gerekiyor · Bölge, fiyat veya tabela ekleyin",
+    "sq": "Kërkon rishikim · Shto zonë, çmim ose tabelë"
+  },
+  "Tariff zone": {
+    "tr": "Tarife bölgesi",
+    "sq": "Zona tarifore"
+  },
+  " MKD / first hour": {
+    "tr": " MKD / ilk saat",
+    "sq": " MKD / ora e parë"
+  },
+  "✓ Spaces recently reported": {
+    "tr": "✓ Yakın zamanda boş yer bildirildi",
+    "sq": "✓ Vende të lira të raportuara së fundmi"
+  },
+  "Full — recently reported": {
+    "tr": "Dolu — yakın zamanda bildirildi",
+    "sq": "Plot — raportuar së fundmi"
+  },
+  "No recent availability report": {
+    "tr": "Güncel doluluk bildirimi yok",
+    "sq": "Nuk ka raportim të fundit të disponueshmërisë"
+  },
+  "Approximate zone location": {
+    "tr": "Yaklaşık bölge konumu",
+    "sq": "Vendndodhja e përafërt e zonës"
+  },
+  "Find space nearby": {
+    "tr": "Yakında boş yer bul",
+    "sq": "Gjej vende të lira afër"
+  },
+  "Details & update": {
+    "tr": "Bilgiler ve güncelleme",
+    "sq": "Detajet dhe përditësimi"
+  },
+  "Go": {
+    "tr": "Git",
+    "sq": "Shko"
+  },
+  "Could not open navigation": {
+    "tr": "Navigasyon açılamadı",
+    "sq": "Navigimi nuk u hap"
+  },
+  "free reported": {
+    "tr": "boş yer bildirildi",
+    "sq": "vende të lira të raportuara"
+  },
+  "Spaces reported": {
+    "tr": "Boş yer bildirildi",
+    "sq": "Vende të lira të raportuara"
+  },
+  "Full reported": {
+    "tr": "Dolu bildirildi",
+    "sq": "Raportuar plot"
+  },
+  "Conflicting reports": {
+    "tr": "Çelişkili bildirimler",
+    "sq": "Raportime kundërshtuese"
+  },
+  "No recent report": {
+    "tr": "Güncel bildirim yok",
+    "sq": "Nuk ka raportim të fundit"
+  },
+  "metres straight-line": {
+    "tr": "metre kuş uçuşu",
+    "sq": "metra në vijë të drejtë"
+  },
+  "free parking": {
+    "tr": "ücretsiz otopark",
+    "sq": "parking falas"
+  },
+  "price unknown": {
+    "tr": "fiyat bilinmiyor",
+    "sq": "çmim i panjohur"
+  },
+  "MKD per first hour": {
+    "tr": "İlk saat için MKD",
+    "sq": "MKD për orën e parë"
+  },
+  "m": {
+    "tr": "m",
+    "sq": "m"
+  },
+  "Needs review · ": {
+    "tr": "İnceleme gerekiyor · ",
+    "sq": "Kërkon rishikim · "
+  },
+  "Garage": {
+    "tr": "Kapalı otopark",
+    "sq": "Garazh"
+  },
+  "Underground": {
+    "tr": "Yer altı",
+    "sq": "Nëntokësor"
+  },
+  "Free": {
+    "tr": "Ücretsiz",
+    "sq": "Falas"
+  },
+  "unknown": {
+    "tr": "bilinmiyor",
+    "sq": "e panjohur"
+  },
+  "MKD / first hr": {
+    "tr": "MKD / ilk sa.",
+    "sq": "MKD / ora e parë"
+  },
+  "Reported": {
+    "tr": "Bildirilen",
+    "sq": "E raportuar"
+  },
+  "Password": {
+    "tr": "Şifre",
+    "sq": "Fjalëkalimi"
+  },
+  "Hide password": {
+    "tr": "Şifreyi gizle",
+    "sq": "Fshih fjalëkalimin"
+  },
+  "Show password": {
+    "tr": "Şifreyi göster",
+    "sq": "Shfaq fjalëkalimin"
+  },
+  "Allow camera access to take a photo, or choose one from your gallery.": {
+    "tr": "Fotoğraf çekmek için kameraya izin verin veya galeriden seçin.",
+    "sq": "Lejoni qasjen në kamerë për të bërë foto ose zgjidhni nga galeria."
+  },
+  "Could not open photo.": {
+    "tr": "Fotoğraf açılamadı.",
+    "sq": "Fotoja nuk u hap."
+  },
+  "Capture the whole sign so prices and hours are readable.": {
+    "tr": "Fiyatlar ve saatler okunabilsin diye tüm tabelayı çekin.",
+    "sq": "Fotografoni tërë tabelën që çmimet dhe oraret të lexohen."
+  },
+  "Opening…": {
+    "tr": "Açılıyor…",
+    "sq": "Po hapet…"
+  },
+  "Take photo": {
+    "tr": "Fotoğraf çek",
+    "sq": "Bëj foto"
+  },
+  "Open gallery": {
+    "tr": "Galeriyi aç",
+    "sq": "Hap galerinë"
+  },
+  "Cancel": {
+    "tr": "İptal",
+    "sq": "Anulo"
+  },
+  "Selected parking sign": {
+    "tr": "Seçilen park tabelası",
+    "sq": "Tabela e zgjedhur e parkimit"
+  },
+  "Change photo": {
+    "tr": "Fotoğrafı değiştir",
+    "sq": "Ndrysho foton"
+  },
+  "Remove photo": {
+    "tr": "Fotoğrafı kaldır",
+    "sq": "Hiq foton"
+  },
+  "Open camera settings": {
+    "tr": "Kamera ayarlarını aç",
+    "sq": "Hap cilësimet e kamerës"
+  },
+  "Open this app's permissions in your phone settings.": {
+    "tr": "Telefon ayarlarından bu uygulamanın izinlerini açın.",
+    "sq": "Hapni lejet e këtij aplikacioni në cilësimet e telefonit."
+  },
+  "Parking saved. Retry the photo upload. ": {
+    "tr": "Otopark kaydedildi. Fotoğrafı yüklemeyi tekrar deneyin. ",
+    "sq": "Parkingu u ruajt. Provoni ngarkimin e fotos përsëri. "
+  },
+  "Could not save.": {
+    "tr": "Kaydedilemedi.",
+    "sq": "Nuk u ruajt."
+  },
+  "Parking saved": {
+    "tr": "Otopark kaydedildi",
+    "sq": "Parkingu u ruajt"
+  },
+  "Add a little more?": {
+    "tr": "Biraz daha eklemek ister misiniz?",
+    "sq": "Dëshironi të shtoni pak më shumë?"
+  },
+  "The sign details are saved. Spaces and the perimeter are optional.": {
+    "tr": "Tabela bilgileri kaydedildi. Yer sayısı ve sınır isteğe bağlıdır.",
+    "sq": "Detajet e tabelës u ruajtën. Vendet dhe kufiri janë opsionale."
+  },
+  "Add spaces & perimeter": {
+    "tr": "Yer sayısı ve sınır ekle",
+    "sq": "Shto vendet dhe kufirin"
+  },
+  "Current location": {
+    "tr": "Mevcut konum",
+    "sq": "Vendndodhja aktuale"
+  },
+  "Check the digital sign after the photo": {
+    "tr": "Fotoğraftan sonra dijital tabelayı kontrol edin",
+    "sq": "Kontrolloni tabelën digjitale pas fotos"
+  },
+  "Read sign & review": {
+    "tr": "Tabelayı oku ve incele",
+    "sq": "Lexo dhe rishiko tabelën"
+  },
+  "Appearance": {
+    "tr": "Görünüm",
+    "sq": "Pamja"
+  },
+  "Navigation app": {
+    "tr": "Navigasyon uygulaması",
+    "sq": "Aplikacioni i navigimit"
+  },
+  "Location & reminders": {
+    "tr": "Konum ve hatırlatıcılar",
+    "sq": "Vendndodhja dhe kujtesat"
+  },
+  "System": {
+    "tr": "Sistem",
+    "sq": "Sistemi"
+  },
+  "Phone default": {
+    "tr": "Telefon varsayılanı",
+    "sq": "Parazgjedhja e telefonit"
+  },
+  "Could not save this preference. Try again.": {
+    "tr": "Tercih kaydedilemedi. Tekrar deneyin.",
+    "sq": "Cilësimi nuk u ruajt. Provoni përsëri."
+  },
+  "Settings": {
+    "tr": "Ayarlar",
+    "sq": "Cilësimet"
+  },
+  "Back to settings": {
+    "tr": "Ayarlara dön",
+    "sq": "Kthehu te cilësimet"
+  },
+  "Back to map": {
+    "tr": "Haritaya dön",
+    "sq": "Kthehu te harta"
+  },
+  "Manage account": {
+    "tr": "Hesabı yönet",
+    "sq": "Menaxho llogarinë"
+  },
+  "Manage": {
+    "tr": "Yönet",
+    "sq": "Menaxho"
+  },
+  "General": {
+    "tr": "Genel",
+    "sq": "Të përgjithshme"
+  },
+  "Account": {
+    "tr": "Hesap",
+    "sq": "Llogaria"
+  },
+  "Privacy & data": {
+    "tr": "Gizlilik ve veriler",
+    "sq": "Privatësia dhe të dhënat"
+  },
+  "Support": {
+    "tr": "Destek",
+    "sq": "Mbështetja"
+  },
+  "Zones & sources": {
+    "tr": "Bölgeler ve kaynaklar",
+    "sq": "Zonat dhe burimet"
+  },
+  "Terms of service": {
+    "tr": "Kullanım koşulları",
+    "sq": "Kushtet e shërbimit"
+  },
+  "Used when you tap Go on a parking pin. If the app is unavailable, directions open in your browser.": {
+    "tr": "Bir otopark işaretinde Git'e dokunduğunuzda kullanılır. Uygulama yoksa yol tarifi tarayıcıda açılır.",
+    "sq": "Përdoret kur prekni Shko në një shënues parkingu. Nëse aplikacioni mungon, udhëzimet hapen në shfletues."
+  },
+  "Refresh GPS": {
+    "tr": "GPS'i yenile",
+    "sq": "Rifresko GPS"
+  },
+  "Location permissions": {
+    "tr": "Konum izinleri",
+    "sq": "Lejet e vendndodhjes"
+  },
+  "After you stop in a parking area, the app can ask if spaces are available. You can also add missing prices with a quick answer.": {
+    "tr": "Otoparkta durduğunuzda uygulama boş yer olup olmadığını sorabilir. Eksik fiyatları da kısa bir yanıtla ekleyebilirsiniz.",
+    "sq": "Pasi të ndaloni në një parking, aplikacioni mund të pyesë nëse ka vende të lira. Mund të shtoni edhe çmimet që mungojnë me një përgjigje të shpejtë."
+  },
+  "Optional reminders work while the app is in the background. They use location on this phone and notifications. Your GPS history is not uploaded.": {
+    "tr": "İsteğe bağlı hatırlatıcılar arka planda çalışır. Bu telefondaki konumu ve bildirimleri kullanır. GPS geçmişiniz yüklenmez.",
+    "sq": "Kujtesat opsionale punojnë kur aplikacioni është në sfond. Ato përdorin vendndodhjen në këtë telefon dhe njoftimet. Historia juaj GPS nuk ngarkohet."
+  },
+  "Allow location all the time and notifications when enabling them. This uses extra battery; timing depends on your phone, and force-closing can stop reminders.": {
+    "tr": "Açarken konuma her zaman erişime ve bildirimlere izin verin. Bu daha fazla pil kullanır; zamanlama telefonunuza bağlıdır ve zorla kapatma hatırlatıcıları durdurabilir.",
+    "sq": "Kur i aktivizoni, lejoni vendndodhjen gjatë gjithë kohës dhe njoftimet. Kjo përdor më shumë bateri; koha varet nga telefoni dhe mbyllja me forcë mund t'i ndalojë kujtesat."
+  },
+  "Reminder settings": {
+    "tr": "Hatırlatıcı ayarları",
+    "sq": "Cilësimet e kujtesave"
+  },
+  "Photos could not load.": {
+    "tr": "Fotoğraflar yüklenemedi.",
+    "sq": "Fotot nuk u ngarkuan."
+  },
+  "Confirmed digital sign": {
+    "tr": "Onaylanan dijital tabela",
+    "sq": "Tabela digjitale e konfirmuar"
+  },
+  "Check sign details": {
+    "tr": "Tabela bilgilerini kontrol et",
+    "sq": "Kontrollo detajet e tabelës"
+  },
+  "Check photo · unclear details": {
+    "tr": "Fotoğrafı kontrol et · bilgiler belirsiz",
+    "sq": "Kontrollo foton · detaje të paqarta"
+  },
+  "Photo saved · reading pending": {
+    "tr": "Fotoğraf kaydedildi · okuma bekliyor",
+    "sq": "Fotoja u ruajt · leximi në pritje"
+  },
+  "Photo saved · could not read": {
+    "tr": "Fotoğraf kaydedildi · okunamadı",
+    "sq": "Fotoja u ruajt · nuk u lexua"
+  },
+  "Reading sign…": {
+    "tr": "Tabela okunuyor…",
+    "sq": "Po lexohet tabela…"
+  },
+  "Uploading…": {
+    "tr": "Yükleniyor…",
+    "sq": "Po ngarkohet…"
+  },
+  "View parking sign": {
+    "tr": "Park tabelasını görüntüle",
+    "sq": "Shiko tabelën e parkimit"
+  },
+  "Parking sign": {
+    "tr": "Park tabelası",
+    "sq": "Tabela e parkimit"
+  },
+  "Review or correct details": {
+    "tr": "Bilgileri incele veya düzelt",
+    "sq": "Rishiko ose korrigjo detajet"
+  },
+  "Reading is taking longer. You can fill in the sign below.": {
+    "tr": "Okuma uzun sürüyor. Tabelayı aşağıdan doldurabilirsiniz.",
+    "sq": "Leximi po zgjat. Mund të plotësoni tabelën më poshtë."
+  },
+  "Use prices from 0 to 10,000 and a whole number of minutes from 1 to 10,080.": {
+    "tr": "0–10.000 arasında fiyat ve 1–10.080 arasında tam dakika sayısı kullanın.",
+    "sq": "Përdorni çmime nga 0 deri në 10 000 dhe minuta të plota nga 1 deri në 10 080."
+  },
+  "Use a three-letter currency, for example MKD.": {
+    "tr": "Üç harfli para birimi kullanın, örneğin MKD.",
+    "sq": "Përdorni një monedhë me tri shkronja, për shembull MKD."
+  },
+  "Add at least one detail from the sign.": {
+    "tr": "Tabeladan en az bir bilgi ekleyin.",
+    "sq": "Shtoni të paktën një detaj nga tabela."
+  },
+  "Correct the details before confirming this parking sign.": {
+    "tr": "Bu park tabelasını onaylamadan önce bilgileri düzeltin.",
+    "sq": "Korrigjoni detajet para se ta konfirmoni këtë tabelë parkimi."
+  },
+  "Could not confirm. Try again.": {
+    "tr": "Onaylanamadı. Tekrar deneyin.",
+    "sq": "Nuk u konfirmua. Provoni përsëri."
+  },
+  "Not on sign / unknown": {
+    "tr": "Tabelada yok / bilinmiyor",
+    "sq": "Nuk është në tabelë / e panjohur"
+  },
+  "Is this sign correct?": {
+    "tr": "Bu tabela doğru mu?",
+    "sq": "A është e saktë kjo tabelë?"
+  },
+  "Preview corrected sign": {
+    "tr": "Düzeltilen tabelayı önizle",
+    "sq": "Parashiko tabelën e korrigjuar"
+  },
+  "Yes, this is correct": {
+    "tr": "Evet, doğru",
+    "sq": "Po, është e saktë"
+  },
+  "Original sign photo": {
+    "tr": "Orijinal tabela fotoğrafı",
+    "sq": "Fotoja origjinale e tabelës"
+  },
+  "Only the details you confirm become the public digital sign. Leave anything unclear blank.": {
+    "tr": "Yalnızca onayladığınız bilgiler herkese açık dijital tabelaya eklenir. Belirsiz alanları boş bırakın.",
+    "sq": "Vetëm detajet që konfirmoni bëhen pjesë e tabelës digjitale publike. Lini bosh çdo gjë të paqartë."
+  },
+  "Zone": {
+    "tr": "Bölge",
+    "sq": "Zona"
+  },
+  "First hour": {
+    "tr": "İlk saat",
+    "sq": "Ora e parë"
+  },
+  "The sign says free": {
+    "tr": "Tabela ücretsiz diyor",
+    "sq": "Tabela thotë falas"
+  },
+  "Currency": {
+    "tr": "Para birimi",
+    "sq": "Monedha"
+  },
+  "Charging hours": {
+    "tr": "Ücret saatleri",
+    "sq": "Orari i tarifimit"
+  },
+  "Maximum stay (minutes)": {
+    "tr": "Azami kalış (dakika)",
+    "sq": "Qëndrimi maksimal (minuta)"
+  },
+  "How to pay": {
+    "tr": "Ödeme yöntemi",
+    "sq": "Si të paguani"
+  },
+  "Restrictions": {
+    "tr": "Kısıtlamalar",
+    "sq": "Kufizimet"
+  },
+  "Operator": {
+    "tr": "İşletmeci",
+    "sq": "Operatori"
+  },
+  "Other text on the sign": {
+    "tr": "Tabeladaki diğer metin",
+    "sq": "Teksti tjetër në tabelë"
+  },
+  "Some details were unclear. Please compare every field with the photo.": {
+    "tr": "Bazı bilgiler belirsizdi. Her alanı fotoğrafla karşılaştırın.",
+    "sq": "Disa detaje ishin të paqarta. Krahasoni çdo fushë me foton."
+  },
+  "Correct the details": {
+    "tr": "Bilgileri düzelt",
+    "sq": "Korrigjo detajet"
+  },
+  "Reading the sign…": {
+    "tr": "Tabela okunuyor…",
+    "sq": "Po lexohet tabela…"
+  },
+  "Reading your sign… You can also enter it yourself.": {
+    "tr": "Tabelanız okunuyor… Kendiniz de girebilirsiniz.",
+    "sq": "Po lexohet tabela juaj… Mund ta shkruani edhe vetë."
+  },
+  "The photo is saved, but automatic reading is unavailable. Enter what you can read.": {
+    "tr": "Fotoğraf kaydedildi ama otomatik okuma kullanılamıyor. Okuyabildiklerinizi girin.",
+    "sq": "Fotoja u ruajt, por leximi automatik nuk është i disponueshëm. Shkruani çfarë mund të lexoni."
+  },
+  "Enter sign details": {
+    "tr": "Tabela bilgilerini gir",
+    "sq": "Shkruaj detajet e tabelës"
+  },
+  "Review later": {
+    "tr": "Daha sonra incele",
+    "sq": "Rishiko më vonë"
+  },
+  "Terms and conditions": {
+    "tr": "Şartlar ve koşullar",
+    "sq": "Kushtet e përdorimit"
+  },
+  "Scroll to the end to continue": {
+    "tr": "Devam etmek için sona kaydırın",
+    "sq": "Lëvizni deri në fund për të vazhduar"
+  },
+  "Connecting and saving. The server may take up to a minute to wake up. One tap is enough.": {
+    "tr": "Bağlanıyor ve kaydediliyor. Sunucunun uyanması bir dakika sürebilir. Bir dokunuş yeterlidir.",
+    "sq": "Po lidhet dhe po ruhet. Serverit mund t'i duhet deri në një minutë për t'u aktivizuar. Një prekje mjafton."
+  },
+  "I accept and continue": {
+    "tr": "Kabul et ve devam et",
+    "sq": "Prano dhe vazhdo"
+  },
+  "Use this parking app only when it is safe. Do not interact with it while driving.": {
+    "tr": "Bu park uygulamasını yalnızca güvenli olduğunda kullanın. Araç sürerken kullanmayın.",
+    "sq": "Përdoreni këtë aplikacion parkimi vetëm kur është e sigurt. Mos e përdorni gjatë drejtimit të automjetit."
+  },
+  "Parking locations, prices and availability can change. Check the signs where you park and follow local parking rules. The app does not reserve spaces or collect parking payments.": {
+    "tr": "Otopark konumları, fiyatlar ve doluluk değişebilir. Park ettiğiniz yerdeki tabelaları kontrol edin ve yerel kurallara uyun. Uygulama yer ayırmaz veya park ücreti toplamaz.",
+    "sq": "Vendndodhjet, çmimet dhe disponueshmëria mund të ndryshojnë. Kontrolloni tabelat ku parkoni dhe ndiqni rregullat lokale. Aplikacioni nuk rezervon vende dhe nuk mbledh pagesa parkimi."
+  },
+  "Share information you believe is accurate and photos you have the right to share. Do not upload faces, registration plates, private information or abusive content.": {
+    "tr": "Doğru olduğuna inandığınız bilgileri ve paylaşmaya hakkınız olan fotoğrafları paylaşın. Yüz, plaka, özel bilgi veya rahatsız edici içerik yüklemeyin.",
+    "sq": "Ndani informacione që besoni se janë të sakta dhe foto që keni të drejtë t'i ndani. Mos ngarkoni fytyra, targa, informacione private ose përmbajtje fyese."
+  },
+  "Parking contributions and sign photos are public. You allow the app to store, display and process them for the shared map. Google Gemini may process sign photos to read prices, hours and zone labels.": {
+    "tr": "Otopark katkıları ve tabela fotoğrafları herkese açıktır. Uygulamanın bunları ortak harita için saklamasına, göstermesine ve işlemesine izin verirsiniz. Google Gemini fiyatları, saatleri ve bölge etiketlerini okumak için tabela fotoğraflarını işleyebilir.",
+    "sq": "Kontributet e parkimit dhe fotot e tabelave janë publike. Ju lejoni aplikacionin t'i ruajë, shfaqë dhe përpunojë për hartën e përbashkët. Google Gemini mund të përpunojë fotot për të lexuar çmimet, oraret dhe etiketat e zonave."
+  },
+  "Location is used on your device to find nearby parking and detect a stop. GPS accuracy depends on your device and surroundings. Your GPS history is not uploaded. Address searches and map/navigation requests are processed by their providers.": {
+    "tr": "Konum cihazınızda yakın otoparkları bulmak ve durmayı algılamak için kullanılır. GPS doğruluğu cihazınıza ve çevreye bağlıdır. GPS geçmişiniz yüklenmez. Adres aramaları ve harita/navigasyon istekleri sağlayıcıları tarafından işlenir.",
+    "sq": "Vendndodhja përdoret në pajisjen tuaj për të gjetur parkingjet afër dhe për të zbuluar ndalimin. Saktësia GPS varet nga pajisja dhe mjedisi. Historia GPS nuk ngarkohet. Kërkimet e adresave dhe kërkesat e hartave/navigimit përpunohen nga ofruesit e tyre."
+  },
+  "Guest contributions and points stay with this device until you create an account. Your username, contributions and points belong to your account. Save your password to sign in after reinstalling; email password reset is not available yet. Existing device accounts need to add a password in Account first. You can delete your account, photos and reports in Privacy. Published parking locations and boundaries remain on the shared map. Contribution points have no monetary value.": {
+    "tr": "Misafir katkıları ve puanları hesap oluşturana kadar bu cihazda kalır. Kullanıcı adınız, katkılarınız ve puanlarınız hesabınıza aittir. Yeniden yükledikten sonra giriş yapabilmek için şifrenizi saklayın; e-postayla şifre sıfırlama henüz yoktur. Mevcut cihaz hesapları önce Hesap bölümünden şifre eklemelidir. Hesabınızı, fotoğraflarınızı ve bildirimlerinizi Gizlilik bölümünden silebilirsiniz. Yayımlanan otopark konumları ve sınırları ortak haritada kalır. Katkı puanlarının parasal değeri yoktur.",
+    "sq": "Kontributet dhe pikët e vizitorit mbeten në këtë pajisje derisa të krijoni llogari. Emri, kontributet dhe pikët i përkasin llogarisë suaj. Ruani fjalëkalimin për t'u identifikuar pas riinstalimit; rivendosja me email ende nuk ofrohet. Llogaritë ekzistuese të pajisjes duhet së pari të shtojnë fjalëkalim te Llogaria. Mund të fshini llogarinë, fotot dhe raportimet te Privatësia. Vendndodhjet dhe kufijtë e publikuar mbeten në hartën e përbashkët. Pikët e kontributeve nuk kanë vlerë monetare."
+  },
+  "Finding your location…": {
+    "tr": "Konumunuz bulunuyor…",
+    "sq": "Po gjendet vendndodhja juaj…"
+  },
+  "Location active": {
+    "tr": "Konum etkin",
+    "sq": "Vendndodhja aktive"
+  },
+  "Location is approximate": {
+    "tr": "Konum yaklaşık",
+    "sq": "Vendndodhja është e përafërt"
+  },
+  "Location access is off": {
+    "tr": "Konum erişimi kapalı",
+    "sq": "Qasja në vendndodhje është e fikur"
+  },
+  "Turn on Location / GPS": {
+    "tr": "Konum / GPS'i aç",
+    "sq": "Aktivizo Vendndodhjen / GPS"
+  },
+  "Location needs attention": {
+    "tr": "Konum kontrol edilmeli",
+    "sq": "Vendndodhja kërkon vëmendje"
+  },
+  "Wait for a precise location before adding parking.": {
+    "tr": "Otopark eklemeden önce kesin konumu bekleyin.",
+    "sq": "Prisni një vendndodhje të saktë para se të shtoni parking."
+  },
+  "Your location is unavailable. Enable GPS to add parking.": {
+    "tr": "Konumunuz kullanılamıyor. Otopark eklemek için GPS'i açın.",
+    "sq": "Vendndodhja juaj nuk është e disponueshme. Aktivizoni GPS për të shtuar parking."
+  },
+  "Your location is outside Skopje.": {
+    "tr": "Konumunuz Üsküp dışında.",
+    "sq": "Vendndodhja juaj është jashtë Shkupit."
+  },
+  "No address found. Choose on the map.": {
+    "tr": "Adres bulunamadı. Haritadan seçin.",
+    "sq": "Nuk u gjet adresë. Zgjidhni në hartë."
+  },
+  "Search is unavailable. Choose on the map.": {
+    "tr": "Arama kullanılamıyor. Haritadan seçin.",
+    "sq": "Kërkimi nuk është i disponueshëm. Zgjidhni në hartë."
+  },
+  "Adjust the corners so edges don’t cross.": {
+    "tr": "Kenarlar kesişmeyecek şekilde köşeleri ayarlayın.",
+    "sq": "Rregulloni qoshet që skajet të mos kryqëzohen."
+  },
+  "Enter a price from 0 to 10,000 MKD.": {
+    "tr": "0 ile 10.000 MKD arasında fiyat girin.",
+    "sq": "Shkruani një çmim nga 0 deri në 10 000 MKD."
+  },
+  "Thank you — price shared": {
+    "tr": "Teşekkürler — fiyat paylaşıldı",
+    "sq": "Faleminderit — çmimi u nda"
+  },
+  "Thanks for helping other drivers": {
+    "tr": "Diğer sürücülere yardım ettiğiniz için teşekkürler",
+    "sq": "Faleminderit që ndihmoni shoferët e tjerë"
+  },
+  "Could not send. Try again.": {
+    "tr": "Gönderilemedi. Tekrar deneyin.",
+    "sq": "Nuk u dërgua. Provoni përsëri."
+  },
+  "Choose an area in Skopje.": {
+    "tr": "Üsküp'te bir alan seçin.",
+    "sq": "Zgjidhni një zonë në Shkup."
+  },
+  "Where are you going?": {
+    "tr": "Nereye gidiyorsunuz?",
+    "sq": "Ku po shkoni?"
+  },
+  "Search destination or zone": {
+    "tr": "Hedef veya bölge ara",
+    "sq": "Kërko destinacion ose zonë"
+  },
+  "Clear destination": {
+    "tr": "Hedefi temizle",
+    "sq": "Pastro destinacionin"
+  },
+  "Dismiss location notification": {
+    "tr": "Konum bildirimini kapat",
+    "sq": "Mbyll njoftimin e vendndodhjes"
+  },
+  "Search this address": {
+    "tr": "Bu adresi ara",
+    "sq": "Kërko këtë adresë"
+  },
+  "Choose on map": {
+    "tr": "Haritadan seç",
+    "sq": "Zgjidh në hartë"
+  },
+  "Dismiss message": {
+    "tr": "Mesajı kapat",
+    "sq": "Mbyll mesazhin"
+  },
+  "Map legend": {
+    "tr": "Harita açıklamaları",
+    "sq": "Legjenda e hartës"
+  },
+  "Parking near me": {
+    "tr": "Yakınımdaki otoparklar",
+    "sq": "Parkingjet afër meje"
+  },
+  "Parking near destination": {
+    "tr": "Hedef yakınındaki otoparklar",
+    "sq": "Parkingjet afër destinacionit"
+  },
+  "Parking near you": {
+    "tr": "Yakınınızdaki otoparklar",
+    "sq": "Parkingjet afër jush"
+  },
+  "Nearest": {
+    "tr": "En yakın",
+    "sq": "Më afër"
+  },
+  "Cheapest": {
+    "tr": "En ucuz",
+    "sq": "Më lirë"
+  },
+  "Public parking · first-hour estimates · unknown prices last. Check signs for restrictions.": {
+    "tr": "Herkese açık otopark · ilk saat tahminleri · bilinmeyen fiyatlar sonda. Kısıtlamalar için tabelaları kontrol edin.",
+    "sq": "Parking publik · vlerësime të orës së parë · çmimet e panjohura në fund. Kontrolloni tabelat për kufizimet."
+  },
+  "No parking mapped nearby": {
+    "tr": "Yakında haritalanmış otopark yok",
+    "sq": "Nuk ka parkingje të hartëzuara afër"
+  },
+  "Enable location for nearby parking": {
+    "tr": "Yakın otoparklar için konumu açın",
+    "sq": "Aktivizoni vendndodhjen për parkingjet afër"
+  },
+  "Offline · saved map": {
+    "tr": "Çevrimdışı · kayıtlı harita",
+    "sq": "Jashtë linje · harta e ruajtur"
+  },
+  "Perimeter · Tap or drag corners": {
+    "tr": "Sınır · Köşelere dokunun veya sürükleyin",
+    "sq": "Kufiri · Prekni ose tërhiqni qoshet"
+  },
+  "Tap to add · Drag corners to adjust": {
+    "tr": "Eklemek için dokunun · Ayarlamak için köşeleri sürükleyin",
+    "sq": "Prekni për të shtuar · Tërhiqni qoshet për t'i rregulluar"
+  },
+  "Set destination": {
+    "tr": "Hedef belirle",
+    "sq": "Vendos destinacionin"
+  },
+  "Choose a destination in Skopje.": {
+    "tr": "Üsküp'te bir hedef seçin.",
+    "sq": "Zgjidhni një destinacion në Shkup."
+  },
+  "Undo": {
+    "tr": "Geri al",
+    "sq": "Zhbëj"
+  },
+  "Save perimeter": {
+    "tr": "Sınırı kaydet",
+    "sq": "Ruaj kufirin"
+  },
+  "Save zone": {
+    "tr": "Bölgeyi kaydet",
+    "sq": "Ruaj zonën"
+  },
+  "Use this boundary": {
+    "tr": "Bu sınırı kullan",
+    "sq": "Përdor këtë kufi"
+  },
+  "Finish zone": {
+    "tr": "Bölgeyi tamamla",
+    "sq": "Përfundo zonën"
+  },
+  "Added to the map": {
+    "tr": "Haritaya eklendi",
+    "sq": "U shtua në hartë"
+  },
+  "Needs review or a zone label": {
+    "tr": "İnceleme veya bölge etiketi gerekiyor",
+    "sq": "Kërkon rishikim ose etiketë zone"
+  },
+  "Reviewed parking · availability unknown": {
+    "tr": "İncelenmiş otopark · doluluk bilinmiyor",
+    "sq": "Parking i rishikuar · disponueshmëri e panjohur"
+  },
+  "Free of charge · not a space count": {
+    "tr": "Ücretsiz · boş yer sayısı değil",
+    "sq": "Pa pagesë · nuk është numër vendesh të lira"
+  },
+  "Spaces recently reported": {
+    "tr": "Yakın zamanda boş yer bildirildi",
+    "sq": "Vende të lira të raportuara së fundmi"
+  },
+  "Recently reported full": {
+    "tr": "Yakın zamanda dolu bildirildi",
+    "sq": "Raportuar plot së fundmi"
+  },
+  "A 0 badge means no parking fee, even when full. Small green/red badges show recent reports on pins that still need review. Gold/violet borders are contributor rewards.": {
+    "tr": "0 rozeti, dolu olsa bile park ücreti olmadığını gösterir. Küçük yeşil/kırmızı rozetler, inceleme gereken işaretlerde son bildirimleri gösterir. Altın/menekşe sınırlar katkıcı ödülleridir.",
+    "sq": "Shenja 0 tregon se nuk ka tarifë parkimi, edhe kur është plot. Shenjat e vogla të gjelbra/të kuqe tregojnë raportimet e fundit në shënuesit që kërkojnë rishikim. Kufijtë e artë/vjollcë janë shpërblime kontribuesish."
+  },
+  "One more thing — is it free?": {
+    "tr": "Bir soru daha — ücretsiz mi?",
+    "sq": "Edhe një gjë — a është falas?"
+  },
+  "Any free spaces here?": {
+    "tr": "Burada boş yer var mı?",
+    "sq": "A ka vende të lira këtu?"
+  },
+  "Spaces available": {
+    "tr": "Boş yer var",
+    "sq": "Ka vende të lira"
+  },
+  "Full": {
+    "tr": "Dolu",
+    "sq": "Plot"
+  },
+  "The price is still missing here. A quick answer helps the next driver.": {
+    "tr": "Burada fiyat hâlâ eksik. Kısa bir yanıt sonraki sürücüye yardımcı olur.",
+    "sq": "Çmimi këtu ende mungon. Një përgjigje e shpejtë ndihmon shoferin tjetër."
+  },
+  "Find free spaces nearby": {
+    "tr": "Yakında boş yer bul",
+    "sq": "Gjej vende të lira afër"
+  },
+  "Price per hour in MKD": {
+    "tr": "Saatlik fiyat (MKD)",
+    "sq": "Çmimi për orë në MKD"
+  },
+  "MKD per hour": {
+    "tr": "Saatlik MKD",
+    "sq": "MKD për orë"
+  },
+  "If the first and following hours differ, use “Add photo or details”.": {
+    "tr": "İlk saat ve sonraki saat fiyatı farklıysa “Fotoğraf veya bilgi ekle”yi kullanın.",
+    "sq": "Nëse çmimi i orës së parë dhe pasuese ndryshon, përdorni “Shto foto ose detaje”."
+  },
+  "Share price": {
+    "tr": "Fiyatı paylaş",
+    "sq": "Ndaj çmimin"
+  },
+  "Paid parking": {
+    "tr": "Ücretli otopark",
+    "sq": "Parking me pagesë"
+  },
+  "Add photo or details": {
+    "tr": "Fotoğraf veya bilgi ekle",
+    "sq": "Shto foto ose detaje"
+  },
+  "Not sure · skip": {
+    "tr": "Emin değilim · atla",
+    "sq": "Nuk jam i sigurt · kalo"
+  },
+  "Connect to send your answer.": {
+    "tr": "Yanıtınızı göndermek için bağlanın.",
+    "sq": "Lidhuni për të dërguar përgjigjen."
+  },
+  "Select language": {
+    "tr": "Dil seçin",
+    "sq": "Zgjidhni gjuhën"
+  },
+  "Choose your preferred language to continue": {
+    "tr": "Devam etmek için tercih ettiğiniz dili seçin",
+    "sq": "Zgjidhni gjuhën e preferuar për të vazhduar"
+  },
+  "Corner ": {
+    "tr": "Köşe ",
+    "sq": "Qoshja "
+  },
+  " parking places": {
+    "tr": " otopark",
+    "sq": " parkingje"
+  },
+  "Skopje parking map": {
+    "tr": "Üsküp otopark haritası",
+    "sq": "Harta e parkingjeve në Shkup"
+  },
+  "The map could not load. Check your connection.": {
+    "tr": "Harita yüklenemedi. Bağlantınızı kontrol edin.",
+    "sq": "Harta nuk u ngarkua. Kontrolloni lidhjen."
+  },
+  "Free on Saturdays and Sundays": {
+    "tr": "Cumartesi ve pazar ücretsiz",
+    "sq": "Falas të shtunave dhe të dielave"
+  },
+  "Free on Sundays only": {
+    "tr": "Yalnızca pazar günleri ücretsiz",
+    "sq": "Falas vetëm të dielave"
+  },
+  "Neither day is free": {
+    "tr": "Her iki gün de ücretli",
+    "sq": "Asnjëra ditë nuk është falas"
+  },
+  "Paying hours": {
+    "tr": "Ücretli saatler",
+    "sq": "Orari me pagesë"
+  },
+  "Free weekends": {
+    "tr": "Ücretsiz hafta sonları",
+    "sq": "Fundjavat falas"
+  },
+  "e.g. Mon–Fri 07:00–23:00; Sat 07:00–15:00": {
+    "tr": "ör. Pzt–Cum 07:00–23:00; Cmt 07:00–15:00",
+    "sq": "p.sh. Hën–Pre 07:00–23:00; Sht 07:00–15:00"
+  },
+  "Enter the total number of parking spaces.": {
+    "tr": "Toplam park yeri sayısını girin.",
+    "sq": "Shkruani numrin e përgjithshëm të vendeve të parkimit."
+  },
+  "Enter a whole number from 0 to 100,000.": {
+    "tr": "0 ile 100.000 arasında bir tam sayı girin.",
+    "sq": "Shkruani një numër të plotë nga 0 deri në 100.000."
+  },
+  "Zone, price, paying hours and perimeter": {
+    "tr": "Bölge, fiyat, ücretli saatler ve sınır",
+    "sq": "Zona, çmimi, orari me pagesë dhe kufiri"
+  },
+  "Zone, price, paying hours, spaces and perimeter": {
+    "tr": "Bölge, fiyat, ücretli saatler, yer sayısı ve sınır",
+    "sq": "Zona, çmimi, orari me pagesë, vendet dhe kufiri"
+  },
+  "All parking": {
+    "tr": "Tüm otoparklar",
+    "sq": "Të gjitha parkingjet"
+  },
+  "Reviewed parking": {
+    "tr": "İncelenmiş otoparklar",
+    "sq": "Parkingje të verifikuara"
+  },
+  "Unreviewed parking": {
+    "tr": "İncelenmemiş otoparklar",
+    "sq": "Parkingje të paverifikuara"
+  },
+  "Garages": {
+    "tr": "Katlı otoparklar",
+    "sq": "Garazhe"
+  },
+  "Parking zones": {
+    "tr": "Park bölgeleri",
+    "sq": "Zona parkimi"
+  },
+  "Change filter": {
+    "tr": "Filtreyi değiştir",
+    "sq": "Ndrysho filtrin"
+  },
+  "Show more": {
+    "tr": "Daha fazla göster",
+    "sq": "Shfaq më shumë"
+  },
+  "Not sure": {
+    "tr": "Emin değilim",
+    "sq": "Nuk jam i sigurt"
+  },
+  "Free of charge": {
+    "tr": "Ücretsiz",
+    "sq": "Pa pagesë"
+  },
+  "Surface parking": {
+    "tr": "Açık otopark",
+    "sq": "Parking i hapur"
+  },
+  "Underground parking": {
+    "tr": "Yeraltı otoparkı",
+    "sq": "Parking nëntokësor"
+  },
+  "Street parking": {
+    "tr": "Yol kenarı park",
+    "sq": "Parkim në rrugë"
+  },
+  "No parking matches this filter": {
+    "tr": "Bu filtreye uyan otopark yok",
+    "sq": "Asnjë parking nuk përputhet me këtë filtër"
+  }
+}

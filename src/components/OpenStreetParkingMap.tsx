@@ -1,3 +1,4 @@
+import { translate } from "../domain/language";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
@@ -36,7 +37,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
         id: place.id,
         point: [place.coordinate.latitude, place.coordinate.longitude],
         title:
-          props.language === "en" ? (place.nameEn ?? place.name) : place.name,
+          props.language !== "mk" ? (place.nameEn ?? place.name) : place.name,
         html: parkingMarkerHtml(appearance),
         cluster,
         selected: place.id === props.selectedId,
@@ -49,8 +50,8 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       drawing: props.drawing,
       destinationName:
         props.destinationName ??
-        (props.language === "mk" ? "Дестинација" : "Destination"),
-      cornerLabel: props.language === "mk" ? "Агол " : "Corner ",
+        (translate(props.language, "Destination", "Дестинација")),
+      cornerLabel: translate(props.language, "Corner ", "Агол "),
       draft: (props.draftCoordinates ?? []).map((p) => [
         p.latitude,
         p.longitude,
@@ -243,9 +244,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       {failed ? (
         <View style={styles.error}>
           <Text>
-            {props.language === "mk"
-              ? "Мапата не може да се отвори. Проверете ја врската."
-              : "The map could not load. Check your connection."}
+            {translate(props.language, "The map could not load. Check your connection.", "Мапата не може да се отвори. Проверете ја врската.")}
           </Text>
         </View>
       ) : null}

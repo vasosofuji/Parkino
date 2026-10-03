@@ -1,4 +1,5 @@
 import test from "node:test";
+import { translate } from "../src/domain/language";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import ts from "typescript";
@@ -29,6 +30,7 @@ function renderer() {
   const exports: { default?: (props: ParkingMapProps) => Node } = {};
   const source = ts.transpileModule(readFileSync("src/components/GoogleParkingMap.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
   vm.runInNewContext(source, { exports, require(name: string) {
+    if (name === "../domain/language") return { translate };
     if (name === "react") return { ...React, default: React, __esModule: true };
     if (name === "react-native") return { AccessibilityInfo: { isReduceMotionEnabled: async () => false, addEventListener: (_name: string, callback: (value: boolean) => void) => { motionChanged = callback; return { remove() {} }; } }, StyleSheet: { create: (value: unknown) => value, absoluteFill: {} }, View: "View", Text: "Text" };
     if (name === "react-native-maps") return { __esModule: true, default: "MapView", Marker: "Marker", Polygon: "Polygon", Polyline: "Polyline", Circle: "Circle" };

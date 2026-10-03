@@ -64,7 +64,7 @@ export function enrichSigns(
       } : undefined,
       zoneCode: latest.get(place.id) ?? place.zoneCode ?? (info?.zoneCode ? normalizeZoneCode(info.zoneCode) : null),
       zoneCodeEvidence: latest.has(place.id) ? "community" : place.zoneCode ? place.zoneCodeEvidence : info?.zoneCode ? "sign" : undefined,
-      openingHours: place.openingHours ?? info?.chargingHours ?? null,
+      paymentSchedule: place.paymentSchedule ?? (info ? { chargingHours: info.chargingHours, freeWeekends: info.freeWeekends ?? null } : undefined),
     };
   });
   const zones = enriched.filter(p => p.kind === "zone" && p.geometry && p.signInfo);
@@ -82,6 +82,6 @@ export function enrichSigns(
       normalizeZoneCode(zone.zoneCode) !== normalizeZoneCode(zone.signInfo!.zoneCode)) return place;
     return { ...place, signInfo: zone.signInfo, zoneCode: place.zoneCode ?? zone.zoneCode,
       zoneCodeEvidence: place.zoneCodeEvidence ?? "sign",
-      openingHours: place.openingHours ?? zone.signInfo!.chargingHours };
+      paymentSchedule: place.paymentSchedule ?? { chargingHours: zone.signInfo!.chargingHours, freeWeekends: zone.signInfo!.freeWeekends ?? null } };
   });
 }

@@ -88,7 +88,7 @@ export default function ParkingPreview({
           }}
         >
           {place.zoneCode ? place.zoneCode + " · " : ""}
-          {language === "en" ? (place.nameEn ?? place.name) : place.name}
+          {language !== "mk" ? (place.nameEn ?? place.name) : place.name}
         </Text>
         <IconButton
           name="x"

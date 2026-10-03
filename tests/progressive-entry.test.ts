@@ -10,6 +10,7 @@ function client(overrides: Partial<EntryApi> = {}) {
   const api: EntryApi = {
     contribute: async value => { calls.push(["create", value]); return { ...place, zoneCode: value.zoneCode }; },
     label: async (...values) => { calls.push(["label", ...values]); }, price: async (...values) => { calls.push(["price", ...values]); },
+    paymentSchedule: async (...values) => { calls.push(["paymentSchedule", ...values]); },
     capacity: async (...values) => { calls.push(["capacity", ...values]); }, report: async (...values) => { calls.push(["report", ...values]); }, boundary: async (...values) => { calls.push(["boundary", ...values]); }, ...overrides,
   };
   return { calls, api };
@@ -87,15 +88,14 @@ test("price and count inputs retain zero and reject impossible counts", () => {
   assert.throws(() => spacesInput("", "21", 20));
   assert.throws(() => spacesInput("1.5", "1"));
 });
-test("manual entry cannot skip pricing or either detailed count, while zero is explicit", () => {
+test("manual entry requires pricing and capacity but never an availability count", () => {
   assert.throws(() => manualPriceInput("", ""), /price-required/);
   assert.deepEqual(manualPriceInput("0", ""), { first: 0, next: 0 });
   assert.deepEqual(manualPriceInput("40", ""), { first: 40, next: 40 });
-  assert.throws(() => manualSpacesInput("", ""), /spaces-required/);
-  assert.throws(() => manualSpacesInput("20", ""), /spaces-required/);
-  assert.throws(() => manualSpacesInput("", "0"), /spaces-required/);
-  assert.deepEqual(manualSpacesInput("20", "0"), { total: 20, available: 0 });
-  assert.throws(() => manualSpacesInput("20", "21"), /spaces-exceed-capacity/);
+  assert.throws(() => manualSpacesInput(""), /spaces-required/);
+  assert.deepEqual(manualSpacesInput("20"), { total: 20, available: null });
+  assert.deepEqual(manualSpacesInput("0"), { total: 0, available: null });
+  assert.throws(() => manualSpacesInput("1.5"), /spaces-range/);
 });
 test("unfinished and legacy done drafts retain earlier saves but require missing details", () => {
   const base = { id: "park-1", code: null, total: null, price: "", boundary: "" };
@@ -105,7 +105,7 @@ test("unfinished and legacy done drafts retain earlier saves but require missing
   assert.equal(incompleteManualStep(base, simple), "price");
   assert.equal(incompleteManualStep({ ...base, price: "0:0" }, simple), null);
   assert.equal(incompleteManualStep({ ...base, price: "0:0" }, detailed), "spaces");
-  assert.equal(incompleteManualStep({ ...base, price: "0:0", total: 20 }, detailed), "spaces");
+  assert.equal(incompleteManualStep({ ...base, price: "0:0", total: 20 }, detailed), "perimeter");
   assert.equal(incompleteManualStep({ ...base, price: "0:0", total: 20, free: 0 }, detailed), "perimeter");
   assert.equal(incompleteManualStep({ ...base, price: "0:0", total: 20, free: 0 }, { ...detailed, geometry }), null);
   assert.equal(incompleteManualStep({ ...base, price: "0:0" }, { ...detailed, zone: true, geometry }), null);
@@ -162,4 +162,17 @@ test("editing another field does not renew an old availability observation", asy
   assert.equal(restored?.pending?.type === "spaces" && restored.pending.available, null);
   assert.equal(availabilityIsFresh(0, 30 * 60_000), false);
   assert.equal(availabilityIsFresh(29 * 60_000, 30 * 60_000), true);
+});
+
+test("payment schedules retry and deduplicate across draft restoration", async () => {
+  let attempts = 0;
+  const { api } = client({ paymentSchedule: async () => { if (++attempts === 1) throw new Error("offline"); } });
+  const writer = createProgressiveEntry(api, { place });
+  const value = { chargingHours: "Mon–Sat 07:00–23:00", freeWeekends: "sunday" as const };
+  await assert.rejects(writer.paymentSchedule(value), /offline/);
+  assert.equal(writer.snapshot().schedule, undefined);
+  await writer.paymentSchedule(value);
+  const next = client(), reopened = createProgressiveEntry(next.api, { place, snapshot: writer.snapshot() });
+  await reopened.paymentSchedule(value);
+  assert.equal(next.calls.length, 0);
 });

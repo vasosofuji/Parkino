@@ -1,5 +1,7 @@
 # Parkino
 
+Open the hosted browser app at [parking.vasojevich.com](https://parking.vasojevich.com/). The `/health` path is the backend status check.
+
 Android/iOS parking application built with Expo 57 and React Native, with a browser preview and a shared API backed by SQLite locally or Supabase PostgreSQL when configured. All code lives in this folder; the website project was not edited.
 
 ## Run locally
@@ -17,7 +19,7 @@ In another terminal in the same folder:
 npm run web
 ```
 
-Open http://localhost:8081. The API runs at http://localhost:3001. First launch walks through language, appearance, account creation/sign-in or guest access, then Terms of Service. Initial access requires a connection; returning users can browse the saved catalog offline. Contributions require a connection.
+Open http://localhost:8081 (HTTP, not HTTPS). `npm run web` uses localhost explicitly. The hosted API allows the browser origins `http://localhost:8081` and `http://127.0.0.1:8081`; HTTPS, LAN addresses, and other ports require an explicit matching entry in the API host's `ALLOWED_ORIGINS`. A rejected browser origin can show a server connection error even when the API is healthy. The local API runs at http://localhost:3001. First launch walks through language, appearance, account creation/sign-in or guest access, then Terms of Service. Initial access requires a connection; returning users can browse the saved catalog offline. Contributions require a connection.
 
 For a physical Android or iPhone, run `npm start` and open the project with the matching Expo Go version. Set `EXPO_PUBLIC_API_URL` to your computer's LAN address, such as `http://192.168.1.10:3001`, in `.env`. Start the API with `$env:HOST='0.0.0.0'; npm run api` on a trusted local network. Allow the API port through the firewall if needed. Restart Expo after changing `.env`. The phone and computer must be on the same network. The default localhost API is not a public deployment.
 
@@ -115,7 +117,7 @@ The map requests fresh high-accuracy GPS. Desktop browsers may provide only a co
 
 ## Supabase and mobile onboarding
 
-Follow [SUPABASE.md](docs/SUPABASE.md) to connect a project, run `npm run db:migrate`, optionally migrate the existing SQLite demo data, and configure the hosted API. The Parkino Supabase project is connected, with verified TLS, shared application tables and preserved demo accounts. See docs/CLOUD-DEPLOYMENT.md for the Render rollout and connected APK setup.
+Follow [SUPABASE.md](docs/SUPABASE.md) to connect a project, run `npm run db:migrate`, optionally migrate the existing SQLite demo data, and configure the hosted API. The Parkino Supabase project is connected, with verified TLS, shared application tables and preserved demo accounts. See docs/CLOUD-DEPLOYMENT.md for the Vercel rollout and connected APK setup.
 
 Native GPS checks foreground permission and system location services, prompts Android to enable its location provider when needed, requests an initial fix for stationary devices, and restarts after returning from Settings. Denied permissions, disabled GPS, timeouts and browser-provider failures have distinct recovery messages. Browser previews require HTTPS (or localhost) and a functioning browser/OS location provider; retries cannot supply a provider the host does not have. Native GPS and camera behavior still require physical-device testing.
 
@@ -146,6 +148,6 @@ adb reverse tcp:3002 tcp:3002
 adb install -r preview/Parkino-device-test.apk
 ```
 
-The isolated test server uses SQLite under `data/runtime/device-test.sqlite`, never the shared database. That explicit `-DeviceTest` build needs USB forwarding. For the normal **Parking Test** app (`mk.parkskopje.app.dev`) use `scripts/build-apk.ps1 -TestPackage -ApiUrl https://parkino-api.onrender.com`, producing `preview/Parkino-test-connected.apk`. It works over Wi-Fi/mobile data without USB. Preserve its signing identity when updating an existing installation.
+The isolated test server uses SQLite under `data/runtime/device-test.sqlite`, never the shared database. That explicit `-DeviceTest` build needs USB forwarding. For the normal **Parking Test** app (`mk.parkskopje.app.dev`) use `scripts/build-apk.ps1 -TestPackage -ApiUrl https://parkino-api-vaso.vercel.app`, producing `preview/Parkino-test-connected.apk`. It works over Wi-Fi/mobile data without USB. Preserve its signing identity when updating an existing installation.
 
 Local builds use a single-use Gradle process and compile Kotlin in that process. The script also requests Gradle shutdown on success or failure, so builders do not stay resident after compilation. Generated projects and caches remain on disk for inspection.

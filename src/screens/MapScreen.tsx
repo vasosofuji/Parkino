@@ -1,3 +1,4 @@
+import { matchesParkingFilter, filteredParkingRows, type ParkingFilter } from "../domain/parking-filters";
 import React, {
   useCallback,
   useEffect,
@@ -87,6 +88,9 @@ export default function MapScreen() {
   const [detailsEditing, setDetailsEditing] = useState(false);
   const [menu, setMenu] = useState(false),
     [locationHelp, setLocationHelp] = useState(false);
+  const [parkingFilter, setParkingFilter] = useState<ParkingFilter>("all");
+  const [visibleMatches, setVisibleMatches] = useState(30);
+  const [expandResults, setExpandResults] = useState(0);
   const [legend, setLegend] = useState(false);
   const [picking, setPicking] = useState<"destination" | "zone" | null>(null);
   const [proposal, setProposal] = useState<NewParking | null>(null);
@@ -109,10 +113,25 @@ export default function MapScreen() {
     gps.location,
     Math.max(now, gps.location?.timestamp ?? now),
   );
+  const filterOptions: { id: ParkingFilter; color: string; symbol: string; label: string }[] = [
+    { id: "all", color: MARKER_COLORS.normal, symbol: "P", label: t("All parking", "Сите паркинзи") },
+    { id: "free", color: MARKER_COLORS.free, symbol: "0", label: t("Free of charge", "Бесплатно") },
+    { id: "reviewed", color: MARKER_COLORS.normal, symbol: "P", label: t("Reviewed parking", "Проверени паркинзи") },
+    { id: "unreviewed", color: MARKER_COLORS.needsInfo, symbol: "?", label: t("Unreviewed parking", "Непроверени паркинзи") },
+    { id: "spaces", color: MARKER_COLORS.spaces, symbol: "✓", label: t("Spaces recently reported", "Неодамна пријавени слободни места") },
+    { id: "full", color: MARKER_COLORS.full, symbol: "×", label: t("Recently reported full", "Неодамна пријавен полн паркинг") },
+    { id: "surface", color: MARKER_COLORS.normal, symbol: "P", label: t("Surface parking", "Отворен паркинг") },
+    { id: "garage", color: MARKER_COLORS.normal, symbol: "P", label: t("Garages", "Катни гаражи") },
+    { id: "underground", color: MARKER_COLORS.normal, symbol: "P", label: t("Underground parking", "Подземен паркинг") },
+    { id: "street", color: MARKER_COLORS.normal, symbol: "P", label: t("Street parking", "Уличен паркинг") },
+    { id: "zone", color: MARKER_COLORS.normal, symbol: "P", label: t("Parking zones", "Паркинг зони") },
+  ];
+  const filteredPlaces = useMemo(() => catalog.places.filter(place => matchesParkingFilter(place, parkingFilter, now)), [catalog.places, parkingFilter, now]);
+  const filterCounts = useMemo(() => Object.fromEntries((["all", "free", "reviewed", "unreviewed", "spaces", "full", "surface", "garage", "underground", "street", "zone"] as const).map(filter => [filter, catalog.places.filter(place => matchesParkingFilter(place, filter, now)).length])), [catalog.places, now]);
   const rows = useMemo(
     () =>
-      target ? rankParking(catalog.places, target, 60, 1500, sort, now) : [],
-    [catalog.places, target, sort, now],
+      parkingFilter !== "all" ? filteredParkingRows(filteredPlaces, target ?? center, now) : target ? rankParking(catalog.places, target, 60, 1500, sort, now) : [],
+    [catalog.places, filteredPlaces, parkingFilter, target, center, sort, now],
   );
   const selectedPlace = catalog.places.find((place) => place.id === selected);
   const followupPlace = catalog.places.find((place) => place.id === followupId);
@@ -294,7 +313,7 @@ export default function MapScreen() {
           id: place.id,
           name:
             (place.zoneCode ? place.zoneCode + " · " : "") +
-            (language === "en" ? (place.nameEn ?? place.name) : place.name),
+            (language !== "mk" ? (place.nameEn ?? place.name) : place.name),
           coordinate: place.coordinate,
         })),
     ].filter(
@@ -437,7 +456,7 @@ export default function MapScreen() {
         <ParkingMap
           now={now}
           cameraRevision={cameraRevision}
-          places={catalog.places}
+          places={filteredPlaces}
           selectedId={selected}
           selectedAnchor={anchor}
           onSelectedPosition={projectSelection}
@@ -621,6 +640,7 @@ export default function MapScreen() {
             </View> : null}
             <MapDrawer
               key={drawerRevision}
+              expandRequest={expandResults}
               onHeightChange={setDrawerHeight}
               onDestination={startDestination}
               onAdd={addParking}
@@ -635,17 +655,17 @@ export default function MapScreen() {
                 setPicking("zone");
               }}
             >
-              {target ? (
+              {target || parkingFilter !== "all" ? (
                 <>
                   <Text style={s.caption}>
-                    {destination
+                    {parkingFilter !== "all" ? `${filterOptions.find(option => option.id === parkingFilter)?.label} · ${rows.length}` : destination
                       ? t(
                           "Parking near destination",
                           "Паркинг до дестинацијата",
                         )
                       : t("Parking near you", "Паркинг во близина")}
                   </Text>
-                  <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16 }}>
+                  {parkingFilter !== "all" ? <Button title={t("Change filter", "Промени филтер")} variant="secondary" onPress={() => setLegend(true)} /> : <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16 }}>
                     {(["nearest", "cheapest"] as const).map(value => (
                       <Pressable
                         key={value}
@@ -659,12 +679,12 @@ export default function MapScreen() {
                         </Text>
                       </Pressable>
                     ))}
-                  </View>
-                  {sort === "cheapest" ? <Text style={s.caption}>{t(
+                  </View>}
+                  {parkingFilter === "all" && sort === "cheapest" ? <Text style={s.caption}>{t(
                     "Public parking · first-hour estimates · unknown prices last. Check signs for restrictions.",
                     "Јавен паркинг · процена за првиот час · непознати цени на крај. Проверете ги знаците за ограничувања.",
                   )}</Text> : null}
-                  {rows.slice(0, 3).map((row) => (
+                  {rows.slice(0, parkingFilter === "all" ? 3 : visibleMatches).map((row) => (
                     <ParkingRow
                       key={row.place.id}
                       place={row.place}
@@ -679,9 +699,10 @@ export default function MapScreen() {
                       }}
                     />
                   ))}
+                  {parkingFilter !== "all" && rows.length > visibleMatches ? <Button title={t("Show more", "Прикажи повеќе")} variant="secondary" onPress={() => setVisibleMatches(value => value + 30)} /> : null}
                   {!rows.length ? (
                     <Note>
-                      {t(
+                      {parkingFilter !== "all" ? t("No parking matches this filter", "Нема паркинзи за избраниот филтер") : t(
                         "No parking mapped nearby",
                         "Нема означен паркинг во близина",
                       )}
@@ -873,14 +894,10 @@ export default function MapScreen() {
         }}
       />
       <Sheet visible={legend && !suspendSheets} title={t("Map legend", "Легенда на мапата")} onClose={() => setLegend(false)}>
-        {[
-          { color: MARKER_COLORS.needsInfo, symbol: "?", label: t("Needs review or a zone label", "Треба проверка или ознака за зона") },
-          { color: MARKER_COLORS.normal, symbol: "P", label: t("Reviewed parking · availability unknown", "Проверен паркинг · непозната достапност") },
-          { color: MARKER_COLORS.free, symbol: "0", label: t("Free of charge · not a space count", "Бесплатно · не е број на слободни места") },
-          { color: MARKER_COLORS.spaces, symbol: "✓", label: t("Spaces recently reported", "Неодамна пријавени слободни места") },
-          { color: MARKER_COLORS.full, symbol: "×", label: t("Recently reported full", "Неодамна пријавен полн паркинг") },
-        ].map(item => <View key={item.symbol} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 7 }}><View style={{ width: 30, height: 30, backgroundColor: item.color, borderRadius: 15, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontWeight: "800" }}>{item.symbol}</Text></View><Text style={{ flex: 1, color: colors.ink }}>{item.label}</Text></View>)}
-        <Note>{t("A 0 badge means no parking fee, even when full. Small green/red badges show recent reports on pins that still need review. Gold/violet borders are contributor rewards.", "Ознаката 0 значи бесплатно, дури и кога е полно. Малите зелени/црвени ознаки покажуваат свежи пријави на паркинзи што чекаат проверка. Златните/виолетовите рабови се награди.")}</Note>
+        {filterOptions.map(item => <Pressable key={item.id} accessibilityRole="radio" accessibilityState={{ checked: parkingFilter === item.id }} onPress={() => { setParkingFilter(item.id); setVisibleMatches(30); clearSelection(); clearSearch(); setLegend(false); setExpandResults(value => value + 1); }} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: parkingFilter === item.id ? colors.accentText : colors.line, backgroundColor: parkingFilter === item.id ? colors.mint : colors.paper }}>
+          <View style={{ width: 30, height: 30, backgroundColor: item.color, borderRadius: 15, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontWeight: "800" }}>{item.symbol}</Text></View>
+          <Text style={{ flex: 1, color: colors.ink }}>{item.label}</Text><Text style={{ color: colors.muted }}>{filterCounts[item.id]}</Text><Icon name={parkingFilter === item.id ? "check-circle" : "circle"} size={18} color={colors.accentText} />
+        </Pressable>)}
       </Sheet>
       <Sheet
         visible={arrivalVisible}
@@ -893,7 +910,7 @@ export default function MapScreen() {
         onDismiss={() => setNotificationClosing(false)}
       >
         <Text style={s.title}>
-          {language === "en"
+          {language !== "mk"
             ? (arrivalPlace?.nameEn ?? arrivalPlace?.name)
             : arrivalPlace?.name}
         </Text>

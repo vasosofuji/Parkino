@@ -418,3 +418,17 @@ test("parking perimeters support detailed outlines while rejecting excessive ver
   assert.equal(validZone(outline(256)), true);
   assert.equal(validZone(outline(257)), false);
 });
+
+test("Macedonian tariff fields survive empty steps and conditional weekend rules", async () => {
+  const d8 = { ...info, zoneCode: "D8", currency: "MKD", firstHour: 25, nextHour: 25, maxStayMinutes: null, chargingHours: "Mon–Fri 07:00–23:00; Sat 07:00–23:00", freeWeekends: "sunday", restrictions: "Sunday and public holidays free", rawText: "ЗОНА D8 · цена за 1 час паркирање: 25 ден. · 07ч–23ч · недела и државни празници бесплатно" };
+  const extractor = new SignExtractor({ geminiKey: "test", fetcher: async () => Response.json({ status: "completed", steps: [], outputs: [{ type: "text", text: JSON.stringify(d8) }] }) });
+  const result = await extractor.extract(new Uint8Array(), "image/png");
+  assert.deepEqual(result.info, d8);
+});
+test("an all-blank parking reading retries the next model instead of showing an empty form", async () => {
+  let calls = 0;
+  const blank = { ...info, zoneCode: null, firstHour: null, nextHour: null, chargingHours: null, paymentInstructions: null, restrictions: null, rawText: "" };
+  const extractor = new SignExtractor({ geminiKey: "test", fetcher: async () => Response.json({ output_text: JSON.stringify(++calls === 1 ? blank : info) }) });
+  assert.deepEqual((await extractor.extract(new Uint8Array(), "image/png")).info, info);
+  assert.equal(calls, 2);
+});

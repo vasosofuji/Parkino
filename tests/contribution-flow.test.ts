@@ -50,8 +50,13 @@ for (const backend of ["sqlite","postgres"] as const) test(`${backend}: detailed
     const detailed=await write("/v1/contributions",{...contribution,requestId:"detailed-fixture",geometry,capacity:50,freeSpaces:3,firstHour:0,nextHour:0});
     assert.equal(detailed.statusCode,201,detailed.body);
     const detailId=detailed.json().id;
+    const schedule = { chargingHours: "Mon–Sat 07:00–23:00", freeWeekends: "sunday" };
+    assert.equal((await write(`/v1/places/${detailId}/payment-schedule`,schedule,"PUT")).statusCode,200);
+    assert.equal((await write(`/v1/places/${detailId}/payment-schedule`,{...schedule,freeWeekends:"always"},"PUT")).statusCode,400);
+    assert.equal((await app.inject({method:"PUT",url:`/v1/places/${detailId}/payment-schedule`,payload:schedule})).statusCode,401);
     let places=(await app.inject("/v1/catalog")).json().places as ParkingPlace[];
     const detail=places.find(p=>p.id===detailId)!;
+    assert.deepEqual(detail.paymentSchedule,schedule);
     assert.equal(detail.kind,"surface");assert.equal(detail.capacity,50);assert.equal(detail.availability?.freeSpaces,3);
     assert.equal((await app.inject({url:"/v1/profile",headers})).json().points,63);
     await write(`/v1/places/${id}/capacity`,{capacity:12},"PUT");

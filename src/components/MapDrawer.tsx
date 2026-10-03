@@ -11,12 +11,14 @@ import { useParking } from "../state/ParkingContext";
 import DrawerHandle from "./DrawerHandle";
 import { Button } from "./ui";
 export default function MapDrawer({
+  expandRequest = 0,
   onDestination,
   onAdd,
   onDraw,
   onHeightChange,
   children,
 }: {
+  expandRequest?: number;
   onDestination: () => void;
   onAdd: () => void;
   onDraw: () => void;
@@ -58,6 +60,10 @@ export default function MapDrawer({
     },
     [visible, onHeightChange],
   );
+  const previousRequest = useRef(expandRequest);
+  useEffect(() => {
+    if (expandRequest !== previousRequest.current) { previousRequest.current = expandRequest; snap(expanded, 2); }
+  }, [expandRequest, expanded, snap]);
   const startDrag = useCallback(() => {
     setDragging(true);
     visible.stopAnimation((value) => {

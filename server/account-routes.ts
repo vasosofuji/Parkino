@@ -22,8 +22,9 @@ export class LoginAttemptLimiter {
     this.attempts.set(key, entry);
   }
 }
-export function registerAccountRoutes(app: FastifyInstance, accounts: AccountStore | PostgresAccountStore) {
-  const limiter = new LoginAttemptLimiter();
+export function registerAccountRoutes(app: FastifyInstance, accounts: AccountStore | PostgresAccountStore,
+  sharedLimiter?: { consume(username: string): void | Promise<void> }) {
+  const limiter = sharedLimiter ?? new LoginAttemptLimiter();
   const bearer = bearerToken;
   app.post("/v1/auth/guest", {
     config: { rateLimit: { max: 30, timeWindow: "1 hour" } },
@@ -37,7 +38,7 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSto
   }, async (request, reply) => {
     const body = z.object({ username: z.string().min(1).max(100), password: z.string().min(1).max(128), accepted: z.literal(true).optional(), termsVersion: z.literal(TERMS_VERSION).optional() })
       .strict().refine(value => Boolean(value.accepted) === Boolean(value.termsVersion), "Accept the current Terms of Service.").parse(request.body);
-    limiter.consume(body.username);
+    await limiter.consume(body.username);
     reply.header("Cache-Control", "no-store");
     return accounts.login(body.username, body.password, body.accepted === true);
   });

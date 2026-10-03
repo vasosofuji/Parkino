@@ -5,6 +5,7 @@ import type {
   Contribution,
   Geometry,
   ParkingPlace,
+  PaymentSchedule,
   PhotoUpload,
   SignInfo,
   SignPhoto,
@@ -17,6 +18,7 @@ export class CommunityStore {
   constructor(private store: ParkingStore) {
     store.db.exec(ACCOUNT_TABLES);
     store.db.exec(`
+      CREATE TABLE IF NOT EXISTS payment_schedules(place_id TEXT NOT NULL REFERENCES places(id) ON DELETE CASCADE,session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,details TEXT NOT NULL,updated INTEGER NOT NULL,PRIMARY KEY(place_id,session_id));
       CREATE TABLE IF NOT EXISTS capacity_reports(place_id TEXT NOT NULL REFERENCES places(id) ON DELETE CASCADE,session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,capacity INTEGER NOT NULL,updated INTEGER NOT NULL,PRIMARY KEY(place_id,session_id));
       CREATE TABLE IF NOT EXISTS contribution_details(place_id TEXT PRIMARY KEY REFERENCES places(id) ON DELETE CASCADE,session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,details TEXT NOT NULL,created INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS contributions(request_id TEXT NOT NULL, session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL, place_id TEXT REFERENCES places(id) ON DELETE CASCADE, UNIQUE(request_id,session_id));
@@ -111,6 +113,12 @@ export class CommunityStore {
     this.store.db.prepare("INSERT INTO boundaries VALUES (?,?,?) ON CONFLICT(place_id) DO UPDATE SET geometry=excluded.geometry,updated=excluded.updated")
       .run(id, JSON.stringify(geometry), Date.now());
     return { saved: true };
+  }
+  paymentSchedule(id: string, token: string, value: PaymentSchedule) {
+    const user = this.store.session(token);
+    this.store.place(id);
+    this.store.db.prepare("INSERT INTO payment_schedules(place_id,session_id,details,updated) VALUES (?,?,?,?) ON CONFLICT(place_id,session_id) DO UPDATE SET details=excluded.details,updated=excluded.updated").run(id,user.id,JSON.stringify(value),Date.now());
+    return { ok: true };
   }
   capacity(id: string, token: string, capacity: number) {
     const user = this.store.session(token);
@@ -218,7 +226,10 @@ export class CommunityStore {
     const capacities = this.store.db.prepare("SELECT place_id,capacity FROM capacity_reports ORDER BY updated DESC,session_id DESC").all() as {place_id:string;capacity:number}[];
     const latest = new Map<string,number>();
     for (const row of capacities) if (!latest.has(row.place_id)) latest.set(row.place_id,row.capacity);
-    return enrichSigns(places.map(place => ({...place,capacity:latest.get(place.id) ?? place.capacity,contributionAccent:accents.get(place.id)})), boundaries, labels, photos);
+    const schedules = (this.store.db.prepare("SELECT place_id,details FROM payment_schedules ORDER BY updated DESC,session_id DESC").all()) as {place_id:string;details:string}[];
+    const payments = new Map<string, PaymentSchedule>();
+    for (const row of schedules) if (!payments.has(row.place_id)) payments.set(row.place_id, JSON.parse(row.details));
+    return enrichSigns(places.map(place => ({...place,paymentSchedule:payments.get(place.id) ?? place.paymentSchedule,capacity:latest.get(place.id) ?? place.capacity,contributionAccent:accents.get(place.id)})), boundaries, labels, photos);
   }
   claim() {
     const now = Date.now();

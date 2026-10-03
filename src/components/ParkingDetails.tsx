@@ -1,3 +1,4 @@
+import { weekendLabel } from "./PaymentScheduleFields";
 import React, { useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, Icon, Note, Sheet } from "./ui";
@@ -49,6 +50,7 @@ export default function ParkingDetails({ place, visible, onClose, onEditBoundary
         {price && price.nextHour !== price.firstHour ? <Note>{price.nextHour} {t("MKD / following hour", "ден. / следен час")}</Note> : null}
         {place.capacity !== null ? <Note>{place.capacity} {t("total spaces", "вкупно места")}</Note> : null}
         {availability.freeSpaces !== undefined ? <Note>{availability.freeSpaces} {t("free recently", "неодамна слободни")}</Note> : null}
+        {place.paymentSchedule ? <View style={{ gap: 4 }}><Note>{t("Paying hours", "Часови на наплата")}: {place.paymentSchedule.chargingHours || t("Not sure", "Не знам")}</Note>{place.paymentSchedule.freeWeekends ? <Note>{weekendLabel(place.paymentSchedule.freeWeekends, t)}</Note> : null}</View> : null}
         {place.openingHours ? <Note>{place.openingHours}</Note> : null}
         {place.access === "restricted" || place.access === "customers" ? <Note>{place.access === "restricted" ? t("Restricted access", "Ограничен пристап") : t("Customer parking", "Паркинг за клиенти")}</Note> : null}
       </> : null}

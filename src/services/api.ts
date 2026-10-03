@@ -8,6 +8,7 @@ import { createSessionManager } from "./session";
 import { apiEndpoint } from "./apiEndpoint";
 import type {
   Availability,
+  PaymentSchedule,
   Geometry,
   Catalog,
   Proposal,
@@ -75,6 +76,7 @@ export const api = {
       contribute: (value: Contribution) => bound<ParkingPlace>("/v1/contributions", value),
       label: (id: string, zoneCode: string) => bound(path(id, "labels"), { zoneCode }),
       price: (id: string, firstHour: number, nextHour: number) => bound(path(id, "prices"), { firstHour, nextHour }),
+      paymentSchedule: (id: string, value: PaymentSchedule) => bound(path(id, "payment-schedule"), value, "PUT"),
       capacity: (id: string, capacity: number) => bound(path(id, "capacity"), { capacity }, "PUT"),
       report: (id: string, status: "spaces" | "full", freeSpaces?: number) => bound(path(id, "reports"), { status, freeSpaces }),
       boundary: (id: string, geometry: Geometry) => bound(path(id, "boundary"), geometry, "PUT"),

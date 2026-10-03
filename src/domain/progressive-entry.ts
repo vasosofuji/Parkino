@@ -1,15 +1,16 @@
-import type { Contribution, Geometry, ParkingPlace } from "./types";
+import type { Contribution, Geometry, ParkingPlace, PaymentSchedule } from "./types";
 import { validZone } from "./geometry";
 
 export type EntryApi = {
   contribute: (value: Contribution) => Promise<ParkingPlace>;
   label: (id: string, code: string) => Promise<unknown>;
   price: (id: string, first: number, next: number) => Promise<unknown>;
+  paymentSchedule: (id: string, value: PaymentSchedule) => Promise<unknown>;
   capacity: (id: string, total: number) => Promise<unknown>;
   report: (id: string, status: "spaces" | "full", free?: number) => Promise<unknown>;
   boundary: (id: string, geometry: Geometry) => Promise<unknown>;
 };
-export type EntrySnapshot = { id?: string; code: string | null; total: number | null; price: string; free?: number; boundary: string };
+export type EntrySnapshot = { id?: string; code: string | null; total: number | null; price: string; schedule?: string; free?: number; boundary: string };
 
 /** One editor owns one writer. Successful steps remain saved even if a later one fails. */
 export function createProgressiveEntry(api: EntryApi, initial: {
@@ -24,6 +25,7 @@ export function createProgressiveEntry(api: EntryApi, initial: {
   let code = initial.snapshot?.code ?? initial.place?.zoneCode ?? null;
   let total = initial.snapshot?.total ?? initial.place?.capacity ?? null;
   let price = initial.snapshot?.price ?? "";
+  let schedule = initial.snapshot?.schedule ?? (initial.place?.paymentSchedule ? JSON.stringify(initial.place.paymentSchedule) : "");
   let free = initial.snapshot?.free;
   let boundary = initial.snapshot?.boundary ?? (initial.place?.geometry ? JSON.stringify(initial.place.geometry) : "");
   let tail: Promise<unknown> = Promise.resolve();
@@ -51,7 +53,7 @@ export function createProgressiveEntry(api: EntryApi, initial: {
   }
   return {
     id: () => id,
-    snapshot: (): EntrySnapshot => ({ id, code, total, price, free, boundary }),
+    snapshot: (): EntrySnapshot => ({ id, code, total, price, free, boundary, ...(schedule ? { schedule } : {}) }),
     label: (value: string) => serial(async () => {
       const placeId = await ensure(value);
       if (value && value !== code) { await api.label(placeId, value); code = value; }
@@ -59,6 +61,10 @@ export function createProgressiveEntry(api: EntryApi, initial: {
     price: (first: number, next: number) => serial(async () => {
       const placeId = await ensure(), key = `${first}:${next}`;
       if (price !== key) { await api.price(placeId, first, next); price = key; }
+    }),
+    paymentSchedule: (value: PaymentSchedule) => serial(async () => {
+      const placeId = await ensure(), key = JSON.stringify(value);
+      if (key !== schedule) { await api.paymentSchedule(placeId, value); schedule = key; }
     }),
     spaces: (capacity: number | null, available: number | null) => serial(async () => {
       const placeId = await ensure();
@@ -95,10 +101,10 @@ export function manualPriceInput(first: string, next: string) {
   if (!value) throw new Error("price-required");
   return value;
 }
-export function manualSpacesInput(capacity: string, free: string) {
-  const value = spacesInput(capacity, free);
-  if (value.total === null || value.available === null) throw new Error("spaces-required");
-  return value as { total: number; available: number };
+export function manualSpacesInput(capacity: string) {
+  const value = spacesInput(capacity, "");
+  if (value.total === null) throw new Error("spaces-required");
+  return value as { total: number; available: null };
 }
 
 /** Legacy/unfinished drafts cannot claim completion merely by restoring 'done'. */
@@ -106,7 +112,7 @@ export function incompleteManualStep(snapshot: EntrySnapshot, options: {
   detailed: boolean; zone: boolean; afterSign: boolean; geometry?: Geometry; existingGeometry?: Geometry;
 }): "price" | "spaces" | "perimeter" | null {
   if (!options.afterSign && !snapshot.price) return "price";
-  if (options.detailed && !options.zone && (snapshot.total === null || snapshot.free === undefined)) return "spaces";
+  if (options.detailed && !options.zone && snapshot.total === null) return "spaces";
   // Catalog areas can have holes. An unchanged imported perimeter is already
   // public and should not be replaced merely to fit the single-ring drawing UI.
   const existing = options.geometry && options.existingGeometry && JSON.stringify(options.geometry) === JSON.stringify(options.existingGeometry);

@@ -35,8 +35,8 @@ function load(platform: string, window: object, apiUrl?: string, hostUri?: strin
 
 test("Android and iOS startup tolerate the native window global without location", () => {
   for (const platform of ["android", "ios"]) {
-    assert.equal(load(platform, {}, "https://parkino-api.onrender.com"),
-      "https://parkino-api.onrender.com");
+    assert.equal(load(platform, {}, "https://parkino-api-vaso.vercel.app"),
+      "https://parkino-api-vaso.vercel.app");
     assert.equal(load(platform, {}, undefined, "192.168.1.20:8081"),
       "http://192.168.1.20:3001");
   }
@@ -45,6 +45,6 @@ test("Android and iOS startup tolerate the native window global without location
 test("web development uses the browser hostname and an explicit API overrides it", () => {
   assert.equal(load("web", { location: { hostname: "192.168.1.30" } }),
     "http://192.168.1.30:3001");
-  assert.equal(load("web", {}, "https://parkino-api.onrender.com"),
-    "https://parkino-api.onrender.com");
+  assert.equal(load("web", {}, "https://parkino-api-vaso.vercel.app"),
+    "https://parkino-api-vaso.vercel.app");
 });

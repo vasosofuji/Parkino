@@ -158,11 +158,11 @@ test("photo upload failure followed by manual entry updates the same saved parki
   vm.runInNewContext(component, context);
   const props = { coordinate: savedPlace.coordinate, onClose() {}, onSubmitted() {} };
   const render = () => { cursor = 0; return context.exports.default(props); };
-  function nodes(tree: unknown): Element[] { if (Array.isArray(tree)) return tree.flatMap(nodes); if (!tree || typeof tree !== "object" || !("children" in tree)) return []; const node = tree as Element; return [node, ...node.children.flatMap(nodes)]; }
+  function nodes(tree: unknown): Element[] { if (Array.isArray(tree)) return tree.flatMap(nodes); if (!tree || typeof tree !== "object" || !("children" in tree)) return []; const node = tree as Element; return [node, ...node.children.flatMap(nodes), ...nodes(node.props.footer)]; }
   const find = (tree: Element, predicate: (node: Element) => boolean) => { const node = nodes(tree).find(predicate); assert.ok(node); return node; };
   let tree = render(); find(tree, node => node.props.accessibilityLabel === "Photograph a sign").props.onPress();
   tree = render(); find(tree, node => node.type === "PhotoPicker").props.onChange({ uri: "file:///test.jpg", base64: "jpeg", mimeType: "image/jpeg" });
-  tree = render(); find(tree, node => node.props.title === "Read sign & review").props.onPress();
+  tree = render(); find(tree, node => node.props.title === "Read sign & review").props.onContinue();
   await new Promise<void>(resolve => setImmediate(resolve)); tree = render();
   assert.equal(created, 1);
   find(tree, node => node.type === "Sheet").props.onBack(); tree = render();
