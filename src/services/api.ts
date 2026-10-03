@@ -18,6 +18,7 @@ import type {
   PhotoUpload,
   SignPhoto,
   SignInfo,
+  VerifiedSmsPayment,
 } from "../domain/types";
 const developmentHost =
   Constants.expoConfig?.hostUri?.split(":")[0] ?? "localhost";
@@ -120,6 +121,8 @@ export const api = {
     authenticated<SignPhoto[]>(`/v1/places/${encodeURIComponent(id)}/signs`, undefined, "GET"),
   confirmSign: (id: string, info: SignInfo) =>
     authenticated<SignPhoto>(`/v1/signs/${encodeURIComponent(id)}/confirm`, info),
+  confirmSmsSign: (id: string) => authenticated<SignPhoto>(`/v1/signs/${encodeURIComponent(id)}/confirm-sms`, {}),
+  smsPayment: (id: string) => authenticated<{ place: ParkingPlace; protocol: VerifiedSmsPayment | null }>(`/v1/places/${encodeURIComponent(id)}/sms-payment`, undefined, "GET"),
   uploadSign: (id: string, value: PhotoUpload) =>
     authenticated<SignPhoto>(
       `/v1/places/${encodeURIComponent(id)}/signs`,

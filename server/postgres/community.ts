@@ -13,6 +13,7 @@ import type {
 import { normalizeZoneCode } from "../../src/domain/parking";
 import type { PostgresParkingStore } from "./store";
 import { PHOTO_SELECT, photoView, enrichSigns, type PhotoRow } from "../sign-catalog";
+import { needsSmsReread, photographedSmsCandidate, smsOperatorsMatch } from "../sms-payment";
 export class PostgresCommunityStore {
   constructor(private store: PostgresParkingStore) {}
 
@@ -92,22 +93,30 @@ export class PostgresCommunityStore {
   async label(id: string, token: string, code: string) {
     const user = await this.store.session(token);
     await this.store.place(id);
+    await this.store.db.transaction(async () => {
+    await this.store.db.prepare("SELECT id FROM places WHERE id=? FOR UPDATE").get(id);
     await this.store.db
       .prepare(
         "INSERT INTO labels VALUES (?,?,?,?) ON CONFLICT(place_id,session_id) DO UPDATE SET code=excluded.code,created=excluded.created",
       )
       .run(id, user.id, normalizeZoneCode(code), Date.now());
+    await this.store.db.prepare("DELETE FROM sms_confirmations WHERE photo_id IN (SELECT id FROM sign_photos WHERE place_id=?)").run(id);
+    });
     return { saved: true };
   }
   async boundary(id: string, token: string, geometry: Geometry) {
     await this.store.session(token);
     await this.store.place(id);
+    await this.store.db.transaction(async () => {
+    await this.store.db.prepare("SELECT id FROM places WHERE id=? FOR UPDATE").get(id);
     // Separate from the source catalog: importing official data must not erase edits.
     await this.store.db
       .prepare(
         "INSERT INTO boundaries VALUES (?,?,?) ON CONFLICT(place_id) DO UPDATE SET geometry=excluded.geometry,updated=excluded.updated",
       )
       .run(id, JSON.stringify(geometry), Date.now());
+    await this.store.db.prepare("DELETE FROM sms_confirmations WHERE photo_id IN (SELECT id FROM sign_photos WHERE place_id=?)").run(id);
+    });
     return { saved: true };
   }
   async paymentSchedule(id: string, token: string, value: PaymentSchedule) {
@@ -157,6 +166,8 @@ export class PostgresCommunityStore {
         | undefined;
       if (prior) {
         await this.store.db.prepare("INSERT INTO sign_uploaders(photo_id,session_id) VALUES (?,?) ON CONFLICT DO NOTHING").run(prior.id, user.id);
+        const row = (await this.store.db.prepare(PHOTO_SELECT + " WHERE p.id=?").get(prior.id)) as PhotoRow;
+        if (needsSmsReread(row)) await this.store.db.prepare("UPDATE sign_photos SET status='queued',attempts=0,next_attempt=0,lease_until=0 WHERE id=?").run(prior.id);
         return await this.photo(prior.id, token);
       }
       const count = (await this.store.db
@@ -182,6 +193,9 @@ export class PostgresCommunityStore {
             status: string;
           }
         | undefined;
+      const oldest = (await this.store.db.prepare("SELECT MIN(created) AS created FROM sign_photos WHERE hash=?").get(hash)) as {created:number|null};
+      const created = oldest.created ?? Date.now();
+      const legacy = cached && needsSmsReread({ ...cached, status: cached.status as PhotoRow["status"], created });
       await this.store.db
         .prepare(
           "INSERT INTO sign_photos(id,place_id,session_id,hash,mime,bytes,created,status,info,model) VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -193,8 +207,8 @@ export class PostgresCommunityStore {
           hash,
           photo.mimeType,
           bytes,
-          Date.now(),
-          cached?.status ?? "queued",
+          created,
+          legacy ? "queued" : cached?.status ?? "queued",
           cached?.info ?? null,
           cached?.model ?? null,
         );
@@ -221,9 +235,35 @@ export class PostgresCommunityStore {
     const photo = await this.photo(id, token);
     if (!photo.uploadedByMe) throw Object.assign(new Error("Upload this sign before confirming its details."), { statusCode: 403 });
     if (!info.isParkingSign) throw Object.assign(new Error("Only parking signs can be confirmed."), { statusCode: 400 });
+    return this.store.db.transaction(async () => {
+    await this.store.db.prepare("SELECT id FROM places WHERE id=? FOR UPDATE").get(photo.placeId);
     await this.store.db.prepare("INSERT INTO sign_confirmations(photo_id,session_id,info,confirmed) VALUES (?,?,?,?) ON CONFLICT(photo_id) DO UPDATE SET session_id=excluded.session_id,info=excluded.info,confirmed=excluded.confirmed")
-      .run(id, user.id, JSON.stringify(info), Date.now());
+      .run(id, user.id, JSON.stringify({ ...info, smsPayment: undefined }), Date.now());
+    const original = (await this.store.db.prepare("SELECT info FROM sign_photos WHERE id=?").get(id)) as {info:string|null};
+    const reading = original.info ? JSON.parse(original.info) : null;
+    if (!info.zoneCode || normalizeZoneCode(info.zoneCode) !== normalizeZoneCode(reading?.zoneCode ?? "") || !smsOperatorsMatch(info.operator, reading?.operator))
+      await this.store.db.prepare("DELETE FROM sms_confirmations WHERE photo_id=?").run(id);
     return await this.photo(id, token);
+    });
+  }
+  async confirmSms(id: string, token: string): Promise<SignPhoto> {
+    const user = await this.store.session(token), photo = await this.photo(id, token);
+    if (!photo.uploadedByMe) throw Object.assign(new Error("Upload this sign before confirming SMS instructions."), { statusCode: 403 });
+    const reviewedBoundary = await this.store.db.prepare("SELECT geometry,updated FROM boundaries WHERE place_id=?").get(photo.placeId);
+    return this.store.db.transaction(async () => {
+      await this.store.db.prepare("SELECT id FROM places WHERE id=? FOR UPDATE").get(photo.placeId);
+      const currentBoundary = await this.store.db.prepare("SELECT geometry,updated FROM boundaries WHERE place_id=?").get(photo.placeId);
+      if (JSON.stringify(reviewedBoundary) !== JSON.stringify(currentBoundary))
+        throw Object.assign(new Error("The zone boundary changed. Review this sign again before confirming SMS."), {statusCode:409});
+      const row = (await this.store.db.prepare(PHOTO_SELECT + " WHERE p.id=?").get(id)) as PhotoRow | undefined;
+      if (!row) throw Object.assign(new Error("Photo not found."), {statusCode:404});
+      const place = await this.store.place(row.place_id);
+      const label = (await this.store.db.prepare("SELECT code FROM labels WHERE place_id=? ORDER BY created DESC LIMIT 1").get(place.id)) as {code:string}|undefined;
+      const candidate = photographedSmsCandidate(row, await this.image(id), label?.code ?? place.zoneCode, Date.now(), place.operator);
+      await this.store.db.prepare("INSERT INTO sms_confirmations(photo_id,session_id,protocol,photo_hash,confirmed) VALUES (?,?,?,?,?) ON CONFLICT(photo_id) DO UPDATE SET session_id=excluded.session_id,protocol=excluded.protocol,photo_hash=excluded.photo_hash,confirmed=excluded.confirmed")
+        .run(id,user.id,JSON.stringify(candidate),row.hash!,Date.now());
+      return await this.photo(id, token);
+    });
   }
   async image(id: string) {
     await this.photo(id);

@@ -1,4 +1,6 @@
 import type { ContributionAccent } from "./cosmetics";
+import type { SmsPaymentCandidate, VerifiedSmsPayment } from "./sms-payment";
+export type { SmsPaymentCandidate, VerifiedSmsPayment } from "./sms-payment";
 export type Coordinate = { latitude: number; longitude: number };
 export type Geometry = { type: "Polygon"; coordinates: number[][][] };
 export type ParkingKind =
@@ -31,6 +33,7 @@ export type Availability = {
 };
 export type PaymentSchedule = { chargingHours: string | null; freeWeekends: "both" | "sunday" | "neither" | null };
 export type ParkingPlace = {
+  smsPayment?: VerifiedSmsPayment;
   paymentSchedule?: PaymentSchedule;
   id: string;
   name: string;
@@ -61,6 +64,7 @@ export type ParkingPlace = {
   contributionAccent?: Exclude<ContributionAccent, "default">;
 };
 export type SignInfo = {
+  smsPayment?: SmsPaymentCandidate | null;
   freeWeekends?: PaymentSchedule["freeWeekends"];
   isParkingSign: boolean;
   confidence: number;
@@ -76,6 +80,7 @@ export type SignInfo = {
   rawText: string;
 };
 export type SignPhoto = {
+  smsPayment?: VerifiedSmsPayment;
   id: string;
   placeId: string;
   createdAt: string;

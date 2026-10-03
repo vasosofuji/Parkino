@@ -43,6 +43,7 @@ const photo = {
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jGqkAAAAASUVORK5CYII=",
 };
 const info: SignInfo = {
+  smsPayment: null,
   isParkingSign: true,
   confidence: 0.96,
   zoneCode: "B2",

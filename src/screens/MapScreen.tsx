@@ -24,6 +24,9 @@ import LoadingIndicator from "../components/LoadingIndicator";
 import ParkingPreview from "../components/ParkingPreview";
 import { router, useIsFocused } from "expo-router";
 import { useMapSettingsLocation } from "../state/SettingsLocationContext";
+import { useLicensePlate } from "../state/LicensePlateContext";
+import { useZonePayment } from "../hooks/useZonePayment";
+import ZonePaymentSheet, { ParkingSmsStopSheet } from "../components/ZonePaymentSheet";
 import { useTheme, type ThemeColors } from "../state/ThemeContext";
 import { zoneGeometry, validZone, MAX_BOUNDARY_VERTICES } from "../domain/geometry";
 import { containsParkingFix } from "../domain/arrival";
@@ -66,6 +69,8 @@ export default function MapScreen() {
   const { thankYou } = useContributionFeedback();
   const gps = useArrival(catalog.places);
   const focused = useIsFocused();
+  const licensePlate = useLicensePlate();
+  const [stopSms, setStopSms] = useState(false);
   const [sort, setSort] = useState<"nearest" | "cheapest">("nearest");
   const [destination, setDestination] = useState<Destination | null>(null);
   const [center, setCenter] = useState<Coordinate>(SKOPJE);
@@ -143,9 +148,11 @@ export default function MapScreen() {
   const arrivalPlace = followupPlace ?? (gps.arrival ? catalog.places.find(place => place.id === gps.arrival!.id) ?? gps.arrival : null);
   const question = arrivalQuestion(arrivalPlace, Boolean(followupPlace), now);
   const notificationPriority = gps.arrivalFromNotification || followupFromNotification;
-  const suspendSheets = !focused || notificationPriority || notificationClosing;
-  const arrivalVisible = focused && Boolean(question) && (notificationPriority || (!selected && !detailsId && !legend && !proposal && !picking && !locationHelp));
-  const mapBlockedBySheet = suspendSheets || arrivalVisible || legend || locationHelp || (!picking && Boolean(detailsId || proposal));
+  const suspendSheets = !focused || licensePlate.offerPlate || notificationPriority || notificationClosing;
+  const arrivalVisible = focused && !licensePlate.offerPlate && Boolean(question) && (notificationPriority || (!selected && !detailsId && !legend && !proposal && !picking && !locationHelp));
+  const paymentBlocked = !licensePlate.ready || licensePlate.offerPlate || Boolean(arrivalPlace) || notificationClosing || notificationPriority || sending || Boolean(selected || detailsId || legend || proposal || picking || locationHelp || stopSms || licensePlate.pendingStop);
+  const payment = useZonePayment({ places: catalog.places, fix: gps.location, plate: licensePlate.savedPlate, scope: licensePlate.accountId, focused, blocked: paymentBlocked });
+  const mapBlockedBySheet = suspendSheets || arrivalVisible || Boolean(payment.place) || stopSms || legend || locationHelp || (!picking && Boolean(detailsId || proposal));
   const clearSelection = useCallback(() => {
     setSelected(null);
     setAnchor(null);
@@ -580,6 +587,7 @@ export default function MapScreen() {
                   onPress={() => { Keyboard.dismiss(); router.push("/settings"); }}
                 />
               </View>
+              {licensePlate.pendingStop ? <Button title={t("Parking SMS", "Паркинг SMS")} variant="secondary" icon="message-square" onPress={() => setStopSms(true)} /> : null}
               {locationWarning && locationDismissed !== locationWarningKey ? (
                 <View style={s.locationNotice}>
                   <Pressable
@@ -924,6 +932,8 @@ export default function MapScreen() {
           }}
         />
       ) : null}
+      <ZonePaymentSheet key={payment.place?.id ?? "no-payment"} place={!paymentBlocked ? payment.place : null} validate={payment.validate} onClose={payment.dismiss} />
+      <ParkingSmsStopSheet visible={stopSms && !suspendSheets && !arrivalVisible && !detailsId && !legend && !proposal && !picking && !locationHelp} onClose={() => setStopSms(false)} />
       <Sheet visible={legend && !suspendSheets} title={t("Map legend", "Легенда на мапата")} onClose={() => setLegend(false)}>
         {filterOptions.slice(0, 5).map(renderFilter)}
         <RevealSection active={parkingTypesExpanded} style={{ gap: 10 }}>

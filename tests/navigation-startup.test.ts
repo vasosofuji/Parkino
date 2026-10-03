@@ -39,6 +39,8 @@ function startup() {
     if (name === "../state/ParkingContext") return { ParkingProvider: "ParkingProvider" };
     if (name === "../state/ContributionFeedback") return { ContributionFeedbackProvider: "ContributionFeedbackProvider" };
     if (name === "../state/SettingsLocationContext") return { SettingsLocationProvider: "SettingsLocationProvider" };
+    if (name === "../state/LicensePlateContext") return { LicensePlateProvider: "LicensePlateProvider" };
+    if (name === "../components/LicensePlatePrompt") return { default: "LicensePlatePrompt", __esModule: true };
     if (name === "../components/ModalBackdrop") return { ModalBackgroundProvider: "ModalBackgroundProvider" };
     if (name === "../components/LoadingIndicator" || name === "../components/AppStyles") return { default: name, __esModule: true };
     if (name === "../domain/onboarding") return { hasCurrentTerms: () => true };

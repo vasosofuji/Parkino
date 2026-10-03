@@ -11,6 +11,7 @@ import PaymentScheduleFields from "./PaymentScheduleFields";
 import StepActions from "./StepActions";
 import { useContributionFeedback } from "../state/ContributionFeedback";
 import { hasSignDetails } from "../domain/report-feedback";
+import { validatedSmsCandidate } from "../domain/sms-payment";
 
 type Fields = { zoneCode: string; operator: string; currency: string; firstHour: string; nextHour: string; maxStayMinutes: string; chargingHours: string; paymentInstructions: string; restrictions: string; rawText: string };
 const fieldsFrom = (info: SignInfo | null): Fields => ({
@@ -55,6 +56,14 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
   }, [initialPhoto.id, initialPhoto.placeId, initialPhoto.status, t]);
   const reading = ["queued", "processing"].includes(photo.status);
   const previewInfo = correctedInfo ?? photo.info;
+  const smsCandidate = validatedSmsCandidate(photo.info);
+  async function confirmSms() {
+    if (!smsCandidate || !photo.uploadedByMe || busy) return;
+    setBusy(true); setError("");
+    try { const confirmed = await api.confirmSmsSign(photo.id); setPhoto(confirmed); await refresh(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : t("Could not confirm. Try again.", "Не е потврдено. Обидете се повторно.")); }
+    finally { setBusy(false); }
+  }
   function edit() { setFreeWeekends(previewInfo?.freeWeekends ?? null); setFields(fieldsFrom(previewInfo)); setEditing(true); setError(""); }
   async function confirm() {
     let info = previewInfo;
@@ -82,7 +91,7 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
     }
     if (!info?.isParkingSign) { setError(t("Correct the details before confirming this parking sign.", "Поправете ги податоците пред да ја потврдите таблата.")); return; }
     setBusy(true); setError("");
-    try { const confirmed = await api.confirmSign(photo.id, info); await refresh(); if (!photo.confirmedByMe && hasSignDetails(info)) thankYou(); onConfirmed(confirmed); }
+    try { const { smsPayment: _smsPayment, ...details } = info; const confirmed = await api.confirmSign(photo.id, details); await refresh(); if (!photo.confirmedByMe && hasSignDetails(info)) thankYou(); onConfirmed(confirmed); }
     catch (e) { setError(e instanceof Error ? e.message : t("Could not confirm. Try again.", "Не е потврдено. Обидете се повторно.")); }
     finally { setBusy(false); }
   }
@@ -100,6 +109,15 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
       footer={editing || previewInfo ? <StepActions onBack={() => { if (editing && previewInfo) setEditing(false); else onClose(); }} backDisabled={busy} title={busy ? t("Confirming…", "Се потврдува…") : editing ? t("Preview corrected sign", "Прегледај поправена табла") : t("Yes, this is correct", "Да, точно е")} disabled={busy || (!editing && !previewInfo?.isParkingSign)} onContinue={() => void confirm()} /> : <Button title={t("Review later", "Провери подоцна")} variant="secondary" disabled={busy} onPress={onClose} />}>
       <Image source={{ uri: api.imageUrl(photo.id) }} accessibilityLabel={t("Original sign photo", "Оригинална слика од табла")} resizeMode="contain" style={{ width: "100%", height: 180, borderRadius: 10, backgroundColor: colors.mint }} />
       <Note>{t("Only the details you confirm become the public digital sign. Leave anything unclear blank.", "Само потврдените податоци стануваат јавна дигитална табла. Оставете ги нејасните полиња празни.")}</Note>
+      {!smsCandidate && photo.model && photo.info?.isParkingSign && !["queued", "processing", "waiting"].includes(photo.status) ? <Note>{t("SMS instructions unclear. Use a clearer photo to enable payment.", "SMS упатствата се нејасни. Користете појасна слика за да овозможите плаќање.")}</Note> : null}
+      {smsCandidate ? <View style={{ gap: 8, padding: 12, borderWidth: 1, borderColor: colors.line, borderRadius: 10 }}>
+        <Text style={{ color: colors.ink, fontWeight: "700" }}>{t("SMS payment instructions", "Упатства за SMS плаќање")}</Text>
+        <Text selectable style={{ color: colors.ink }}>{t("SMS number", "SMS број")}: {smsCandidate.destination}</Text>
+        <Text selectable style={{ color: colors.ink }}>{smsCandidate.evidence.startExample}</Text>
+        {smsCandidate.evidence.stopInstructionText ? <Text selectable style={{ color: colors.ink }}>{smsCandidate.evidence.stopInstructionText}</Text> : null}
+        {smsCandidate.evidence.durationText ? <Text style={{ color: colors.ink }}>{smsCandidate.evidence.durationText}</Text> : null}
+        {photo.smsPayment ? <Note>{t("SMS instructions confirmed", "SMS упатствата се потврдени")}</Note> : photo.uploadedByMe ? <Button variant="secondary" title={t("Photo matches these SMS instructions", "Сликата ги потврдува овие SMS упатства")} disabled={busy || editing} onPress={() => void confirmSms()} /> : null}
+      </View> : null}
       {editing ? <>
         {field("zoneCode", t("Zone", "Зона"), false, false, 16)}
         <View style={{ flexDirection: "row", gap: 8 }}><View style={{ flex: 1 }}>{field("firstHour", t("First hour", "Прв час"), true)}</View><View style={{ flex: 1 }}>{field("nextHour", t("Following hour", "Следен час"), true)}</View></View>

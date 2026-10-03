@@ -11,8 +11,10 @@ import { setNavigationPreference, useNavigationPreference } from "../services/na
 import { NAVIGATION_APPS, type NavigationApp } from "../domain/navigation";
 import { LANGUAGES } from "../domain/language";
 import LanguagePicker from "./LanguagePicker";
+import LicensePlateEditor from "./LicensePlateEditor";
+import { useLicensePlate } from "../state/LicensePlateContext";
 
-type Section = "appearance" | "language" | "navigation" | "location";
+type Section = "appearance" | "language" | "navigation" | "location" | "vehicle";
 function SettingsCard({ title, children }: { title?: string; children: React.ReactNode }) {
   const { colors } = useTheme();
   return <View style={{ backgroundColor: colors.input, borderRadius: 20, borderWidth: 1, borderColor: colors.line, overflow: "hidden" }}>
@@ -47,6 +49,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
   const { colors, mode, setMode } = useTheme();
   const { t, language } = useParking();
   const { profile, refresh } = useAccount();
+  const { savedPlate, ready: plateReady } = useLicensePlate();
   const [section, setSection] = useState<Section | null>(null);
   const navigationApp = useNavigationPreference();
   const [savingNavigation, setSavingNavigation] = useState(false), [navigationError, setNavigationError] = useState("");
@@ -56,6 +59,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
     language: t("Language", "Јазик"),
     navigation: t("Navigation app", "Апликација за навигација"),
     location: t("Location & notifications", "Локација и известувања"),
+    vehicle: t("License plate", "Регистарска табличка"),
   };
   const themeName = mode === "light" ? t("Light", "Светло") : mode === "dark" ? t("Dark", "Темно") : t("System default", "Системски стандард");
   const accountName = profile?.guest ? t("Guest", "Гостин") : profile ? `@${profile.username}` : t("Your account", "Вашиот профил");
@@ -95,6 +99,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
         <SettingsRow title={titles.appearance} value={themeName} icon="sun" onPress={() => setSection("appearance")} />
         <SettingsRow title={titles.language} value={LANGUAGES.find(({ code }) => code === language)?.name} icon="globe" onPress={() => setSection("language")} />
         <SettingsRow title={titles.navigation} value={navigationNames[navigationApp]} icon="navigation" onPress={() => setSection("navigation")} />
+        <SettingsRow title={titles.vehicle} value={savedPlate ?? undefined} icon="truck" disabled={!plateReady} onPress={() => setSection("vehicle")} />
         <SettingsRow title={titles.location} icon="map-pin" last onPress={() => setSection("location")} />
       </SettingsCard>
       <SettingsCard title={t("Account", "Профил")}>
@@ -110,6 +115,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
       {(["light", "dark", "system"] as const).map((value, index) => <SettingsRow key={value} title={value === "light" ? t("Light", "Светло") : value === "dark" ? t("Dark", "Темно") : t("System default", "Системски стандард")} icon={value === "light" ? "sun" : value === "dark" ? "moon" : "smartphone"} selected={mode === value} last={index === 2} onPress={() => setMode(value)} />)}
     </SettingsCard> : null}
     {section === "language" ? <LanguagePicker /> : null}
+    {section === "vehicle" ? <LicensePlateEditor key={profile?.id} onDone={() => setSection(null)} /> : null}
     {section === "navigation" ? <View style={{ gap: 16 }}>
       <SettingsCard>{NAVIGATION_APPS.map((value, index) => <SettingsRow key={value} title={navigationNames[value]} icon="navigation" selected={navigationApp === value} last={index === NAVIGATION_APPS.length - 1} disabled={savingNavigation} onPress={() => void chooseNavigation(value)} />)}</SettingsCard>
       <Text style={{ paddingHorizontal: 5, color: colors.muted, fontSize: 13, lineHeight: 20 }}>{t("Used when you tap Go on a parking pin. If the app is unavailable, directions open in your browser.", "Се користи кога ќе притиснете Оди на паркинг. Ако апликацијата не е достапна, насоките се отвораат во прелистувачот.")}</Text>

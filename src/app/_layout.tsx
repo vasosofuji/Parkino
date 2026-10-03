@@ -13,6 +13,8 @@ import { useArrivalNotifications } from "../hooks/useArrivalNotifications";
 import { hasCurrentTerms } from "../domain/onboarding";
 import { ContributionFeedbackProvider } from "../state/ContributionFeedback";
 import { SettingsLocationProvider } from "../state/SettingsLocationContext";
+import { LicensePlateProvider } from "../state/LicensePlateContext";
+import LicensePlatePrompt from "../components/LicensePlatePrompt";
 function Navigator() {
   const navigationReady = useNavigationReady();
   const { dark, colors } = useTheme();
@@ -36,6 +38,7 @@ function Navigator() {
     <ParkingProvider>
       <ContributionFeedbackProvider>
       <SettingsLocationProvider>
+      <LicensePlateProvider>
       <StatusBar style={dark ? "light" : "dark"} />
       <Stack
         screenOptions={{
@@ -60,6 +63,8 @@ function Navigator() {
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
       </Stack>
+      <LicensePlatePrompt />
+      </LicensePlateProvider>
       </SettingsLocationProvider>
       </ContributionFeedbackProvider>
     </ParkingProvider>

@@ -6,17 +6,16 @@ import { z } from "zod";
 import type { Catalog, Destination } from "../src/domain/types";
 import { ParkingStore } from "./store";
 import { CommunityStore } from "./community";
-import { SignWorker, signSchema, type SignExtractor } from "./sign-ai";
+import { SignWorker, manualSignSchema, type SignExtractor } from "./sign-ai";
 import { registerAccountRoutes } from "./account-routes";
 import { accountError, bearerToken, RequestBudget } from "./account-security";
 import { validZone, MAX_BOUNDARY_VERTICES } from "../src/domain/geometry";
 import { AccountStore } from "./accounts";
-import { TERMS_VERSION } from "../src/domain/account";
+import { TERMS_VERSION, usernameKey } from "../src/domain/account";
 import { PostgresParkingStore } from "./postgres/store";
 import { PostgresCommunityStore } from "./postgres/community";
 import { PostgresAccountStore } from "./postgres/accounts";
 import { SharedRequestBudget, sharedRateLimitStore } from "./postgres/rate-limits";
-import { usernameKey } from "../src/domain/account";
 const coordinate = z.object({
   latitude: z.number().min(41.91).max(42.08),
   longitude: z.number().min(21.3).max(21.58),
@@ -348,12 +347,24 @@ export async function buildApp(
     config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
   }, async request => {
     const auth = token(request.headers.authorization);
-    const details = signSchema.refine(info => Boolean(info.zoneCode?.trim() || info.firstHour !== null || info.nextHour !== null ||
+    const details = manualSignSchema.refine(info => Boolean(info.zoneCode?.trim() || info.firstHour !== null || info.nextHour !== null ||
       info.freeWeekends || info.chargingHours?.trim() || info.paymentInstructions?.trim() || info.restrictions?.trim() || info.rawText.trim().length >= 3),
     "Add at least one detail from the sign.").parse(request.body);
     const photo = await community.confirmSign(request.params.id, auth, details);
     await accounts.award(auth, `sign:${photo.placeId}`, "sign");
     return photo;
+  });
+  app.post<{ Params: { id: string } }>("/v1/signs/:id/confirm-sms", {
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+  }, async request => {
+    z.object({}).strict().parse(request.body);
+    return community.confirmSms(request.params.id, token(request.headers.authorization));
+  });
+  app.get<{ Params: { id: string } }>("/v1/places/:id/sms-payment", async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    await store.session(token(request.headers.authorization));
+    const [place] = await community.enrich([await store.place(request.params.id)]);
+    return { place, protocol: place.smsPayment ?? null };
   });
   app.post<{ Params: { id: string } }>(
     "/v1/places/:id/signs",

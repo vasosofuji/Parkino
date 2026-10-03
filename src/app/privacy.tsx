@@ -16,9 +16,10 @@ export default function Privacy() {
     [confirmDelete, setConfirmDelete] = useState(false);
   async function remove() {
     setBusy(true);
+    const clearDeletedAccount = account.captureClear();
     try {
       await api.deleteSession();
-      await account.clear();
+      await clearDeletedAccount();
       setConfirmDelete(false);
       await refresh();
       setMessage(
@@ -59,6 +60,12 @@ export default function Privacy() {
           )}
         </Note>
         <Text style={s.subhead}>{t("What is saved", "Што се зачувува")}</Text>
+        <Note>
+          {t(
+            "Your optional license plate is saved only on this device and cleared when you sign out. SMS parking opens your messaging app with the sign’s number and message; you choose whether to send it. Your mobile operator may charge for the message and parking. Wait for the parking operator’s confirmation.",
+            "Регистарската табличка е по избор, се зачувува само на овој уред и се брише при одјавување. СМС-плаќањето ја отвора апликацијата за пораки со бројот и пораката од таблата; вие одлучувате дали да ја испратите. Мобилниот оператор може да наплати за пораката и паркирањето. Почекајте потврда од паркинг-операторот.",
+          )}
+        </Note>
         <Note>
           {t(
             "The server stores your username, a salted password hash if you set a password, hashed sign-in tokens, contribution points and history, parking reports, prices, coordinates, boundaries and confirmations. Your password is never stored as plain text. Price reports and location confirmations are displayed for 90 days. Shared parking details and confirmation counts are public. Do not include names, registration plates or other personal information in notes. Availability reports expire after 15 minutes.",

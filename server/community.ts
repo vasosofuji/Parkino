@@ -14,6 +14,7 @@ import { normalizeZoneCode } from "../src/domain/parking";
 import type { ParkingStore } from "./store";
 import { ACCOUNT_TABLES } from "./accounts";
 import { PHOTO_SELECT, photoView, enrichSigns, type PhotoRow } from "./sign-catalog";
+import { needsSmsReread, photographedSmsCandidate, smsOperatorsMatch } from "./sms-payment";
 export class CommunityStore {
   constructor(private store: ParkingStore) {
     store.db.exec(ACCOUNT_TABLES);
@@ -29,6 +30,7 @@ export class CommunityStore {
       CREATE INDEX IF NOT EXISTS photos_by_place ON sign_photos(place_id,created DESC);
       CREATE INDEX IF NOT EXISTS photo_jobs ON sign_photos(status,next_attempt);
       CREATE TABLE IF NOT EXISTS sign_confirmations(photo_id TEXT PRIMARY KEY REFERENCES sign_photos(id) ON DELETE CASCADE, session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, info TEXT NOT NULL, confirmed INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS sms_confirmations(photo_id TEXT PRIMARY KEY REFERENCES sign_photos(id) ON DELETE CASCADE, session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, protocol TEXT NOT NULL, photo_hash TEXT NOT NULL, confirmed INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS sign_uploaders(photo_id TEXT NOT NULL REFERENCES sign_photos(id) ON DELETE CASCADE, session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, PRIMARY KEY(photo_id,session_id));
     `);
   }
@@ -104,6 +106,7 @@ export class CommunityStore {
         "INSERT INTO labels VALUES (?,?,?,?) ON CONFLICT(place_id,session_id) DO UPDATE SET code=excluded.code,created=excluded.created",
       )
       .run(id, user.id, normalizeZoneCode(code), Date.now());
+    this.store.db.prepare("DELETE FROM sms_confirmations WHERE photo_id IN (SELECT id FROM sign_photos WHERE place_id=?)").run(id);
     return { saved: true };
   }
   boundary(id: string, token: string, geometry: Geometry) {
@@ -112,6 +115,7 @@ export class CommunityStore {
     // Separate from the source catalog: importing official data must not erase edits.
     this.store.db.prepare("INSERT INTO boundaries VALUES (?,?,?) ON CONFLICT(place_id) DO UPDATE SET geometry=excluded.geometry,updated=excluded.updated")
       .run(id, JSON.stringify(geometry), Date.now());
+    this.store.db.prepare("DELETE FROM sms_confirmations WHERE photo_id IN (SELECT id FROM sign_photos WHERE place_id=?)").run(id);
     return { saved: true };
   }
   paymentSchedule(id: string, token: string, value: PaymentSchedule) {
@@ -153,6 +157,8 @@ export class CommunityStore {
       .get(id, hash) as { id: string } | undefined;
     if (prior) {
         this.store.db.prepare("INSERT INTO sign_uploaders(photo_id,session_id) VALUES (?,?) ON CONFLICT DO NOTHING").run(prior.id, user.id);
+        const row = this.store.db.prepare(PHOTO_SELECT + " WHERE p.id=?").get(prior.id) as PhotoRow;
+        if (needsSmsReread(row)) this.store.db.prepare("UPDATE sign_photos SET status='queued',attempts=0,next_attempt=0,lease_until=0 WHERE id=?").run(prior.id);
         return this.photo(prior.id, token);
       }
     const count = this.store.db
@@ -170,6 +176,9 @@ export class CommunityStore {
         "SELECT info,model,status FROM sign_photos WHERE hash=? AND status IN ('ready','review') LIMIT 1",
       )
       .get(hash) as { info: string; model: string; status: string } | undefined;
+    const oldest = this.store.db.prepare("SELECT MIN(created) AS created FROM sign_photos WHERE hash=?").get(hash) as {created:number|null};
+    const created = oldest.created ?? Date.now();
+    const legacy = cached && needsSmsReread({ ...cached, status: cached.status as PhotoRow["status"], created });
     this.store.db
       .prepare(
         "INSERT INTO sign_photos(id,place_id,session_id,hash,mime,bytes,created,status,info,model) VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -181,8 +190,8 @@ export class CommunityStore {
         hash,
         photo.mimeType,
         bytes,
-        Date.now(),
-        cached?.status ?? "queued",
+        created,
+        legacy ? "queued" : cached?.status ?? "queued",
         cached?.info ?? null,
         cached?.model ?? null,
       );
@@ -209,7 +218,26 @@ export class CommunityStore {
     if (!photo.uploadedByMe) throw Object.assign(new Error("Upload this sign before confirming its details."), { statusCode: 403 });
     if (!info.isParkingSign) throw Object.assign(new Error("Only parking signs can be confirmed."), { statusCode: 400 });
     this.store.db.prepare("INSERT INTO sign_confirmations(photo_id,session_id,info,confirmed) VALUES (?,?,?,?) ON CONFLICT(photo_id) DO UPDATE SET session_id=excluded.session_id,info=excluded.info,confirmed=excluded.confirmed")
-      .run(id, user.id, JSON.stringify(info), Date.now());
+      .run(id, user.id, JSON.stringify({ ...info, smsPayment: undefined }), Date.now());
+    const original = this.store.db.prepare("SELECT info FROM sign_photos WHERE id=?").get(id) as {info:string|null};
+    const reading = original.info ? JSON.parse(original.info) : null;
+    if (!info.zoneCode || normalizeZoneCode(info.zoneCode) !== normalizeZoneCode(reading?.zoneCode ?? "") || !smsOperatorsMatch(info.operator, reading?.operator))
+      this.store.db.prepare("DELETE FROM sms_confirmations WHERE photo_id=?").run(id);
+    return this.photo(id, token);
+  }
+  confirmSms(id: string, token: string): SignPhoto {
+    const user = this.store.session(token), photo = this.photo(id, token);
+    if (!photo.uploadedByMe) throw Object.assign(new Error("Upload this sign before confirming SMS instructions."), { statusCode: 403 });
+    this.store.db.exec("BEGIN IMMEDIATE");
+    try {
+      const row = this.store.db.prepare(PHOTO_SELECT + " WHERE p.id=?").get(id) as PhotoRow;
+      const place = this.store.place(row.place_id);
+      const label = this.store.db.prepare("SELECT code FROM labels WHERE place_id=? ORDER BY created DESC LIMIT 1").get(place.id) as {code:string}|undefined;
+      const candidate = photographedSmsCandidate(row, this.image(id), label?.code ?? place.zoneCode, Date.now(), place.operator);
+      this.store.db.prepare("INSERT INTO sms_confirmations(photo_id,session_id,protocol,photo_hash,confirmed) VALUES (?,?,?,?,?) ON CONFLICT(photo_id) DO UPDATE SET session_id=excluded.session_id,protocol=excluded.protocol,photo_hash=excluded.photo_hash,confirmed=excluded.confirmed")
+        .run(id,user.id,JSON.stringify(candidate),row.hash!,Date.now());
+      this.store.db.exec("COMMIT");
+    } catch (error) { this.store.db.exec("ROLLBACK"); throw error; }
     return this.photo(id, token);
   }
   image(id: string) {

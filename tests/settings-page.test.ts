@@ -72,6 +72,8 @@ function settings(guest = false, platform = "android") {
     if (name === "../state/ThemeContext") return { useTheme: () => ({ colors: palette, mode, setMode(value: string) { preferenceCalls.push(["theme", value]); mode = value; } }) };
     if (name === "../state/ParkingContext") return { useParking: () => ({ language, t: (en: string, mk: string) => translate(language as Language, en, mk), setLanguage(value: string) { preferenceCalls.push(["language", value]); language = value; } }) };
     if (name === "../state/AccountContext") return { useAccount: () => ({ profile: { id: "profile-one", username: "driver", points: 125, guest, secured: true }, refresh }) };
+    if (name === "../state/LicensePlateContext") return { useLicensePlate: () => ({ savedPlate: null, ready: true }) };
+    if (name === "./LicensePlateEditor") return { default: "LicensePlateEditor", __esModule: true };
     if (name === "./ui") return { Button: "Button", Icon: "Icon", Sheet: "Sheet", RevealSection: "RevealSection" };
     if (name === "./SettingsFrame") return { __esModule: true, default: "SettingsFrame" };
     if (name === "./BackgroundArrivalSettings") return { __esModule: true, default: "BackgroundArrivalSettings" };
@@ -142,6 +144,13 @@ test("settings sections use header Back before closing the settings route", () =
   invoke(tree, "onBack"); tree = view.render();
   assert.equal(view.stats().closes, 1);
   view.reopen(); tree = view.render(); assert.equal(tree.props.title, "Settings");
+});
+
+test("license plate editing opens from settings and header Back returns to settings", () => {
+  const view = settings(); view.tap(view.render(), "License plate");
+  const tree = view.render(); assert.ok(elements(tree).some(node => node.type === "LicensePlateEditor"));
+  invoke(find(tree, "SettingsFrame"), "onBack");
+  assert.equal(find(view.render(), "SettingsFrame").props.title, "Settings"); assert.equal(view.stats().closes, 0);
 });
 
 test("appearance and language choices call existing setters and expose the selected radio", () => {
