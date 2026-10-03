@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from "react";
 import {
   Pressable,
   Text,
@@ -16,10 +16,66 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useTheme, lightColors, type ThemeColors } from "../state/ThemeContext";
 import ModalBackdrop from "./ModalBackdrop";
+import { formRevealOffset } from "../domain/form-reveal";
+import { ContributionNotice } from "../state/ContributionFeedback";
 type HeaderBackAction = { onPress: () => void; label: string; disabled?: boolean };
 const SheetBackContext = createContext<((action: HeaderBackAction | null) => void) | null>(null);
 type ContinueAction = { onPress: () => void; title: string; disabled?: boolean };
 const SheetContinueContext = createContext<((action: ContinueAction | null) => void) | null>(null);
+type RevealReason = "open" | "resize" | "close";
+const SheetRevealContext = createContext<((node: View, reason?: RevealReason) => void) | null>(null);
+/** Attach to an expanded section so its fields are brought into the sheet viewport. */
+export function useSheetReveal(active: unknown) {
+  const reveal = useContext(SheetRevealContext), ref = useRef<View>(null);
+  const onLayout = useCallback(() => { if (active && ref.current) reveal?.(ref.current, "resize"); }, [active, reveal]);
+  useLayoutEffect(() => {
+    if (!active) return;
+    const node = ref.current;
+    const frame = requestAnimationFrame(() => { if (node) reveal?.(node, "open"); });
+    return () => { cancelAnimationFrame(frame); if (node) reveal?.(node, "close"); };
+  }, [active, reveal]);
+  return { ref, onLayout };
+}
+export function RevealSection({ active, children, style }: { active: unknown; children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+  const reveal = useSheetReveal(active);
+  return <View {...reveal} collapsable={false} style={style}>{children}</View>;
+}
+function useFormViewport() {
+  const scroll = useRef<ScrollView>(null), content = useRef<View>(null);
+  const metrics = useRef({ offset: 0, viewport: 0, height: 0 });
+  const activeSection = useRef<View | null>(null);
+  const reveal = useCallback((node: View, reason: RevealReason = "resize") => {
+    if (reason === "close") { if (activeSection.current === node) activeSection.current = null; return; }
+    if (reason === "open") activeSection.current = node;
+    else if (activeSection.current !== node) return;
+    if (!content.current || !scroll.current) return;
+    node.measureLayout(content.current, (_x, top, _width, sectionHeight) => {
+      if (activeSection.current !== node) return;
+      const current = metrics.current;
+      const y = formRevealOffset(top, sectionHeight, current.offset, current.viewport, current.height, reason === "open");
+      if (Math.abs(y - current.offset) > 1) {
+        current.offset = y;
+        scroll.current?.scrollTo({ y, animated: true });
+      }
+    }, () => {});
+  }, []);
+  return { scroll, content, reveal, events: {
+    scrollEventThrottle: 16,
+    onScrollBeginDrag: () => { activeSection.current = null; },
+    onScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) => { metrics.current.offset = event.nativeEvent.contentOffset.y; },
+    onLayout: (event: { nativeEvent: { layout: { height: number } } }) => { metrics.current.viewport = event.nativeEvent.layout.height; if (activeSection.current) reveal(activeSection.current); },
+    onContentSizeChange: (_width: number, height: number) => { metrics.current.height = height; if (activeSection.current) reveal(activeSection.current); },
+  } };
+}
+/** Give standalone forms the same section-reveal behavior as sheets. */
+export function FormScrollView({ children, contentContainerStyle, ...props }: React.ComponentProps<typeof ScrollView>) {
+  const { scroll, content, reveal, events } = useFormViewport();
+  return <SheetRevealContext.Provider value={reveal}>
+    <ScrollView {...props} ref={scroll} {...events}>
+      <View ref={content} collapsable={false} style={contentContainerStyle}>{children}</View>
+    </ScrollView>
+  </SheetRevealContext.Provider>;
+}
 /** Keep step actions outside the scrolling form, including above the keyboard. */
 export function useSheetContinue(action: ContinueAction | null) {
   const register = useContext(SheetContinueContext), current = useRef(action);
@@ -178,10 +234,12 @@ export function Sheet({
   const { height } = useWindowDimensions();
   const [registeredBack, registerBack] = useState<HeaderBackAction | null>(null);
   const [registeredContinue, registerContinue] = useState<ContinueAction | null>(null);
+  const { scroll, content, reveal, events } = useFormViewport();
   const back = registeredBack ?? (onBack ? { onPress: onBack, label: backLabel, disabled: backDisabled } : null);
   return (
     <SheetBackContext.Provider value={registerBack}>
     <SheetContinueContext.Provider value={registerContinue}>
+    <SheetRevealContext.Provider value={reveal}>
     <Modal
       visible={visible}
       transparent
@@ -229,22 +287,25 @@ export function Sheet({
             <View style={fullPage ? { width: 44, alignItems: "center" } : undefined}><IconButton name="x" label="Close / Затвори" onPress={onClose} /></View>
           </View>
           <ScrollView
+            ref={scroll}
+            {...events}
             showsVerticalScrollIndicator={false}
             showsHorizontalScrollIndicator={false}
             bounces={false}
             style={fullPage ? { flex: 1 } : { flexShrink: 1 }}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={[s.sheetContent, fullPage && { width: "100%", maxWidth: 680, alignSelf: "center", gap: 20, paddingBottom: 28 }]}
           >
-            {children}
+            <View ref={content} collapsable={false} style={[s.sheetContent, fullPage && { width: "100%", maxWidth: 680, alignSelf: "center", gap: 20, paddingBottom: 28 }]}>{children}</View>
           </ScrollView>
           {registeredContinue ? <View style={[s.sheetFooter, { flexDirection: "row", gap: 12 }]}>
             {back ? <Button style={{ flex: 1, minHeight: 52 }} title={back.label} variant="secondary" disabled={back.disabled} onPress={back.onPress} /> : null}
             <Button style={{ flex: 1.6, minHeight: 52 }} title={registeredContinue.title} disabled={registeredContinue.disabled} onPress={registeredContinue.onPress} />
           </View> : footer ? <View style={s.sheetFooter}>{footer}</View> : null}
         </View>
+        <ContributionNotice />
       </KeyboardAvoidingView>
     </Modal>
+    </SheetRevealContext.Provider>
     </SheetContinueContext.Provider>
     </SheetBackContext.Provider>
   );

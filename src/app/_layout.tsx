@@ -11,6 +11,7 @@ import { ModalBackgroundProvider } from "../components/ModalBackdrop";
 import AppStyles from "../components/AppStyles";
 import { useArrivalNotifications } from "../hooks/useArrivalNotifications";
 import { hasCurrentTerms } from "../domain/onboarding";
+import { ContributionFeedbackProvider } from "../state/ContributionFeedback";
 function Navigator() {
   const navigationReady = useNavigationReady();
   const { dark, colors } = useTheme();
@@ -32,6 +33,7 @@ function Navigator() {
     );
   return (
     <ParkingProvider>
+      <ContributionFeedbackProvider>
       <StatusBar style={dark ? "light" : "dark"} />
       <Stack
         screenOptions={{
@@ -55,6 +57,7 @@ function Navigator() {
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
       </Stack>
+      </ContributionFeedbackProvider>
     </ParkingProvider>
   );
 }

@@ -3,6 +3,7 @@ import React, { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ParkingPlace } from "../domain/types";
 import { currentAvailability } from "../domain/parking";
+import { availabilityReportTime } from "../domain/report-feedback";
 import { parkingMarker } from "../domain/marker-appearance";
 import { useParking } from "../state/ParkingContext";
 export default function ParkingRow({
@@ -25,12 +26,13 @@ export default function ParkingRow({
   const { t, language, now } = useParking();
   const available = currentAvailability(place.availability, now);
   const marker = parkingMarker(place, 1, now);
+  const reportedAt = availabilityReportTime(place.availability, language, now);
   const status = {
     spaces: available.freeSpaces !== undefined ? `${available.freeSpaces} ${t("free reported", "пријавени слободни")}${place.capacity !== null ? ` / ${place.capacity}` : ""}` : t("Spaces reported", "Пријавени слободни места"),
     full: t("Full reported", "Пријавено полн"),
     mixed: t("Conflicting reports", "Различни пријави"),
     unknown: t("No recent report", "Нема свежа пријава"),
-  }[available.status];
+  }[available.status] + (reportedAt ? ` · ${t("Reported at", "Пријавено во")} ${reportedAt}` : "");
   const handlePress = useCallback(() => onPress(place), [onPress, place]);
   const displayCost = cost;
   const name = language !== "mk" ? (place.nameEn ?? place.name) : place.name;
@@ -73,7 +75,7 @@ export default function ParkingRow({
               },
             ]}
           />
-          <Text numberOfLines={1} style={s.statusText}>{status}</Text>
+          <Text numberOfLines={2} style={s.statusText}>{status}</Text>
         </View>
       </View>
       <View style={s.price}>

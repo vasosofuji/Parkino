@@ -67,7 +67,7 @@ input:focus-visible {
   bottom: 2px;
 }
 .leaflet-control-attribution { font-size: 10px !important; background: rgba(255,255,255,.85) !important; }
-.parking-pin.spaces .parking-pin-face { min-width: 42px; height: 30px; box-shadow: 0 0 0 3px #26c77930; }
+.parking-pin.spaces .parking-pin-face { width: 36px; min-width: 36px; height: 36px; padding: 0; flex-shrink: 0; border-radius: 50%; box-shadow: 0 0 0 3px #26c77930; }
 .zone-label span { background: #fff; color: #392c25; border: 1px solid #527fba; border-radius: 6px; padding: 3px 6px; font: 600 12px system-ui; white-space: nowrap; }
 .zone-label.approximate span { border-style: dashed; }
 .zone-vertex { display: flex; align-items: center; justify-content: center; cursor: grab; }

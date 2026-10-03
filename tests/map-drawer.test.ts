@@ -58,3 +58,41 @@ test("drawer keeps its animated transform attached across collapse and catalog m
   assert.equal(graph(tree).a.value - graph(tree).b.value, 470 - 94);
   assert.equal(drawer(tree).children[2].props.pointerEvents, "none");
 });
+
+test("web drawer handle holds without starting a drag and cancels only a real drag", () => {
+  const refs: any[] = []; let cursor = 0, starts = 0, ends = 0, toggles = 0, clock = 1000;
+  const react = { createElement: (type: string, props: any) => ({ type, props }), useRef(value: any) { const index = cursor++; return refs[index] ?? (refs[index] = { current: value }); } };
+  const exports = {} as { default: (props: any) => Node };
+  const source = ts.transpileModule(readFileSync("src/components/DrawerHandle.web.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
+  vm.runInNewContext(source, { exports, Date: { now: () => clock }, require: () => ({ ...react, default: react, __esModule: true }) });
+  const tree = exports.default({ onStart: () => starts++, onEnd: () => ends++, onDrag() {}, onToggle: () => toggles++ });
+  const event = (y: number) => ({ clientY: y, pointerId: 1, currentTarget: { setPointerCapture() {}, releasePointerCapture() {} } });
+  tree.props.onPointerDown(event(100)); assert.equal(starts, 0);
+  tree.props.onPointerMove(event(101)); assert.equal(starts, 0);
+  tree.props.onPointerUp(event(101)); assert.equal(ends, 0);
+  tree.props.onClick(); assert.equal(toggles, 1);
+  tree.props.onPointerDown(event(100)); clock += 500;
+  tree.props.onPointerUp(event(100)); tree.props.onClick();
+  assert.equal(toggles, 1, "long hold must not synthesize an expansion click");
+  assert.equal(starts, 0); assert.equal(ends, 0);
+  tree.props.onClick(); assert.equal(toggles, 2, "keyboard click remains available");
+  tree.props.onPointerDown(event(100)); tree.props.onPointerMove(event(90)); assert.equal(starts, 1);
+  tree.props.onPointerCancel(); assert.equal(ends, 1);
+  tree.props.onClick(); assert.equal(toggles, 2);
+});
+
+test("native drawer long hold stays closed while a new short press still opens", () => {
+  let toggles = 0;
+  const react = { createElement: (type: string, props: any, ...children: Node[]) => ({ type, props, children }), useRef: (value: any) => ({ current: value }), useMemo: (fn: () => any) => fn() };
+  const exports = {} as { default: (props: any) => Node };
+  const source = ts.transpileModule(readFileSync("src/components/DrawerHandle.tsx", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
+  vm.runInNewContext(source, { exports, require(name: string) {
+    if (name === "react") return { ...react, default: react, __esModule: true };
+    return { View: "View", Pressable: "Pressable", PanResponder: { create: () => ({ panHandlers: {} }) } };
+  } });
+  const tree = exports.default({ onToggle: () => toggles++ });
+  const press = tree.children[0].props;
+  assert.equal(press.delayLongPress, 400);
+  press.onPressIn(); press.onLongPress(); press.onPress(); assert.equal(toggles, 0);
+  press.onPressIn(); press.onPress(); assert.equal(toggles, 1);
+});

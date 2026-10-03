@@ -4,6 +4,7 @@ import { Button, IconButton } from "./ui";
 import { useTheme } from "../state/ThemeContext";
 import { useParking } from "../state/ParkingContext";
 import { currentAvailability, parkingPrice } from "../domain/parking";
+import { availabilityReportTime } from "../domain/report-feedback";
 import type { ParkingPlace } from "../domain/types";
 import DigitalParkingSign from "./DigitalParkingSign";
 import { parkingMarker } from "../domain/marker-appearance";
@@ -32,6 +33,7 @@ export default function ParkingPreview({
     [error, setError] = useState("");
   const price = parkingPrice(place, now),
     status = currentAvailability(place.availability, now);
+  const reportedAt = availabilityReportTime(place.availability, language, now);
   const marker = parkingMarker(place, 1, now);
   const layout = parkingPreviewLayout(point ?? { x: 0, y: 0 }, width, mapHeight, drawerHeight, height);
   const positioned = point !== null && height > 0 && layout.visible;
@@ -119,13 +121,14 @@ export default function ParkingPreview({
           }}
         >
           {status.status === "spaces"
-            ? status.freeSpaces !== undefined ? `${status.freeSpaces} ${t("free recently", "неодамна слободни")}${place.capacity !== null ? ` / ${place.capacity}` : ""}` : t("✓ Spaces recently reported", "✓ Пријавени слободни места")
+            ? status.freeSpaces !== undefined ? `${status.freeSpaces} ${t("free spaces", "слободни места")}${place.capacity !== null ? ` / ${place.capacity}` : ""}` : t("✓ Spaces available", "✓ Има слободни места")
             : status.status === "full"
-              ? t("Full — recently reported", "Полн — неодамнешна пријава")
+              ? t("Full", "Полн")
               : t(
                   "No recent availability report",
                   "Нема неодамнешна пријава за места",
                 )}
+          {reportedAt ? ` · ${t("Reported at", "Пријавено во")} ${reportedAt}` : ""}
         </Text>
       ) : place.locationPrecision === "area" ? (
         <Text style={{ color: colors.muted, fontSize: 12 }}>

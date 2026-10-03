@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { formRevealOffset } from "../src/domain/form-reveal";
 import { LANGUAGES, translate, type Language } from "../src/domain/language";
 
 type Element = { type: unknown; props: Record<string, unknown>; children: unknown[] };
@@ -49,6 +50,8 @@ function sheet() {
     if (name === "react-native-safe-area-context") return { useSafeAreaInsets: () => ({ top: 48, bottom: 34, left: 24, right: 12 }) };
     if (name === "@expo/vector-icons") return { Feather: "Feather" };
     if (name === "../state/ThemeContext") return { useTheme: () => ({ colors: palette }), lightColors: palette };
+    if (name === "../domain/form-reveal") return { formRevealOffset };
+    if (name === "../state/ContributionFeedback") return { ContributionNotice: "ContributionNotice" };
     if (name === "./ModalBackdrop") return { __esModule: true, default: "ModalBackdrop" };
     throw new Error(`Unexpected Sheet dependency: ${name}`);
   } });
@@ -69,7 +72,7 @@ function settings(guest = false, platform = "android") {
     if (name === "../state/ThemeContext") return { useTheme: () => ({ colors: palette, mode, setMode(value: string) { preferenceCalls.push(["theme", value]); mode = value; } }) };
     if (name === "../state/ParkingContext") return { useParking: () => ({ language, t: (en: string, mk: string) => translate(language as Language, en, mk), setLanguage(value: string) { preferenceCalls.push(["language", value]); language = value; } }) };
     if (name === "../state/AccountContext") return { useAccount: () => ({ profile: { id: "profile-one", username: "driver", points: 125, guest, secured: true }, refresh }) };
-    if (name === "./ui") return { Button: "Button", Icon: "Icon", Sheet: "Sheet" };
+    if (name === "./ui") return { Button: "Button", Icon: "Icon", Sheet: "Sheet", RevealSection: "RevealSection" };
     if (name === "./BackgroundArrivalSettings") return { __esModule: true, default: "BackgroundArrivalSettings" };
     if (name === "../domain/language") return { LANGUAGES };
     if (name === "./LanguagePicker") {
@@ -217,4 +220,23 @@ test("web keeps notification permissions visibly unavailable without invoking a 
   assert.equal(notification.props.accessibilityLabel, "Notification permissions, Phone app");
   view.tap(tree, "Location permissions");
   assert.equal(view.stats().permissions, 1);
+});
+test("Sheet reveals expanded fields but resize, collapse and manual scrolling preserve the reading position", () => {
+  const tree = sheet().render({ onClose() {} });
+  const scroller = find(tree, "ScrollView");
+  const offsets: number[] = [];
+  (scroller.props.ref as { current: unknown }).current = { scrollTo: ({ y }: { y: number }) => offsets.push(y) };
+  const content = elements(tree).find(node => node.type === "View" && node.props.collapsable === false)!;
+  (content.props.ref as { current: unknown }).current = {};
+  const reveal = elements(tree).filter(node => node.type === "Provider")[2].props.value as (node: unknown, reason: string) => void;
+  const layout = scroller.props.onLayout as (event: unknown) => void;
+  const resize = scroller.props.onContentSizeChange as (width: number, height: number) => void;
+  layout({ nativeEvent: { layout: { height: 500 } } }); resize(390, 1800);
+  const section = { measureLayout(_parent: unknown, success: (x: number, top: number, width: number, height: number) => void) { success(0, 350, 300, 800); } };
+  reveal(section, "open"); assert.deepEqual(offsets, [338]);
+  (scroller.props.onScroll as (event: unknown) => void)({ nativeEvent: { contentOffset: { y: 600 } } });
+  resize(390, 1900); assert.deepEqual(offsets, [338]);
+  reveal(section, "close"); layout({ nativeEvent: { layout: { height: 450 } } }); assert.deepEqual(offsets, [338]);
+  reveal(section, "open"); assert.deepEqual(offsets, [338, 338]);
+  invoke(scroller, "onScrollBeginDrag"); resize(390, 2000); assert.deepEqual(offsets, [338, 338]);
 });

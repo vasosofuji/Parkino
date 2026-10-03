@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { randomUUID } from "expo-crypto";
-import { Button, Icon, Note, useSheetBack, useSheetContinue } from "./ui";
+import { Button, Icon, Note, useSheetBack, useSheetContinue, useSheetReveal } from "./ui";
 import PaymentScheduleFields from "./PaymentScheduleFields";
 import LoadingIndicator from "./LoadingIndicator";
 import { useParking } from "../state/ParkingContext";
@@ -13,6 +13,7 @@ import { validZone } from "../domain/geometry";
 import type { Coordinate, Geometry, ParkingKind, ParkingPlace, PaymentSchedule } from "../domain/types";
 import { createEntryDraftStore, entryDraftKey, readEntryDraft, type EntryDraft, type EntryOperation, type EntryStep } from "../services/entryDrafts";
 import { api } from "../services/api";
+import { useContributionFeedback } from "../state/ContributionFeedback";
 
 type Props = {
   place?: ParkingPlace; existingPlaceId?: string; coordinate: Coordinate; geometry?: Geometry; returnedGeometry?: Geometry; initialZone?: string; kind?: ParkingKind;
@@ -31,6 +32,7 @@ export default function ManualParkingWizard(props: Props) {
 }
 function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeometry, initialZone, kind = "surface", initialStep, onSaved, onDone, onDrawBoundary, onBack, restored, draftKey, accountId }: Props & { restored: EntryDraft | null; draftKey: string; accountId: string }) {
   const { t, refresh } = useParking(), { colors } = useTheme(), s = styles(colors);
+  const { thankYou } = useContributionFeedback();
   const initialPrice = place ? parkingPrice(place) : null;
   const [step, setStep] = useState<EntryStep>(restored?.detailed && restored.step !== "choose" ? "details" : restored?.step ?? (initialStep ? "details" : "choose")), [detailed, setDetailed] = useState(restored?.detailed ?? Boolean(initialStep));
   const [expanded, setExpanded] = useState<EntryStep | null>(null);
@@ -107,7 +109,7 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
       return;
     }
     if (detailed && currentGeometry && writer.snapshot().boundary !== JSON.stringify(currentGeometry) && !await save({ type: "boundary", geometry: currentGeometry })) return;
-    await draftStore.clear().catch(() => {}); onDone();
+    await draftStore.clear().catch(() => {}); if (writer.snapshot().contributed) thankYou(); onDone();
   }
   async function finishDetails() {
     if (busy) return;
@@ -141,6 +143,7 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
       if (!operations.length) operations.push({ type: "ensure" });
       for (const operation of operations) if (!await save(operation)) return;
       await draftStore.clear().catch(() => {});
+      if (writer.snapshot().contributed) thankYou();
       onDone();
     } finally { setFinishingDetails(false); }
   }
@@ -177,8 +180,8 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
       } catch { setMessage(t("Enter a whole number from 0 to 100,000.", "Внесете цел број од 0 до 100.000.")); }
     }
   }
-  const field = (label: string, value: string, change: (value: string) => void, numeric = false, placeholder = t("Optional", "Опционално")) => <View style={s.field}>
-    <Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} value={value} onChangeText={change} editable={!busy} style={s.input} keyboardType={numeric ? "decimal-pad" : "default"} autoCapitalize={numeric ? "none" : "characters"} maxLength={numeric ? 9 : 16} placeholder={placeholder} placeholderTextColor={colors.muted} />
+  const field = (label: string, value: string, change: (value: string) => void, numeric = false, placeholder = t("Optional", "Опционално"), showLabel = true) => <View style={s.field}>
+    {showLabel ? <Text style={s.label}>{label}</Text> : null}<TextInput accessibilityLabel={label} value={value} onChangeText={change} editable={!busy} style={s.input} keyboardType={numeric ? "decimal-pad" : "default"} autoCapitalize={numeric ? "none" : "characters"} maxLength={numeric ? 9 : 16} placeholder={placeholder} placeholderTextColor={colors.muted} />
   </View>;
   const ordered: EntryStep[] = initialStep ? ["schedule", ...(kind === "zone" ? [] : ["spaces" as const]), "perimeter"] : ["zone", "price", ...(detailed ? ["schedule" as const, ...(kind === "zone" ? [] : ["spaces" as const]), "perimeter" as const] : [])];
   const index = ordered.indexOf(step) + 1;
@@ -188,26 +191,20 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
     onPress: () => { if (step === "details") void finishDetails(); else if (failed) void save(failed); else if (step === "perimeter" || step === "done") void finish(); else advance(); },
   };
   const footerRegistered = useSheetContinue(action);
-  const section = (key: EntryStep, title: string, summary: string, children: React.ReactNode) => <View style={s.section} key={key}>
-    <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ expanded: expanded === key, disabled: busy }} aria-expanded={expanded === key} disabled={busy} onPress={() => { setExpanded(expanded === key ? null : key); setMessage(""); }} style={s.sectionHeader}>
-      <View style={s.flex}><Text style={s.label}>{title}</Text>{summary ? <Text numberOfLines={1} style={s.summary}>{summary}</Text> : null}</View>
-      <Icon name={expanded === key ? "chevron-up" : "chevron-down"} size={18} />
-    </Pressable>
-    {expanded === key ? <View style={s.sectionBody}>{children}</View> : null}
-  </View>;
+  const section = (key: EntryStep, title: string, summary: string, children: React.ReactNode) => <DetailSection key={key} title={title} summary={summary} expanded={expanded === key} busy={busy} colors={colors} onPress={() => { setExpanded(expanded === key ? null : key); setMessage(""); }}>{children}</DetailSection>;
   return <View style={s.root}>
     {step === "choose" ? <>
       {([false, true] as const).map(value => <Pressable key={String(value)} accessibilityRole="button" accessibilityLabel={value ? t("Detailed entry", "Детален внес") : t("Simple entry", "Брз внес")} style={s.choice} onPress={() => { setDetailed(value); setStep(value ? "details" : "zone"); }}>
         <View pointerEvents="none" style={s.choiceContent}><Icon name={value ? "map" : "zap"} color={colors.accentText} /><View style={s.flex}><Text style={s.title}>{value ? t("Detailed entry", "Детален внес") : t("Simple entry", "Брз внес")}</Text><Note>{value ? kind === "zone" ? t("Zone, price, paying hours and perimeter", "Зона, цена, часови на наплата и периметар") : t("Zone, price, paying hours, spaces and perimeter", "Зона, цена, часови на наплата, места и периметар") : t("Just the zone and price", "Само зона и цена")}</Note></View><Icon name="chevron-right" size={18} /></View>
       </Pressable>)}
     </> : step === "details" ? <>
-      {section("zone", t("Zone label", "Ознака на зона"), code, field(t("Zone label", "Ознака на зона"), code, setCode, false, "B2, A0…"))}
+      {section("zone", t("Zone label", "Ознака на зона"), code, field(t("Zone label", "Ознака на зона"), code, setCode, false, "B2, A0…", false))}
       {section("price", t("Price", "Цена"), first ? `${first} / ${next || first} ${t("MKD", "ден.")}` : "", <>
         <Button title={t("It's free", "Бесплатно е")} variant="secondary" disabled={busy} onPress={() => { setFirst("0"); setNext("0"); }} />
         <View style={s.row}><View style={s.flex}>{field(t("MKD / first hour", "ден. / прв час"), first, setFirst, true)}</View><View style={s.flex}>{field(t("Following hour", "Следен час"), next, setNext, true, first || t("Same as first hour", "Како првиот час"))}</View></View>
       </>)}
-      {section("schedule", t("Paying hours", "Часови на наплата"), schedule.chargingHours ?? "", <PaymentScheduleFields value={schedule} onChange={setSchedule} disabled={busy} />)}
-      {kind !== "zone" ? section("spaces", t("Total parking spaces", "Вкупно паркинг места"), capacity, field(t("Total parking spaces", "Вкупно паркинг места"), capacity, setCapacity, true)) : null}
+      {section("schedule", t("Paying hours", "Часови на наплата"), schedule.chargingHours ?? "", <PaymentScheduleFields value={schedule} onChange={setSchedule} disabled={busy} showHeading={false} />)}
+      {kind !== "zone" ? section("spaces", t("Total parking spaces", "Вкупно паркинг места"), capacity, field(t("Total parking spaces", "Вкупно паркинг места"), capacity, setCapacity, true, t("Optional", "Опционално"), false)) : null}
       {section("perimeter", t("Parking perimeter", "Периметар на паркингот"), currentGeometry ? t("Added", "Додадено") : "", <Button icon="map" title={currentGeometry ? t("Edit perimeter", "Промени периметар") : t("Draw on map", "Означи на мапата")} disabled={busy || !onDrawBoundary} variant="secondary" onPress={() => { Keyboard.dismiss(); onDrawBoundary?.(currentGeometry); }} />)}
     </> : step === "done" ? <>
       <Icon name={busy ? "clock" : failed ? "alert-circle" : "check-circle"} color={colors.accentText} size={30} />
@@ -228,6 +225,15 @@ function WizardBody({ place, existingPlaceId, coordinate, geometry, returnedGeom
       <Button style={s.flex} title={t("Back", "Назад")} variant="secondary" disabled={busy} onPress={back} />
       <Button style={s.flex} title={action.title} disabled={action.disabled} onPress={action.onPress} />
     </View> : null}
+  </View>;
+}
+function DetailSection({ title, summary, expanded, busy, colors, onPress, children }: { title: string; summary: string; expanded: boolean; busy: boolean; colors: ThemeColors; onPress: () => void; children: React.ReactNode }) {
+  const s = styles(colors), reveal = useSheetReveal(expanded);
+  return <View style={s.section} {...reveal} collapsable={false}>
+    <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ expanded, disabled: busy }} aria-expanded={expanded} disabled={busy} onPress={onPress} style={s.sectionHeader}>
+      <View style={s.flex}><Text style={s.label}>{title}</Text>{summary && !expanded ? <Text numberOfLines={1} style={s.summary}>{summary}</Text> : null}</View><Icon name={expanded ? "chevron-up" : "chevron-down"} size={18} />
+    </Pressable>
+    {expanded ? <View style={s.sectionBody}>{children}</View> : null}
   </View>;
 }
 const styles = (colors: ThemeColors) => StyleSheet.create({

@@ -26,6 +26,27 @@ test("zone creates a pin once and later completed steps save independently", asy
   await writer.label("B2"); await writer.price(40, 50); await writer.spaces(20, 8);
   assert.equal(calls.length, 4);
 });
+test("thank-you tracking excludes empty creation and unchanged existing details", async () => {
+  const empty = client(), newEntry = createProgressiveEntry(empty.api, { contribution });
+  await newEntry.ensure(); assert.equal(newEntry.snapshot().contributed, undefined);
+  const existing = { ...place, zoneCode: "B2", capacity: 20, tariff: { firstHour: 40, nextHour: 40 }, paymentSchedule: { chargingHours: "Mon–Fri 07:00–23:00", freeWeekends: "both" } } as ParkingPlace;
+  const { api, calls } = client(), writer = createProgressiveEntry(api, { place: existing });
+  await writer.label("B2"); await writer.price(40, 40); await writer.spaces(20, null); await writer.paymentSchedule(existing.paymentSchedule!);
+  assert.equal(writer.snapshot().contributed, undefined); assert.deepEqual(calls, []);
+});
+test("thank-you tracking waits for successful writes and persists across reopening", async () => {
+  const failing = client({ price: async () => { throw new Error("offline"); } }), writer = createProgressiveEntry(failing.api, { place });
+  await assert.rejects(writer.price(0, 0)); assert.equal(writer.snapshot().contributed, undefined);
+  const success = client(), retry = createProgressiveEntry(success.api, { place, snapshot: writer.snapshot() });
+  await retry.price(0, 0); assert.equal(retry.snapshot().contributed, true);
+  assert.equal(createProgressiveEntry(success.api, { place, snapshot: retry.snapshot() }).snapshot().contributed, true);
+});
+test("a new zone label and removing a known schedule are substantive contributions", async () => {
+  const { api } = client(), created = createProgressiveEntry(api, { contribution });
+  await created.label("B2"); assert.equal(created.snapshot().contributed, true);
+  const edit = createProgressiveEntry(api, { place, snapshot: { code: null, total: null, price: "", boundary: "", schedule: JSON.stringify({ chargingHours: "Mon 07:00–23:00", freeWeekends: null }) } });
+  await edit.paymentSchedule({ chargingHours: null, freeWeekends: null }); assert.equal(edit.snapshot().contributed, true);
+});
 test("a failed later step leaves completed zone saved and retries without another pin", async () => {
   let tries = 0;
   const { calls, api } = client({ price: async () => { if (++tries === 1) throw new Error("offline"); } });

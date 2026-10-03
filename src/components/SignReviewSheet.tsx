@@ -9,6 +9,8 @@ import { Button, Note, Sheet } from "./ui";
 import DigitalParkingSign from "./DigitalParkingSign";
 import PaymentScheduleFields from "./PaymentScheduleFields";
 import StepActions from "./StepActions";
+import { useContributionFeedback } from "../state/ContributionFeedback";
+import { hasSignDetails } from "../domain/report-feedback";
 
 type Fields = { zoneCode: string; operator: string; currency: string; firstHour: string; nextHour: string; maxStayMinutes: string; chargingHours: string; paymentInstructions: string; restrictions: string; rawText: string };
 const fieldsFrom = (info: SignInfo | null): Fields => ({
@@ -25,6 +27,7 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
   onDismiss?: () => void;
 }) {
   const { t, refresh } = useParking(), { colors } = useTheme();
+  const { thankYou } = useContributionFeedback();
   const [photo, setPhoto] = useState(initialPhoto);
   const [editing, setEditing] = useState(false), [fields, setFields] = useState(() => fieldsFrom(initialPhoto.info));
   const [freeWeekends, setFreeWeekends] = useState<SignInfo["freeWeekends"]>(initialPhoto.info?.freeWeekends ?? null);
@@ -79,7 +82,7 @@ export default function SignReviewSheet({ initialPhoto, visible = true, onClose,
     }
     if (!info?.isParkingSign) { setError(t("Correct the details before confirming this parking sign.", "Поправете ги податоците пред да ја потврдите таблата.")); return; }
     setBusy(true); setError("");
-    try { const confirmed = await api.confirmSign(photo.id, info); await refresh(); onConfirmed(confirmed); }
+    try { const confirmed = await api.confirmSign(photo.id, info); await refresh(); if (!photo.confirmedByMe && hasSignDetails(info)) thankYou(); onConfirmed(confirmed); }
     catch (e) { setError(e instanceof Error ? e.message : t("Could not confirm. Try again.", "Не е потврдено. Обидете се повторно.")); }
     finally { setBusy(false); }
   }

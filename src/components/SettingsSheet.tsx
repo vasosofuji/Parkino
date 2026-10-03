@@ -4,7 +4,7 @@ import { router, usePathname, type Href } from "expo-router";
 import { useTheme } from "../state/ThemeContext";
 import { useParking } from "../state/ParkingContext";
 import { useAccount } from "../state/AccountContext";
-import { Icon, Sheet, type IconName } from "./ui";
+import { Icon, Sheet, RevealSection, type IconName } from "./ui";
 import BackgroundArrivalSettings from "./BackgroundArrivalSettings";
 import { setNavigationPreference, useNavigationPreference } from "../services/navigation";
 import { NAVIGATION_APPS, type NavigationApp } from "../domain/navigation";
@@ -74,6 +74,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
   const go = (path: Href) => { router.push(path); };
   return <Sheet fullPage visible={visible && pathname === "/"} title={section ? titles[section] : t("Settings", "Поставки")} onClose={close} onBack={back}
     backLabel={section ? t("Back to settings", "Назад кон поставки") : t("Back to map", "Назад кон мапата")}>
+    <RevealSection active={section ?? "settings"} style={{ gap: 20 }}>
     {!section ? <View style={{ gap: 18 }}>
       <SettingsCard>
         <View style={{ padding: 18, flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -123,5 +124,6 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
       </SettingsCard>
       <SettingsCard><View style={{ padding: 18 }}><BackgroundArrivalSettings /></View></SettingsCard>
     </View> : null}
+    </RevealSection>
   </Sheet>;
 }

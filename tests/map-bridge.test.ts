@@ -33,7 +33,7 @@ function bridge(reducedMotion = false) {
   };
   const window = { matchMedia: () => motion, ReactNativeWebView: { postMessage: (value: string) => messages.push(JSON.parse(value)) }, addEventListener: (name: string, fn: Callback) => windowEvents.set(name, fn) } as unknown as { renderParking: (next: object) => void; updateUserLocation: (point: number[] | null, accuracy: number | null) => void };
   const L = {
-    map: () => map, tileLayer: layer, layerGroup: () => ({ ...layer(), getLayers: () => [], clearLayers() { clears++; } }),
+    map: () => map, tileLayer: layer, layerGroup: () => ({ ...layer(), getLayers: () => [], removeLayer() {}, clearLayers() { clears++; } }),
     marker: (_point: unknown, options: Record<string, unknown>) => { const next = layer(); markers.push({ options, events: next.events }); return next; },
     polygon: layer, polyline: layer, circle: layer, circleMarker: () => { userDots++; return layer(); }, divIcon: (value: unknown) => value, latLngBounds: () => ({}), DomEvent: { stopPropagation() {} },
   };
@@ -141,4 +141,17 @@ test("boundary drawing disables double-click zoom across corner updates and rest
   assert.equal(view.doubleClickZoom.enabled(), true);
   view.mapEvents.get("click")?.({ latlng: { lat: 42, lng: 21 } });
   assert.equal(view.messages.at(-1)?.type, "blank");
+});
+
+test("native map reuses unchanged marker instances while current interaction flags and appearance still update", () => {
+  const view = bridge();
+  view.window.renderParking(payload);
+  const first = view.markers[0], count = view.markers.length;
+  view.window.renderParking({ ...payload, pins: payload.pins.map(pin => ({ ...pin })), selectionEnabled: false });
+  assert.equal(view.markers.length, count, "catalog refresh does not replace identical pins");
+  const before = view.messages.filter(message => message.type === "select").length;
+  first.events.get("click")?.();
+  assert.equal(view.messages.filter(message => message.type === "select").length, before, "cached handler reads current selection gate");
+  view.window.renderParking({ ...payload, pins: [{ ...payload.pins[0], html: "<span>Full</span>" }] });
+  assert.equal(view.markers.length, count + 1, "report expiry/appearance changes replace only that marker");
 });

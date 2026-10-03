@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import * as parkingDomain from "../src/domain/parking";
+import * as feedbackDomain from "../src/domain/report-feedback";
 import * as markerDomain from "../src/domain/marker-appearance";
 import * as previewLayout from "../src/domain/preview-layout";
 import type { ParkingPlace } from "../src/domain/types";
@@ -48,6 +49,7 @@ function popup(platform = "android") {
   const component = { exports: {} as { default: (props: PreviewProps) => Element }, require(name: string) {
     if (name === "react") return { ...react, default: react, __esModule: true };
     if (name === "react-native") return native;
+    if (name === "../domain/report-feedback") return feedbackDomain;
     if (name === "./ui") return { Button: "Button", IconButton: "IconButton" };
     if (name === "../state/ThemeContext") return { useTheme: () => ({ colors: { paper: "white", line: "gray", ink: "black", muted: "gray" } }) };
     if (name === "../state/ParkingContext") return { useParking: () => ({ t: (en: string) => en, language: "en", now: Date.now() }) };

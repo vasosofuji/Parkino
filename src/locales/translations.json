@@ -1810,5 +1810,28 @@
   "Simple or detailed entry": {
     "tr": "Basit veya ayrıntılı giriş",
     "sq": "Shtim i thjeshtë ose i hollësishëm"
-  }
+  },
+  "Thank you!": { "tr": "Teşekkürler!", "sq": "Faleminderit!" },
+  "Yes": { "tr": "Evet", "sq": "Po" },
+  "No": { "tr": "Hayır", "sq": "Jo" },
+  "Close": { "tr": "Kapat", "sq": "Mbyll" },
+  "Reported at": { "tr": "Bildirilme saati", "sq": "Raportuar në" },
+  "free spaces": { "tr": "boş yer", "sq": "vende të lira" },
+  "✓ Spaces available": { "tr": "✓ Boş yer var", "sq": "✓ Ka vende të lira" },
+  "Days": { "tr": "Günler", "sq": "Ditët" },
+  "Mon": { "tr": "Pzt", "sq": "Hën" },
+  "Tue": { "tr": "Sal", "sq": "Mar" },
+  "Wed": { "tr": "Çar", "sq": "Mër" },
+  "Thu": { "tr": "Per", "sq": "Enj" },
+  "Fri": { "tr": "Cum", "sq": "Pre" },
+  "Sat": { "tr": "Cmt", "sq": "Sht" },
+  "Sun": { "tr": "Paz", "sq": "Die" },
+  "From": { "tr": "Başlangıç", "sq": "Nga" },
+  "To": { "tr": "Bitiş", "sq": "Deri" },
+  "Add hours": { "tr": "Saat ekle", "sq": "Shto orar" },
+  "Remove hours": { "tr": "Saatleri kaldır", "sq": "Hiq orarin" },
+  "Other hours": { "tr": "Diğer saatler", "sq": "Orar tjetër" },
+  "Choose days and times": { "tr": "Günleri ve saatleri seçin", "sq": "Zgjidh ditët dhe orët" },
+  "Hour": { "tr": "Saat", "sq": "Ora" },
+  "Minute": { "tr": "Dakika", "sq": "Minuta" }
 }

@@ -132,7 +132,7 @@ export default function MapDrawer({
           importantForAccessibility={
             level === 0 ? "no-hide-descendants" : "auto"
           }
-          style={[s.actions, { paddingBottom: level === 2 ? 8 : 20, opacity: level === 0 && !dragging ? 0 : 1 }]}
+          style={[s.actions, { paddingBottom: level === 2 ? 8 : 20, opacity: level === 0 ? 0 : 1 }]}
         >
           <Button
             style={s.flex}

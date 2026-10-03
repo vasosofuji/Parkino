@@ -28,11 +28,12 @@ function wizard(initial: Record<string, unknown> = {}) {
     if (name === "react") return { ...react, default: react, __esModule: true };
     if (name === "react-native") return { Keyboard: { dismiss() {} }, Pressable: "Pressable", Text: "Text", TextInput: "TextInput", View: "View", StyleSheet: { create: (value: unknown) => value } };
     if (name === "expo-crypto") return { randomUUID: () => "fixed-request" };
-    if (name === "./ui") return { Button: "Button", Icon: "Icon", Note: "Note", useSheetBack: (action: typeof back) => { back = action; }, useSheetContinue: () => false };
+    if (name === "./ui") return { Button: "Button", Icon: "Icon", Note: "Note", useSheetReveal: () => ({}), useSheetBack: (action: typeof back) => { back = action; }, useSheetContinue: () => false };
     if (name === "./PaymentScheduleFields") return { default: "PaymentScheduleFields" };
     if (name === "./LoadingIndicator") return { default: "LoadingIndicator" };
     if (name === "../state/ParkingContext") return { useParking: () => ({ t: (en: string) => en, refresh: async () => {} }) };
     if (name === "../state/AccountContext") return { useAccount: () => ({ profile: { id: "account-a" } }) };
+    if (name === "../state/ContributionFeedback") return { useContributionFeedback: () => ({ thankYou: () => calls.push(["thankYou"]) }) };
     if (name === "../state/ThemeContext") return { useTheme: () => ({ colors: {} }) };
     if (name === "../domain/parking") return { normalizeZoneCode: (value: string) => value.trim().toUpperCase(), parkingPrice: () => null };
     if (name === "../domain/progressive-entry") return entry;
@@ -44,7 +45,7 @@ function wizard(initial: Record<string, unknown> = {}) {
   vm.runInNewContext(source, context);
   const props = { coordinate: { latitude: 42, longitude: 21.43 }, restored: null, draftKey: "account-a:coordinate", accountId: "account-a", onDone: () => { done++; }, ...initial };
   function render() { cursor = 0; effectCursor = 0; const tree = context.exports.body(props); const queued = pending; pending = []; queued.forEach(effect => effect()); return tree; }
-  function nodes(tree: unknown): Element[] { if (Array.isArray(tree)) return tree.flatMap(nodes); if (!tree || typeof tree !== "object" || !("children" in tree)) return []; const element = tree as Element; return [element, ...element.children.flatMap(nodes)]; }
+  function nodes(tree: unknown): Element[] { if (Array.isArray(tree)) return tree.flatMap(nodes); if (!tree || typeof tree !== "object" || !("children" in tree)) return []; const element = tree as Element; if (typeof element.type === "function") return nodes(element.type({ ...element.props, children: element.children })); return [element, ...element.children.flatMap(nodes)]; }
   return { render, nodes, calls, back: () => back.onPress(), stats: () => ({ cleared, done }), tap(tree: Element, label: string) { const node = nodes(tree).find(item => item.props.title === label || item.props.accessibilityLabel === label); assert.ok(node, `Missing ${label}`); node.props.onPress(); }, input(tree: Element, label: string, value: string) { const node = nodes(tree).find(item => item.type === "TextInput" && item.props.accessibilityLabel === label); assert.ok(node, `Missing ${label}`); node.props.onChangeText(value); } };
 }
 
@@ -69,6 +70,7 @@ test("detailed entry directly opens optional sections and saves only entered val
   form.tap(tree, "Done"); await flush();
   assert.deepEqual(form.calls.filter(call => ["capacity", "price", "report", "boundary"].includes(String(call[0]))), [["price", "park-1", 0, 0], ["capacity", "park-1", 20]]);
   assert.deepEqual(form.stats(), { cleared: 1, done: 1 });
+  assert.equal(form.calls.filter(call => call[0] === "thankYou").length, 1);
 });
 
 test("detailed entry validates entered sections before creating or saving any values", async () => {
@@ -91,6 +93,16 @@ test("detailed entry can finish with all optional fields blank and back collapse
   form.tap(tree, "Done"); await flush();
   assert.deepEqual(form.stats(), { cleared: 1, done: 1 });
   assert.equal(form.calls.filter(call => ["price", "capacity", "paymentSchedule"].includes(String(call[0]))).length, 0);
+  assert.equal(form.calls.filter(call => call[0] === "thankYou").length, 0);
+});
+
+test("expanded zone and capacity sections have a single visible heading", () => {
+  const form = wizard(); let tree = form.render(); form.tap(tree, "Detailed entry"); tree = form.render();
+  for (const title of ["Zone label", "Total parking spaces"]) {
+    form.tap(tree, title); tree = form.render();
+    assert.equal(form.nodes(tree).filter(item => item.type === "Text" && item.children.includes(title)).length, 1);
+    assert.equal(form.nodes(tree).filter(item => item.type === "TextInput" && item.props.accessibilityLabel === title).length, 1);
+  }
 });
 
 test("retrying detailed entry preserves successful fields without duplicating the pin", async () => {

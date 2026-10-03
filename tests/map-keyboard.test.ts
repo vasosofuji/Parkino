@@ -1,3 +1,4 @@
+import { createLayerCache } from "../src/domain/layer-cache";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -47,6 +48,7 @@ test("current Leaflet taps wait for native acceptance but pan intent is immediat
     if (name === "react-native") return { StyleSheet: { create: (value: unknown) => value }, View: "View", Text: "Text" };
     if (name === "react-native-webview") return { WebView: "WebView" };
     if (name.endsWith("parking")) return { SKOPJE };
+    if (name.endsWith("layer-cache")) return { createLayerCache };
     if (name.endsWith("clusters")) return { groupParking: () => [] };
     if (name.endsWith("marker-appearance")) return {};
     if (name.endsWith("offlineMapHtml")) return { mapHtml: "map" };

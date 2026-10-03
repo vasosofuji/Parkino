@@ -1,5 +1,6 @@
 import type { Contribution, Geometry, ParkingPlace, PaymentSchedule } from "./types";
 import { validZone } from "./geometry";
+import { parkingPrice } from "./parking";
 
 export type EntryApi = {
   contribute: (value: Contribution) => Promise<ParkingPlace>;
@@ -10,7 +11,7 @@ export type EntryApi = {
   report: (id: string, status: "spaces" | "full", free?: number) => Promise<unknown>;
   boundary: (id: string, geometry: Geometry) => Promise<unknown>;
 };
-export type EntrySnapshot = { id?: string; code: string | null; total: number | null; price: string; schedule?: string; free?: number; boundary: string };
+export type EntrySnapshot = { id?: string; code: string | null; total: number | null; price: string; schedule?: string; free?: number; boundary: string; contributed?: boolean };
 
 /** One editor owns one writer. Successful steps remain saved even if a later one fails. */
 export function createProgressiveEntry(api: EntryApi, initial: {
@@ -24,11 +25,13 @@ export function createProgressiveEntry(api: EntryApi, initial: {
   let creating: Promise<string> | undefined;
   let code = initial.snapshot?.code ?? initial.place?.zoneCode ?? null;
   let total = initial.snapshot?.total ?? initial.place?.capacity ?? null;
-  let price = initial.snapshot?.price ?? "";
+  const knownPrice = initial.place ? parkingPrice(initial.place) : null;
+  let price = initial.snapshot?.price ?? (knownPrice ? `${knownPrice.firstHour}:${knownPrice.nextHour}` : "");
   let schedule = initial.snapshot?.schedule ?? (initial.place?.paymentSchedule ? JSON.stringify(initial.place.paymentSchedule) : "");
   let free = initial.snapshot?.free;
   let boundary = initial.snapshot?.boundary ?? (initial.place?.geometry ? JSON.stringify(initial.place.geometry) : "");
   let tail: Promise<unknown> = Promise.resolve();
+  let contributed = Boolean(initial.snapshot?.contributed);
 
   async function ensure(zoneCode?: string) {
     if (id) return id;
@@ -39,6 +42,7 @@ export function createProgressiveEntry(api: EntryApi, initial: {
         code = place.zoneCode;
         total = place.capacity;
         boundary = place.geometry ? JSON.stringify(place.geometry) : "";
+        if (zoneCode || initial.contribution?.zoneCode || initial.contribution?.geometry || initial.contribution?.firstHour !== null && initial.contribution?.firstHour !== undefined) contributed = true;
         initial.onSaved?.(place.id);
         return place.id;
       }).finally(() => { creating = undefined; });
@@ -53,27 +57,31 @@ export function createProgressiveEntry(api: EntryApi, initial: {
   }
   return {
     id: () => id,
-    snapshot: (): EntrySnapshot => ({ id, code, total, price, free, boundary, ...(schedule ? { schedule } : {}) }),
+    snapshot: (): EntrySnapshot => ({ id, code, total, price, free, boundary, ...(schedule ? { schedule } : {}), ...(contributed ? { contributed: true } : {}) }),
     label: (value: string) => serial(async () => {
       const placeId = await ensure(value);
-      if (value && value !== code) { await api.label(placeId, value); code = value; }
+      if (value && value !== code) { await api.label(placeId, value); code = value; contributed = true; }
     }),
     price: (first: number, next: number) => serial(async () => {
       const placeId = await ensure(), key = `${first}:${next}`;
-      if (price !== key) { await api.price(placeId, first, next); price = key; }
+      if (price !== key) { await api.price(placeId, first, next); price = key; contributed = true; }
     }),
     paymentSchedule: (value: PaymentSchedule) => serial(async () => {
       const placeId = await ensure(), key = JSON.stringify(value);
-      if (key !== schedule) { await api.paymentSchedule(placeId, value); schedule = key; }
+      if (key !== schedule) {
+        const wasMeaningful = schedule && schedule !== JSON.stringify({ chargingHours: null, freeWeekends: null });
+        await api.paymentSchedule(placeId, value); schedule = key;
+        if (value.chargingHours || value.freeWeekends !== null || wasMeaningful) contributed = true;
+      }
     }),
     spaces: (capacity: number | null, available: number | null) => serial(async () => {
       const placeId = await ensure();
-      if (capacity !== null && capacity !== total) { await api.capacity(placeId, capacity); total = capacity; }
-      if (available !== null && available !== free) { await api.report(placeId, available === 0 ? "full" : "spaces", available); free = available; }
+      if (capacity !== null && capacity !== total) { await api.capacity(placeId, capacity); total = capacity; contributed = true; }
+      if (available !== null && available !== free) { await api.report(placeId, available === 0 ? "full" : "spaces", available); free = available; contributed = true; }
     }),
     boundary: (geometry: Geometry) => serial(async () => {
       const placeId = await ensure(), value = JSON.stringify(geometry);
-      if (value !== boundary) { await api.boundary(placeId, geometry); boundary = value; }
+      if (value !== boundary) { await api.boundary(placeId, geometry); boundary = value; contributed = true; }
     }),
     ensure: () => serial(async () => { await ensure(); }),
   };

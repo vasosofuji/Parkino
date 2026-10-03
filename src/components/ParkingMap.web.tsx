@@ -4,6 +4,7 @@ import L from "leaflet";
 import "./leaflet.css";
 import "./map.css";
 import type { ParkingMapProps } from "./mapTypes";
+import { createLayerCache } from "../domain/layer-cache";
 import { SKOPJE } from "../domain/parking";
 import { groupParking } from "../domain/clusters";
 import { parkingMarker, parkingMarkerHtml } from "../domain/marker-appearance";
@@ -20,6 +21,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     map = useRef<L.Map | null>(null);
   const layers = useRef<L.LayerGroup | null>(null),
     draftLayer = useRef<L.LayerGroup | null>(null);
+  const layerCache = useRef<ReturnType<typeof createLayerCache<L.Layer>> | null>(null);
   const callbacks = useRef(props);
   const userDot = useRef<L.CircleMarker | null>(null), accuracyCircle = useRef<L.Circle | null>(null);
   const cameraMoving = useRef(false), destinationKey = useRef(""), selectionKey = useRef("");
@@ -41,11 +43,15 @@ export default function ParkingMap(props: ParkingMapProps) {
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
         maxZoom: 19,
+        keepBuffer: 4,
+        updateWhenIdle: true,
+        updateWhenZooming: false,
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       },
     ).addTo(instance);
     layers.current = L.layerGroup().addTo(instance);
+    layerCache.current = createLayerCache(layer => layer.addTo(layers.current!), layer => layers.current?.removeLayer(layer), layer => layer.off());
     draftLayer.current = L.layerGroup().addTo(instance);
     map.current = instance;
     instance.on("zoomend", () => setZoom(instance.getZoom()));
@@ -79,6 +85,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     return () => {
       motion?.removeEventListener("change", motionChanged);
       resize.disconnect();
+      layerCache.current?.clear(); layerCache.current = null;
       instance.remove();
       map.current = null;
       layers.current = null;
@@ -95,7 +102,10 @@ export default function ParkingMap(props: ParkingMapProps) {
   useEffect(() => {
     const group = layers.current,
       instance = map.current;
-    if (!group || !instance) return;
+    if (!group || !instance || !layerCache.current) return;
+    const cache = layerCache.current;
+    cache.begin();
+    const retain = (key: string, state: unknown, create: () => L.Layer) => cache.use(key, JSON.stringify([state, props.picking, props.selectionEnabled, props.language]), create);
     const select = (
       place: ParkingMapProps["places"][number],
       point = place.coordinate,
@@ -108,8 +118,8 @@ export default function ParkingMap(props: ParkingMapProps) {
       for (const place of props.places.filter((p) => p.kind === "zone")) {
         const selected = place.id === props.selectedId;
         if (place.geometry) {
-          L.polygon(
-            place.geometry.coordinates.map((ring) =>
+          retain(`zone:${place.id}`, [place, selected], () => L.polygon(
+            place.geometry!.coordinates.map((ring) =>
               ring.map(([lon, lat]) => [lat, lon] as L.LatLngTuple),
             ),
             {
@@ -126,12 +136,12 @@ export default function ParkingMap(props: ParkingMapProps) {
                 longitude: event.latlng.lng,
               });
             })
-            .addTo(group);
+            );
         }
         if (zoom >= 17 || selected) {
           const label = document.createElement("span");
           label.textContent = place.zoneCode ?? place.name;
-          L.marker([place.coordinate.latitude, place.coordinate.longitude], {
+          retain(`zone-label:${place.id}`, [place, selected], () => L.marker([place.coordinate.latitude, place.coordinate.longitude], {
             autoPanOnFocus: false,
             icon: L.divIcon({
               className: "zone-label" + (!place.geometry ? " approximate" : ""),
@@ -142,7 +152,7 @@ export default function ParkingMap(props: ParkingMapProps) {
             zIndexOffset: selected ? 1100 : 0,
           })
             .on("click", () => select(place))
-            .addTo(group);
+            );
         }
       }
     }
@@ -156,12 +166,12 @@ export default function ParkingMap(props: ParkingMapProps) {
     if (!props.drawing) {
       for (const place of visible.filter((p) => p.kind !== "zone" && p.geometry && (zoom >= 17 || p.id === props.selectedId))) {
         const selected = place.id === props.selectedId;
-        L.polygon(place.geometry!.coordinates.map((ring) => ring.map(([lon, lat]) => [lat, lon] as L.LatLngTuple)), {
+        retain(`footprint:${place.id}`, [place, selected], () => L.polygon(place.geometry!.coordinates.map((ring) => ring.map(([lon, lat]) => [lat, lon] as L.LatLngTuple)), {
           color: "#962E2B", weight: selected ? 2.5 : 1.5, fillOpacity: selected ? 0.12 : 0.045,
         }).on("click", (event: L.LeafletMouseEvent) => {
           L.DomEvent.stopPropagation(event);
           select(place, { latitude: event.latlng.lat, longitude: event.latlng.lng });
-        }).addTo(group);
+        }));
       }
     }
     for (const members of groupParking(
@@ -192,7 +202,7 @@ export default function ParkingMap(props: ParkingMapProps) {
         : props.language !== "mk"
           ? (place.nameEn ?? place.name)
           : place.name;
-      L.marker([place.coordinate.latitude, place.coordinate.longitude], {
+      retain(`pin:${place.id}`, [place, selected, members.map(member => member.id), appearance], () => L.marker([place.coordinate.latitude, place.coordinate.longitude], {
         autoPanOnFocus: false,
         icon,
         title,
@@ -209,11 +219,11 @@ export default function ParkingMap(props: ParkingMapProps) {
             callbacks.current.onPan?.();
             moveCamera(instance,
               [place.coordinate.latitude, place.coordinate.longitude],
-              Math.min(19, zoom + 1),
+              Math.min(19, instance.getZoom() + 1),
             );
           } else callbacks.current.onSelect(place);
         })
-        .addTo(group);
+        );
     }
     const markerPoint =
       props.destinationMarker === undefined
@@ -224,7 +234,7 @@ export default function ParkingMap(props: ParkingMapProps) {
       title.textContent =
         props.destinationName ??
         (translate(props.language, "Destination", "Дестинација"));
-      L.marker([markerPoint.latitude, markerPoint.longitude], {
+      retain("destination", [markerPoint, title.textContent], () => L.marker([markerPoint.latitude, markerPoint.longitude], {
         icon: L.divIcon({
           className: "destination-pin",
           html: "<span></span>",
@@ -240,8 +250,9 @@ export default function ParkingMap(props: ParkingMapProps) {
           offset: [0, -44],
           className: "destination-label",
         })
-        .addTo(group);
+        );
     }
+    cache.end();
     userDot.current?.bringToFront();
     const anchor = props.selectedAnchor;
     if (props.selectedId && anchor && !cameraMoving.current) {
@@ -251,11 +262,7 @@ export default function ParkingMap(props: ParkingMapProps) {
       ]);
       callbacks.current.onSelectedPosition?.({ x: p.x, y: p.y });
     } else callbacks.current.onSelectedPosition?.(null);
-    return () => {
-      const old = group.getLayers();
-      group.clearLayers();
-      old.forEach((layer) => layer.off());
-    };
+
   }, [
     props.places,
     props.filtered,

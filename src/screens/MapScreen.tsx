@@ -33,7 +33,6 @@ import ProposalSheet from "../components/ProposalSheet";
 import { Button, Icon, IconButton, Note, Sheet } from "../components/ui";
 import {
   normalizeZoneCode,
-  parkingPrice,
   rankParking,
   searchText,
   SKOPJE,
@@ -49,6 +48,8 @@ import { useParking } from "../state/ParkingContext";
 import { useArrival } from "../hooks/useArrival";
 import { api } from "../services/api";
 import { MARKER_COLORS } from "../domain/marker-appearance";
+import { arrivalQuestion } from "../domain/report-feedback";
+import { useContributionFeedback } from "../state/ContributionFeedback";
 
 type NewParking = {
   coordinate: Coordinate;
@@ -61,6 +62,7 @@ export default function MapScreen() {
   const { colors, dark } = useTheme(),
     s = styles(colors);
   const { catalog, connected, language, t, refresh, now } = useParking();
+  const { thankYou } = useContributionFeedback();
   const gps = useArrival(catalog.places);
   const [sort, setSort] = useState<"nearest" | "cheapest">("nearest");
   const [destination, setDestination] = useState<Destination | null>(null);
@@ -136,10 +138,12 @@ export default function MapScreen() {
   );
   const selectedPlace = catalog.places.find((place) => place.id === selected);
   const followupPlace = catalog.places.find((place) => place.id === followupId);
-  const arrivalPlace = followupPlace ?? gps.arrival;
+  // GPS may hold a snapshot from before the driver or someone else added a tariff.
+  const arrivalPlace = followupPlace ?? (gps.arrival ? catalog.places.find(place => place.id === gps.arrival!.id) ?? gps.arrival : null);
+  const question = arrivalQuestion(arrivalPlace, Boolean(followupPlace), now);
   const notificationPriority = gps.arrivalFromNotification || followupFromNotification;
   const suspendSheets = notificationPriority || notificationClosing;
-  const arrivalVisible = Boolean(arrivalPlace) && (notificationPriority || (!selected && !detailsId && !menu && !legend && !proposal && !picking && !locationHelp));
+  const arrivalVisible = Boolean(question) && (notificationPriority || (!selected && !detailsId && !menu && !legend && !proposal && !picking && !locationHelp));
   const mapBlockedBySheet = suspendSheets || arrivalVisible || menu || legend || locationHelp || (!picking && Boolean(detailsId || proposal));
   const clearSelection = useCallback(() => {
     setSelected(null);
@@ -396,20 +400,28 @@ export default function MapScreen() {
     setDetailsGeometry({ id: editingBoundary, geometry: shape });
     cancelPicking();
   }
-  function dismissArrival() {
+  const dismissGpsArrival = gps.dismiss;
+  const dismissArrival = useCallback(() => {
     if (notificationPriority && Platform.OS === "ios") setNotificationClosing(true);
-    gps.dismiss();
+    dismissGpsArrival();
     setFollowupId(null);
     setFollowupFromNotification(false);
     setArrivalPaid(false);
     setArrivalPrice("");
-  }
+  }, [notificationPriority, dismissGpsArrival]);
+  // A refreshed catalog can resolve a pending price question while the popup is open.
+  useEffect(() => {
+    if (arrivalPlace && question === null && !sending) {
+      const timer = setTimeout(dismissArrival, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [arrivalPlace, question, sending, dismissArrival]);
   function updateArrival() {
     if (arrivalPlace) { setDetailsEditing(true); setDetailsId(arrivalPlace.id); }
     dismissArrival();
   }
   async function saveArrivalPrice(free: boolean) {
-    if (!arrivalPlace) return;
+    if (!arrivalPlace || question !== "price") return;
     const amount = free ? 0 : Number(arrivalPrice.replace(",", "."));
     if ((!free && !arrivalPrice.trim()) || !Number.isFinite(amount) || amount < 0 || amount > 10000) {
       setMessage(t("Enter a price from 0 to 10,000 MKD.", "Внесете цена од 0 до 10.000 денари.")); return;
@@ -419,26 +431,27 @@ export default function MapScreen() {
       await api.price(arrivalPlace.id, amount, amount);
       await refresh();
       dismissArrival();
-      setMessage(t("Thank you — price shared", "Ви благодариме — цената е споделена"));
+      thankYou();
     } catch { setMessage(t("Could not save. Try again.", "Не е зачувано. Обидете се повторно.")); }
     finally { setSending(false); }
   }
   async function reportArrival(status: "spaces" | "full") {
     if (!gps.arrival) return;
-    const place = gps.arrival;
+    const place = catalog.places.find(place => place.id === gps.arrival!.id) ?? gps.arrival;
     setSending(true);
     setMessage("");
     try {
       await api.report(place.id, status);
       await refresh();
-      if (!parkingPrice(place)) setFollowupFromNotification(gps.arrivalFromNotification);
+      const needsPrice = arrivalQuestion(place, true, now) === "price";
+      if (needsPrice) setFollowupFromNotification(gps.arrivalFromNotification);
       else if (gps.arrivalFromNotification && Platform.OS === "ios") setNotificationClosing(true);
       gps.dismiss();
       setArrivalPaid(false);
       setArrivalPrice("");
-      if (!parkingPrice(place)) setFollowupId(place.id);
+      if (needsPrice) setFollowupId(place.id);
       else if (status === "full") { setDetailsEditing(false); setDetailsId(place.id); }
-      else setMessage(t("Thanks for helping other drivers", "Благодариме што им помагате на возачите"));
+      thankYou();
     } catch {
       setMessage(
         t("Could not send. Try again.", "Не е испратено. Обидете се повторно."),
@@ -909,7 +922,7 @@ export default function MapScreen() {
       <Sheet
         visible={arrivalVisible}
         title={
-          followupPlace || arrivalPlace?.kind === "zone"
+          question === "price"
             ? t("One more thing — is it free?", "Уште нешто — бесплатно ли е?")
             : t("Any free spaces here?", "Има ли слободни места тука?")
         }
@@ -921,24 +934,24 @@ export default function MapScreen() {
             ? (arrivalPlace?.nameEn ?? arrivalPlace?.name)
             : arrivalPlace?.name}
         </Text>
-        {!followupPlace && arrivalPlace?.kind !== "zone" ? (
+        {question === "availability" ? (
           <View style={s.answers}>
             <Button
               style={s.flex}
-              title={t("Spaces available", "Има места")}
+              title={t("Yes", "Да")}
               disabled={sending || !connected}
               onPress={() => void reportArrival("spaces")}
             />
             <Button
               style={s.flex}
-              title={t("Full", "Полн")}
+              title={t("No", "Не")}
               variant="secondary"
               disabled={sending || !connected}
               onPress={() => void reportArrival("full")}
             />
           </View>
         ) : null}
-        {arrivalPlace && !parkingPrice(arrivalPlace) && (followupPlace || arrivalPlace.kind === "zone") ? (
+        {question === "price" ? (
           <>
             <Note>{t("The price is still missing here. A quick answer helps the next driver.", "Тука сè уште нема цена. Брзиот одговор му помага на следниот возач.")}</Note>
             {followupPlace?.availability?.status === "full" ? <Button title={t("Find free spaces nearby", "Најди слободни места блиску")} icon="map-pin" variant="secondary" disabled={sending} onPress={() => { setDetailsEditing(false); setDetailsId(followupPlace.id); dismissArrival(); }} /> : null}
@@ -958,7 +971,6 @@ export default function MapScreen() {
             />
           </>
         ) : null}
-        <Button title={t("Not sure · skip", "Не знам · прескокни")} variant="secondary" disabled={sending} onPress={dismissArrival} />
         {!connected ? (
           <Note>
             {t("Connect to send your answer.", "Поврзете се за да одговорите.")}

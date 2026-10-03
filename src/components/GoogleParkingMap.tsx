@@ -255,7 +255,7 @@ export default function ParkingMap(props: ParkingMapProps) {
               } else props.onSelect(place);
             }}
           >
-            <View style={s.markerFrame}>{place.id === props.selectedId ? <View style={[s.selectedFrame, { width: appearance.spaces ? 52 : 38 }]} /> : null}<View
+            <View style={s.markerFrame}>{place.id === props.selectedId ? <View style={[s.selectedFrame, { width: appearance.spaces ? 46 : 38, height: appearance.spaces ? 46 : 38, borderRadius: 23 }]} /> : null}<View
               style={[
                 s.pin,
                 { backgroundColor: appearance.fill, borderColor: appearance.border },
@@ -373,9 +373,11 @@ const s = StyleSheet.create({
   },
   pinText: { color: "#fff", fontWeight: "800", fontSize: 12 },
   spaces: {
-    minWidth: 42,
-    height: 30,
-    borderRadius: 16,
+    width: 36,
+    minWidth: 36,
+    height: 36,
+    paddingHorizontal: 0,
+    borderRadius: 18,
   },
   userDot: {
     width: 18,

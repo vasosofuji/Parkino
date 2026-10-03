@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import Page from "../components/Page";
-import { Button, Note } from "../components/ui";
+import { Button, Note, FormScrollView, RevealSection } from "../components/ui";
 import PasswordField from "../components/PasswordField";
 import LoadingIndicator from "../components/LoadingIndicator";
 import { useAccount } from "../state/AccountContext";
@@ -67,7 +67,7 @@ export default function Account() {
   }
   return <Page title={t("Your account", "Вашиот профил")}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, gap: 22, maxWidth: 580, width: "100%", alignSelf: "center" }}>
+      <FormScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, gap: 22, maxWidth: 580, width: "100%", alignSelf: "center" }}>
         <View style={{ gap: 6 }}>
           <Text style={{ fontSize: 28, fontWeight: "700", color: colors.ink }}>{guest ? t("Guest", "Гостин") : `@${account.profile?.username ?? ""}`}</Text>
           <Text style={{ fontSize: 42, fontWeight: "800", color: colors.accentText }}>{rewards?.total ?? account.profile?.points ?? 0} <Text style={{ fontSize: 18 }}>{t("points", "поени")}</Text></Text>
@@ -84,6 +84,7 @@ export default function Account() {
         <Button title={t("Rewards & appearance", "Награди и изглед")} icon="gift" variant="secondary" disabled={busy} onPress={() => router.push("/rewards")} />
         {message ? <Text accessibilityLiveRegion="polite" style={{ color: colors.ink }}>{message}</Text> : null}
         <View style={{ gap: 12 }}>
+          <RevealSection active={section === "earn"} style={{ gap: 12 }}>
           <Button title={t("Ways to earn", "Како да добиете поени")} variant="secondary" icon={section === "earn" ? "chevron-up" : "chevron-down"} onPress={() => setSection(section === "earn" ? null : "earn")} />
           {section === "earn" ? <View style={{ gap: 12 }}>
             {(Object.keys(REWARD_POINTS) as RewardKind[]).map((kind) => <View key={kind} style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
@@ -92,6 +93,8 @@ export default function Account() {
             </View>)}
             <Note>{t("Details: once per parking. Availability: once per parking each day.", "Детали: еднаш по паркинг. Достапност: еднаш по паркинг дневно.")}</Note>
           </View> : null}
+          </RevealSection>
+          <RevealSection active={section === "history"} style={{ gap: 12 }}>
           <Button title={t("Recent contributions", "Последни придонеси")} variant="secondary" icon={section === "history" ? "chevron-up" : "chevron-down"} onPress={() => setSection(section === "history" ? null : "history")} />
           {section === "history" ? <View style={{ gap: 12 }}>
             {failed ? <Button title={t("Retry", "Обиди се повторно")} variant="secondary" onPress={() => { setFailed(false); void reload().catch(() => setFailed(true)); }} /> : rewards?.events.length ? rewards.events.map((event) => <View key={event.id} style={{ flexDirection: "row", gap: 12, borderBottomWidth: 1, borderColor: colors.line, paddingBottom: 10 }}>
@@ -99,10 +102,11 @@ export default function Account() {
               <Text style={{ color: colors.accentText, fontWeight: "700" }}>+{event.points}</Text>
             </View>) : rewards ? <Note>{t("No contributions yet", "Сè уште нема придонеси")}</Note> : <LoadingIndicator inline label={t("Loading contributions…", "Се вчитуваат придонесите…")} />}
           </View> : null}
+          </RevealSection>
         </View>
         {account.profile?.secured ? <Button title={t("Sign out", "Одјави се")} icon="log-out" variant="secondary" disabled={busy} onPress={() => void logout()} /> : null}
         <Button title={t("Privacy & delete account", "Приватност и бришење профил")} variant="secondary" disabled={busy} onPress={() => router.push("/privacy")} />
-      </ScrollView>
+      </FormScrollView>
     </KeyboardAvoidingView>
   </Page>;
 }

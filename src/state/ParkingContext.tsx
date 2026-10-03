@@ -13,6 +13,7 @@ import type { Catalog, Proposal } from "../domain/types";
 import { api } from "../services/api";
 import { confirmedSignCatalog } from "../domain/parking";
 import { createRefreshCoordinator } from "../domain/refresh-coordinator";
+import { decodeCatalogCache, encodeCatalogCache } from "../domain/catalog-cache";
 import { isLanguage, translate as translateText, type Language } from "../domain/language";
 type State = {
   catalog: Catalog;
@@ -41,15 +42,14 @@ export function ParkingProvider({ children }: { children: React.ReactNode }) {
       setProposals(community);
       setConnected(true);
       setNow(Date.now());
-      await AsyncStorage.setItem(
-        "parkskopje-cache",
-        JSON.stringify({ catalog: next, proposals: community }),
-      );
+      const cached = encodeCatalogCache(next, community);
+      // Storage quota failures must not turn a successful network refresh offline.
+      if (cached) await AsyncStorage.setItem("parkskopje-cache", cached).catch(() => {});
     } catch {
       setConnected(false);
       setNow(Date.now());
     }
-  }));
+  }, 25_000));
   // Mutation callers need a read newer than an already-running catalog request.
   const refresh = useCallback(() => requestRefresh(true), [requestRefresh]);
   useEffect(() => {
@@ -62,12 +62,8 @@ export function ParkingProvider({ children }: { children: React.ReactNode }) {
         ]);
         if (!active) return;
         if (cached) {
-          const value = JSON.parse(cached);
-          if (
-            value.catalog?.places &&
-            value.catalog?.zones &&
-            value.catalog.generatedAt >= seed.generatedAt
-          ) {
+          const value = decodeCatalogCache(cached, seed.generatedAt);
+          if (value) {
             setCatalog(confirmedSignCatalog(value.catalog));
             setProposals(value.proposals ?? []);
           }

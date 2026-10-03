@@ -1,3 +1,4 @@
+import { createLayerCache } from "../src/domain/layer-cache";
 import test from "node:test";
 import { translate } from "../src/domain/language";
 import assert from "node:assert/strict";
@@ -34,6 +35,7 @@ test("web camera transitions run once per intent, hide moving projections, cance
     if (name === "leaflet") return { __esModule: true, default: { map: () => map, tileLayer: layer, layerGroup: layer, polyline: layer, polygon: layer } };
     if (name.endsWith(".css")) return {};
     if (name.endsWith("parking")) return { SKOPJE };
+    if (name.endsWith("layer-cache")) return { createLayerCache };
     if (name.endsWith("clusters")) return { groupParking: () => [] };
     if (name.endsWith("marker-appearance")) return {};
     throw new Error(name);
