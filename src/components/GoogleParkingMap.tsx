@@ -1,3 +1,4 @@
+import { googleBasemapStyle } from "../domain/basemap-style";
 import { translate } from "../domain/language";
 import React, { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, StyleSheet, View, Text } from "react-native";
@@ -8,6 +9,8 @@ import MapView, {
   Circle,
   type Region,
 } from "react-native-maps";
+import { canInteractWithZone, isPocSector, nativeRegionZoom } from "../domain/zone-interaction";
+import { parkingSelectionDeltas } from "../domain/map-selection-camera";
 import { groupParking } from "../domain/clusters";
 import { parkingMarker } from "../domain/marker-appearance";
 import { createOverlayTapGate } from "../domain/map-interactions";
@@ -81,7 +84,9 @@ export default function ParkingMap(props: ParkingMapProps) {
       destinationKey.current = key;
       moveCamera({ ...props.destination, latitudeDelta: 0.022, longitudeDelta: 0.022 }, !initial && !props.drawing);
     } else if (selected && selected !== selectionKey.current && !props.picking && !props.drawing) {
-      moveCamera({ ...props.selectedAnchor!, latitudeDelta: Math.min(0.011, currentRegion.current.latitudeDelta), longitudeDelta: Math.min(0.011, currentRegion.current.longitudeDelta) }, false);
+      const place = props.places.find(place => place.id === props.selectedId);
+      const { latitudeDelta, longitudeDelta } = currentRegion.current;
+      moveCamera({ ...props.selectedAnchor!, ...parkingSelectionDeltas(latitudeDelta, longitudeDelta, Boolean(place && isPocSector(place))) }, false);
     }
     selectionKey.current = selected;
   }, [
@@ -89,6 +94,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     props.cameraRevision,
     props.selectedId,
     props.selectedAnchor,
+    props.places,
     props.drawing,
     props.picking,
     mapReady,
@@ -142,7 +148,9 @@ export default function ParkingMap(props: ParkingMapProps) {
       }}
       onPanDrag={props.onPan}
       zoomControlEnabled={false}
-      showsPointsOfInterests={false}
+      showsPointsOfInterests
+      pointsOfInterestFilter={["cafe", "restaurant", "store", "bakery", "foodMarket"]}
+      customMapStyle={googleBasemapStyle(Boolean(props.dark))}
       onPress={(event) => {
         if (overlayTaps.consume(event.nativeEvent.action, event.nativeEvent.coordinate)) return;
         if (props.picking) props.onPick(event.nativeEvent.coordinate);
@@ -170,8 +178,9 @@ export default function ParkingMap(props: ParkingMapProps) {
                 fillColor="rgba(82,127,186,0.035)"
                 strokeWidth={1}
                 lineDashPattern={[5, 5]}
-                tappable
+                tappable={canInteractWithZone(place, nativeRegionZoom(region.latitudeDelta), props.picking)}
                 onPress={(event) => {
+                  if (!canInteractWithZone(place, nativeRegionZoom(currentRegion.current.latitudeDelta), callbacks.current.picking)) return;
                   overlayTaps.record(event.nativeEvent.coordinate ?? place.coordinate);
                   if (props.picking) {
                     if (event.nativeEvent.coordinate)
@@ -197,10 +206,11 @@ export default function ParkingMap(props: ParkingMapProps) {
                 key={"label:" + p.id}
                 coordinate={p.coordinate}
                 accessibilityLabel={p.name}
+                tappable={canInteractWithZone(p, nativeRegionZoom(region.latitudeDelta), props.picking)}
                 onPress={() =>
                   props.picking
                     ? props.onPick(p.coordinate)
-                    : props.selectionEnabled !== false && props.onSelect(p)
+                    : props.selectionEnabled !== false && canInteractWithZone(p, nativeRegionZoom(currentRegion.current.latitudeDelta)) && props.onSelect(p)
                 }
               >
                 <View

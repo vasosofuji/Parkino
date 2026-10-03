@@ -1,3 +1,5 @@
+import * as zoneInteraction from "../src/domain/zone-interaction";
+import * as selectionCamera from "../src/domain/map-selection-camera";
 import { createLayerCache } from "../src/domain/layer-cache";
 import test from "node:test";
 import { translate } from "../src/domain/language";
@@ -36,6 +38,8 @@ test("web camera transitions run once per intent, hide moving projections, cance
     if (name.endsWith(".css")) return {};
     if (name.endsWith("parking")) return { SKOPJE };
     if (name.endsWith("layer-cache")) return { createLayerCache };
+    if (name.endsWith("zone-interaction")) return zoneInteraction;
+    if (name.endsWith("map-selection-camera")) return selectionCamera;
     if (name.endsWith("clusters")) return { groupParking: () => [] };
     if (name.endsWith("marker-appearance")) return {};
     throw new Error(name);

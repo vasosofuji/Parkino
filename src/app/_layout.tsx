@@ -12,6 +12,7 @@ import AppStyles from "../components/AppStyles";
 import { useArrivalNotifications } from "../hooks/useArrivalNotifications";
 import { hasCurrentTerms } from "../domain/onboarding";
 import { ContributionFeedbackProvider } from "../state/ContributionFeedback";
+import { SettingsLocationProvider } from "../state/SettingsLocationContext";
 function Navigator() {
   const navigationReady = useNavigationReady();
   const { dark, colors } = useTheme();
@@ -34,6 +35,7 @@ function Navigator() {
   return (
     <ParkingProvider>
       <ContributionFeedbackProvider>
+      <SettingsLocationProvider>
       <StatusBar style={dark ? "light" : "dark"} />
       <Stack
         screenOptions={{
@@ -43,6 +45,7 @@ function Navigator() {
       >
         <Stack.Protected guard={accepted}>
           <Stack.Screen name="index" />
+          <Stack.Screen name="settings" />
           <Stack.Screen name="coverage" />
           <Stack.Screen name="community" />
           <Stack.Screen name="account" />
@@ -57,6 +60,7 @@ function Navigator() {
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
       </Stack>
+      </SettingsLocationProvider>
       </ContributionFeedbackProvider>
     </ParkingProvider>
   );

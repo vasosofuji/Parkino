@@ -10,10 +10,8 @@ export default function MapCredit() {
   if (Platform.OS !== "web" && !(Platform.OS === "android" && !Constants.expoConfig?.extra?.androidNativeMapsEnabled)) return null;
   return (
     <Text
-      accessibilityRole="link"
-      onPress={() => void openURL("https://www.openstreetmap.org/copyright")}
       style={[s.credit, { color: colors.muted, backgroundColor: colors.paper }]}
-    >© OpenStreetMap</Text>
+    ><Text accessibilityRole="link" onPress={() => void openURL("https://www.openstreetmap.org/copyright")}>© OpenStreetMap</Text>{" · "}<Text accessibilityRole="link" onPress={() => void openURL("https://openfreemap.org/")}>OpenFreeMap</Text>{" · "}<Text accessibilityRole="link" onPress={() => void openURL("https://openmaptiles.org/")}>OpenMapTiles</Text></Text>
   );
 }
 const s = StyleSheet.create({

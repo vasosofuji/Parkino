@@ -1,3 +1,5 @@
+import * as zoneInteraction from "../src/domain/zone-interaction";
+import * as selectionCamera from "../src/domain/map-selection-camera";
 import { createLayerCache } from "../src/domain/layer-cache";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -49,6 +51,8 @@ test("current Leaflet taps wait for native acceptance but pan intent is immediat
     if (name === "react-native-webview") return { WebView: "WebView" };
     if (name.endsWith("parking")) return { SKOPJE };
     if (name.endsWith("layer-cache")) return { createLayerCache };
+    if (name.endsWith("zone-interaction")) return zoneInteraction;
+    if (name.endsWith("map-selection-camera")) return selectionCamera;
     if (name.endsWith("clusters")) return { groupParking: () => [] };
     if (name.endsWith("marker-appearance")) return {};
     if (name.endsWith("offlineMapHtml")) return { mapHtml: "map" };
@@ -80,6 +84,12 @@ test("current Leaflet taps wait for native acceptance but pan intent is immediat
   calls.length = 0; send({ type: "blank" }); send({ type: "pan" });
   assert.deepEqual(calls, [], "stale taps and drags remain blocked after new focus or a sheet opens");
   assert.equal(web.props.onStartShouldSetResponderCapture, undefined, "keyboard handling must not capture WebView gestures");
+  currentInteraction = true; props.picking = false; props.drawing = false;
+  props.places.push({ ...props.places[0], id: "poc:zone:1:0", kind: "zone", operator: "poc", zoneCode: "POC 1" });
+  send({ type: "zoom", zoom: 15 }); send({ type: "select", id: "poc:zone:1:0" });
+  send({ type: "zoom", zoom: 16 }); pending.shift()!(true);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.deepEqual(calls, ["dismiss"], "zone selection queued before zoom cannot reopen a POC sector after native guard returns");
 });
 
 test("Android module is scoped to the bundled map on the UI queue, before any keyboard mutation", () => {

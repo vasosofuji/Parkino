@@ -1,3 +1,6 @@
+import { googleBasemapStyle } from "../src/domain/basemap-style";
+import * as zoneInteraction from "../src/domain/zone-interaction";
+import * as selectionCamera from "../src/domain/map-selection-camera";
 import test from "node:test";
 import { translate } from "../src/domain/language";
 import assert from "node:assert/strict";
@@ -34,6 +37,9 @@ function renderer() {
     if (name === "react") return { ...React, default: React, __esModule: true };
     if (name === "react-native") return { AccessibilityInfo: { isReduceMotionEnabled: async () => false, addEventListener: (_name: string, callback: (value: boolean) => void) => { motionChanged = callback; return { remove() {} }; } }, StyleSheet: { create: (value: unknown) => value, absoluteFill: {} }, View: "View", Text: "Text" };
     if (name === "react-native-maps") return { __esModule: true, default: "MapView", Marker: "Marker", Polygon: "Polygon", Polyline: "Polyline", Circle: "Circle" };
+    if (name.endsWith("basemap-style")) return { googleBasemapStyle };
+    if (name.endsWith("zone-interaction")) return zoneInteraction;
+    if (name.endsWith("map-selection-camera")) return selectionCamera;
     if (name.endsWith("clusters")) return { groupParking };
     if (name.endsWith("marker-appearance")) return { parkingMarker };
     if (name.endsWith("map-interactions")) return { createOverlayTapGate };
@@ -101,4 +107,49 @@ test("native camera waits for readiness, focuses the tapped anchor once, and res
   render(props, map); assert.equal(animated.length, 1);
   render({ ...props, drawing: true, picking: true }, map);
   assert.equal(immediate.length, 5, "entering drawing stops the flight without adding a new one");
+});
+
+test("POC native overlays stop taking taps after zoom without disabling pins or coordinate picking", () => {
+  const selected: string[] = [], picked: object[] = [];
+  const sector = { id: "poc:zone:1:0", name: "POC sector", kind: "zone", operator: "poc", zoneCode: "POC 1", coordinate: SKOPJE, geometry: { type: "Polygon", coordinates: [[[21.43, 41.99], [21.44, 41.99], [21.44, 42], [21.43, 41.99]]] }, access: "public", verification: "official", tariff: null, capacity: null, openingHours: null, source: { label: "POC", url: "", retrievedAt: "" } } as ParkingMapProps["places"][number];
+  const facility = { ...sector, id: "actual-parking", kind: "surface" as const };
+  const render = renderer(), map = { pointForCoordinate: async () => ({ x: 1, y: 1 }) };
+  const props = { ...base, selectedId: sector.id, selectedAnchor: sector.coordinate, places: [sector, facility], onSelect: (place: typeof sector) => selected.push(place.id), onPick: (point: object) => picked.push(point) };
+  let tree = render(props, map);
+  const all = (node: Node): Node[] => [node, ...node.children.flat(Infinity).filter(value => value && typeof value === "object").flatMap(value => all(value as Node))];
+  const oldPolygon = all(tree).find(node => node.type === "Polygon" && node.props.key === sector.id)!;
+  assert.equal(oldPolygon.props.tappable, true);
+  const region = { ...SKOPJE, latitudeDelta: .011, longitudeDelta: .011 };
+  (tree.props.onRegionChange as (value: object) => void)(region);
+  (oldPolygon.props.onPress as (value: object) => void)({ nativeEvent: { coordinate: SKOPJE } });
+  assert.equal(selected.length, 0, "in-flight native zoom also guards old event handlers");
+  (tree.props.onRegionChangeComplete as (value: object) => void)(region); tree = render(props, map);
+  assert.equal(all(tree).find(node => node.type === "Polygon" && node.props.key === sector.id)!.props.tappable, false);
+  const pin = all(tree).find(node => node.type === "Marker" && node.props.key === facility.id)!;
+  (pin.props.onPress as () => void)(); assert.deepEqual(selected, [facility.id]);
+  tree = render({ ...props, picking: true }, map);
+  const polygon = all(tree).find(node => node.type === "Polygon" && node.props.key === sector.id)!;
+  assert.equal(polygon.props.tappable, true);
+  (polygon.props.onPress as (value: object) => void)({ nativeEvent: { coordinate: SKOPJE } });
+  assert.deepEqual(picked, [SKOPJE]);
+});
+test("Google POC selection slightly narrows overview framing and preserves an already close map", () => {
+  const sector = { id: "poc:zone:0:0", name: "POC", kind: "zone", operator: "poc", zoneCode: "POC 0", coordinate: SKOPJE, access: "public", verification: "official", tariff: null, capacity: null, openingHours: null, source: { label: "POC", url: "", retrievedAt: "" } } as ParkingMapProps["places"][number];
+  const targets: { latitude: number; longitude: number }[][] = [];
+  const render = renderer(), map = { fitToCoordinates: (points: { latitude: number; longitude: number }[]) => targets.push(points), pointForCoordinate: async () => ({ x: 1, y: 1 }) };
+  const props = { ...base, selectedId: null, selectedAnchor: null, places: [sector] };
+  let tree = render(props, map); (tree.props.onMapReady as () => void)(); tree = render(props, map);
+  const selected = { ...props, selectedId: sector.id, selectedAnchor: { latitude: 42.01, longitude: 21.5 } };
+  tree = render(selected, map);
+  const point = targets.at(-1)!;
+  assert.ok(Math.abs((point[1].latitude - point[0].latitude) - 0.022 / Math.SQRT2) < 1e-10);
+  assert.ok(Math.abs((point[1].latitude + point[0].latitude) / 2 - 42.01) < 1e-10);
+  const count = targets.length;
+  render({ ...selected, places: [...selected.places], now: props.now + 30000 }, map);
+  assert.equal(targets.length, count);
+  const close = { ...SKOPJE, latitudeDelta: 0.004, longitudeDelta: 0.007 };
+  (tree.props.onRegionChangeComplete as (value: object) => void)(close);
+  render({ ...selected, selectedId: sector.id, selectedAnchor: { latitude: 42.02, longitude: 21.5 } }, map);
+  const closer = targets.at(-1)!;
+  assert.ok(Math.abs((closer[1].latitude - closer[0].latitude) - 0.004) < 1e-10);
 });

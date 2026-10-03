@@ -38,6 +38,7 @@ function startup() {
     if (name === "../state/ThemeContext") return { ThemeProvider: "ThemeProvider", useTheme: () => ({ dark: false, colors: { paper: "white" } }) };
     if (name === "../state/ParkingContext") return { ParkingProvider: "ParkingProvider" };
     if (name === "../state/ContributionFeedback") return { ContributionFeedbackProvider: "ContributionFeedbackProvider" };
+    if (name === "../state/SettingsLocationContext") return { SettingsLocationProvider: "SettingsLocationProvider" };
     if (name === "../components/ModalBackdrop") return { ModalBackgroundProvider: "ModalBackgroundProvider" };
     if (name === "../components/LoadingIndicator" || name === "../components/AppStyles") return { default: name, __esModule: true };
     if (name === "../domain/onboarding") return { hasCurrentTerms: () => true };

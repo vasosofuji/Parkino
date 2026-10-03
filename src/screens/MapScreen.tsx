@@ -22,7 +22,8 @@ import MapDrawer from "../components/MapDrawer";
 import LocationHelp from "../components/LocationHelp";
 import LoadingIndicator from "../components/LoadingIndicator";
 import ParkingPreview from "../components/ParkingPreview";
-import SettingsSheet from "../components/SettingsSheet";
+import { router, useIsFocused } from "expo-router";
+import { useMapSettingsLocation } from "../state/SettingsLocationContext";
 import { useTheme, type ThemeColors } from "../state/ThemeContext";
 import { zoneGeometry, validZone, MAX_BOUNDARY_VERTICES } from "../domain/geometry";
 import { containsParkingFix } from "../domain/arrival";
@@ -64,6 +65,7 @@ export default function MapScreen() {
   const { catalog, connected, language, t, refresh, now } = useParking();
   const { thankYou } = useContributionFeedback();
   const gps = useArrival(catalog.places);
+  const focused = useIsFocused();
   const [sort, setSort] = useState<"nearest" | "cheapest">("nearest");
   const [destination, setDestination] = useState<Destination | null>(null);
   const [center, setCenter] = useState<Coordinate>(SKOPJE);
@@ -88,8 +90,7 @@ export default function MapScreen() {
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [detailsGeometry, setDetailsGeometry] = useState<{ id: string; geometry: Geometry } | null>(null);
   const [detailsEditing, setDetailsEditing] = useState(false);
-  const [menu, setMenu] = useState(false),
-    [locationHelp, setLocationHelp] = useState(false);
+  const [locationHelp, setLocationHelp] = useState(false);
   const [parkingFilters, setParkingFilters] = useState<ActiveParkingFilter[]>([]);
   const [parkingTypesExpanded, setParkingTypesExpanded] = useState(false);
   const hasFilters = parkingFilters.length > 0;
@@ -142,9 +143,9 @@ export default function MapScreen() {
   const arrivalPlace = followupPlace ?? (gps.arrival ? catalog.places.find(place => place.id === gps.arrival!.id) ?? gps.arrival : null);
   const question = arrivalQuestion(arrivalPlace, Boolean(followupPlace), now);
   const notificationPriority = gps.arrivalFromNotification || followupFromNotification;
-  const suspendSheets = notificationPriority || notificationClosing;
-  const arrivalVisible = Boolean(question) && (notificationPriority || (!selected && !detailsId && !menu && !legend && !proposal && !picking && !locationHelp));
-  const mapBlockedBySheet = suspendSheets || arrivalVisible || menu || legend || locationHelp || (!picking && Boolean(detailsId || proposal));
+  const suspendSheets = !focused || notificationPriority || notificationClosing;
+  const arrivalVisible = focused && Boolean(question) && (notificationPriority || (!selected && !detailsId && !legend && !proposal && !picking && !locationHelp));
+  const mapBlockedBySheet = suspendSheets || arrivalVisible || legend || locationHelp || (!picking && Boolean(detailsId || proposal));
   const clearSelection = useCallback(() => {
     setSelected(null);
     setAnchor(null);
@@ -218,6 +219,7 @@ export default function MapScreen() {
     setLocationDismissed(null);
     gps.retry();
   }
+  useMapSettingsLocation({ locationStatus, issue: gps.issue, onRefreshLocation: retryLocation });
   function nearMe() {
     setLocationDismissed(null);
     setDestination(null);
@@ -575,7 +577,7 @@ export default function MapScreen() {
                 <IconButton
                   name="more-horizontal"
                   label={t("Settings", "Поставки")}
-                  onPress={() => setMenu(true)}
+                  onPress={() => { Keyboard.dismiss(); router.push("/settings"); }}
                 />
               </View>
               {locationWarning && locationDismissed !== locationWarningKey ? (
@@ -883,7 +885,6 @@ export default function MapScreen() {
         }}
       />
       <LocationHelp
-        permissions={menu}
         visible={locationHelp && !suspendSheets}
         issue={gps.issue}
         onClose={() => setLocationHelp(false)}
@@ -923,17 +924,6 @@ export default function MapScreen() {
           }}
         />
       ) : null}
-      <SettingsSheet
-        visible={menu && !locationHelp && !suspendSheets}
-        onClose={() => setMenu(false)}
-        locationStatus={locationStatus}
-        onRefreshLocation={() => {
-          retryLocation();
-        }}
-        onPermissions={() => {
-          setLocationHelp(true);
-        }}
-      />
       <Sheet visible={legend && !suspendSheets} title={t("Map legend", "Легенда на мапата")} onClose={() => setLegend(false)}>
         {filterOptions.slice(0, 5).map(renderFilter)}
         <RevealSection active={parkingTypesExpanded} style={{ gap: 10 }}>

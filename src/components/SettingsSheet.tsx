@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
-import { router, usePathname, type Href } from "expo-router";
+import { router, type Href } from "expo-router";
 import { useTheme } from "../state/ThemeContext";
 import { useParking } from "../state/ParkingContext";
 import { useAccount } from "../state/AccountContext";
-import { Icon, Sheet, RevealSection, type IconName } from "./ui";
+import { Icon, RevealSection, type IconName } from "./ui";
+import SettingsFrame from "./SettingsFrame";
 import BackgroundArrivalSettings from "./BackgroundArrivalSettings";
 import { setNavigationPreference, useNavigationPreference } from "../services/navigation";
 import { NAVIGATION_APPS, type NavigationApp } from "../domain/navigation";
@@ -44,7 +45,6 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
   onPermissions: () => void;
 }) {
   const { colors, mode, setMode } = useTheme();
-  const pathname = usePathname();
   const { t, language } = useParking();
   const { profile, refresh } = useAccount();
   const [section, setSection] = useState<Section | null>(null);
@@ -70,9 +70,9 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
   }
   const close = () => { setSection(null); onClose(); };
   const back = () => { if (section) setSection(null); else close(); };
-  // Keep this sheet in the navigation history so Back returns to settings.
+  // Child pages push above the persistent /settings screen in router history.
   const go = (path: Href) => { router.push(path); };
-  return <Sheet fullPage visible={visible && pathname === "/"} title={section ? titles[section] : t("Settings", "Поставки")} onClose={close} onBack={back}
+  return <SettingsFrame title={section ? titles[section] : t("Settings", "Поставки")} onClose={close} onBack={back}
     backLabel={section ? t("Back to settings", "Назад кон поставки") : t("Back to map", "Назад кон мапата")}>
     <RevealSection active={section ?? "settings"} style={{ gap: 20 }}>
     {!section ? <View style={{ gap: 18 }}>
@@ -125,5 +125,5 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
       <SettingsCard><View style={{ padding: 18 }}><BackgroundArrivalSettings /></View></SettingsCard>
     </View> : null}
     </RevealSection>
-  </Sheet>;
+  </SettingsFrame>;
 }

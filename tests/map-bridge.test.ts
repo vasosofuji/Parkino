@@ -8,6 +8,7 @@ function bridge(reducedMotion = false) {
   const messages: { type: string; sentAt: number; selectionId?: string; anchor?: number[]; point?: unknown }[] = [];
   const mapEvents = new Map<string, Callback>(), windowEvents = new Map<string, Callback>();
   const markers: { options: Record<string, unknown>; events: Map<string, Callback> }[] = [];
+  const polygons: { options: Record<string, unknown>; events: Map<string, Callback> }[] = [];
   const invalidations: unknown[] = [];
   const transitions: { kind: string; point: number[]; zoom: number; options?: Record<string, unknown> }[] = [];
   let center = [42, 21], zoom = 15, stops = 0;
@@ -35,12 +36,13 @@ function bridge(reducedMotion = false) {
   const L = {
     map: () => map, tileLayer: layer, layerGroup: () => ({ ...layer(), getLayers: () => [], removeLayer() {}, clearLayers() { clears++; } }),
     marker: (_point: unknown, options: Record<string, unknown>) => { const next = layer(); markers.push({ options, events: next.events }); return next; },
-    polygon: layer, polyline: layer, circle: layer, circleMarker: () => { userDots++; return layer(); }, divIcon: (value: unknown) => value, latLngBounds: () => ({}), DomEvent: { stopPropagation() {} },
+    polygon: (_rings: unknown, options: Record<string, unknown>) => { const next = layer(); polygons.push({ options, events: next.events }); return next; }, polyline: layer, circle: layer, circleMarker: () => { userDots++; return layer(); }, divIcon: (value: unknown) => value, latLngBounds: () => ({}), DomEvent: { stopPropagation() {} },
   };
   const document = { getElementById: () => ({ classList: { toggle() {} } }), createElement: () => ({ textContent: "", style: { cssText: "" } }) };
   const script = mapHtml.split("</script><script>")[1].split("</script>")[0];
   vm.runInNewContext(script, { window, document, L });
-  return { window, messages, markers, mapEvents, windowEvents, invalidations, doubleClickZoom, transitions,
+  return { window, messages, markers, polygons, mapEvents, windowEvents, invalidations, doubleClickZoom, transitions,
+    setZoom(value: number) { zoom = value; mapEvents.get("zoomend")?.(); },
     finishFlight() { assert.ok(flight); center = flight.point; zoom = flight.zoom; flight = null; mapEvents.get("moveend")?.(); },
     motion(value: boolean) { motion.matches = value; motionChanged?.({ matches: value }); },
     counts: () => ({ userDots, moves, clears, stops, flying: Boolean(flight) }) };
@@ -107,6 +109,24 @@ test("pin selection projects immediately while destination flights remain animat
   assert.equal(view.transitions.at(-1)?.kind, "flyTo");
   assert.equal(view.transitions.at(-1)?.zoom, 15);
 });
+test("POC bridge selection centers with a slight zoom and does not replay on refresh or zoom closer", () => {
+  const view = bridge();
+  view.window.renderParking({ ...payload, selectedId: null, selectedAnchor: null });
+  const selected = { ...payload, selectedId: "poc:zone:0:0", selectedPocSector: true, selectedAnchor: [42.01, 21.01] };
+  view.window.renderParking(selected);
+  assert.equal(view.transitions.at(-1)?.zoom, 15.5);
+  assert.deepEqual(view.transitions.at(-1)?.point, selected.selectedAnchor);
+  const count = view.transitions.length;
+  view.window.renderParking({ ...selected, dark: true });
+  assert.equal(view.transitions.length, count);
+  view.window.renderParking({ ...selected, selectedId: "poc:zone:1:0" });
+  assert.equal(view.transitions.at(-1)?.zoom, 16);
+  view.window.renderParking({ ...selected, selectedId: "poc:zone:2:0" });
+  assert.equal(view.transitions.at(-1)?.zoom, 16);
+  view.setZoom(18);
+  view.window.renderParking({ ...selected, selectedId: "poc:zone:0:1" });
+  assert.equal(view.transitions.at(-1)?.zoom, 18);
+});
 
 test("reduced motion uses immediate camera movement and entering drawing cancels a pending flight", () => {
   const view = bridge();
@@ -154,4 +174,25 @@ test("native map reuses unchanged marker instances while current interaction fla
   assert.equal(view.messages.filter(message => message.type === "select").length, before, "cached handler reads current selection gate");
   view.window.renderParking({ ...payload, pins: [{ ...payload.pins[0], html: "<span>Full</span>" }] });
   assert.equal(view.markers.length, count + 1, "report expiry/appearance changes replace only that marker");
+});
+
+test("POC bridge boundaries and labels keep visible but lose taps at zoom16, including stale handlers", () => {
+  const view = bridge();
+  const sector = { id: "poc:zone:1:0", pocSector: true, rings: [[[42, 21], [42, 21.1], [42.1, 21]]], point: [42, 21], title: "POC", label: "POC 1" };
+  const next = { ...payload, selectedId: null, selectedAnchor: null, zones: [sector], zoneLabels: [sector] };
+  view.window.renderParking(next);
+  const oldPolygon = view.polygons[0], oldLabel = view.markers.find(marker => marker.options.title === "POC")!;
+  assert.equal(oldPolygon.options.interactive, true);
+  view.setZoom(16);
+  oldPolygon.events.get("click")?.({ latlng: { lat: 42, lng: 21 } }); oldLabel.events.get("click")?.();
+  assert.equal(view.messages.filter(message => message.type === "select").length, 0, "live zoom blocks retained handlers before React returns its payload");
+  view.window.renderParking(next);
+  assert.equal(view.polygons.at(-1)!.options.interactive, false);
+  assert.equal(view.markers.filter(marker => marker.options.title === "POC").at(-1)!.options.interactive, false);
+  view.markers.find(marker => marker.options.title === "Parking")!.events.get("click")?.();
+  assert.equal(view.messages.filter(message => message.type === "select").length, 1, "actual parking pins still work");
+  view.window.renderParking({ ...next, picking: true });
+  assert.equal(view.polygons.at(-1)!.options.interactive, true);
+  view.polygons.at(-1)!.events.get("click")?.({ latlng: { lat: 42, lng: 21 } });
+  assert.equal(view.messages.at(-1)!.type, "pick");
 });

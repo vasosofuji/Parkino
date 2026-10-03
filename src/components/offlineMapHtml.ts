@@ -1,4 +1,8 @@
+import { maplibreScript, maplibreStyles } from "../vendor/maplibre";
+import { BASEMAP_ATTRIBUTION, createBasemapStyle } from "../domain/basemap-style";
+import { guardVectorLayerRemoval, installBasemap } from "../domain/basemap-lifecycle";
 import { createLayerCache } from "../domain/layer-cache";
+import { parkingSelectionZoom } from "../domain/map-selection-camera";
 import { leafletScript, leafletStyles } from "../vendor/leaflet";
 const tileUrl =
   process.env.EXPO_PUBLIC_TILE_URL ??
@@ -6,6 +10,7 @@ const tileUrl =
 export const mapHtml = `<!doctype html><html><head>
 <title>Parkino parking map</title>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>${maplibreStyles}</style>
 <style>${leafletStyles}html,body,#map{height:100%;width:100%;margin:0}.leaflet-container{touch-action:none}.leaflet-bottom{bottom:2px}.leaflet-control-attribution{font-size:10px!important;background:rgba(255,255,255,.85)!important}.dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.72) saturate(.65)}.dark.leaflet-container{background:#281f1b}</style>
 <style>
 .parking-pin{display:flex;align-items:center;justify-content:center;background:transparent;border:0}
@@ -18,11 +23,24 @@ export const mapHtml = `<!doctype html><html><head>
 .destination-pin span{display:block;width:28px;height:28px;border:3px solid #fff;border-radius:50% 50% 50% 0;background:#ce383e;transform:rotate(-45deg);box-shadow:-2px 2px 7px #50202050}.destination-pin span::after{content:'';display:block;width:9px;height:9px;border-radius:50%;background:#fff;margin:9px}
 .destination-label{border:none;border-radius:8px;color:#8e1822;padding:6px 10px;max-width:210px;overflow:hidden;text-overflow:ellipsis;font:700 12px system-ui;box-shadow:0 2px 8px #50202025}
 </style></head><body><div id="map" aria-label="Skopje parking map"></div>
-<script>${leafletScript}</script><script>
+<script>${leafletScript}
+${maplibreScript}</script><script>
 (function(){
 const send = (message) => window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({...message,sentAt:Date.now()}));
-const map = L.map('map',{zoomControl:false,attributionControl:false,minZoom:3}).setView([41.9961,21.4316],15);
-L.tileLayer(${JSON.stringify(tileUrl)},{maxZoom:19,keepBuffer:4,updateWhenIdle:true,updateWhenZooming:false,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+const map = L.map('map',{zoomControl:false,attributionControl:false,minZoom:3,zoomSnap:.5}).setView([41.9961,21.4316],15);
+const parkingSelectionZoom = ${parkingSelectionZoom.toString()};
+const disposeBasemap=(${installBasemap.toString()})({
+  addRaster:()=>L.tileLayer(${JSON.stringify(tileUrl)},{maxZoom:19,keepBuffer:4,updateWhenIdle:true,updateWhenZooming:false,attribution:${JSON.stringify(BASEMAP_ATTRIBUTION)}}).addTo(map),
+  supported:()=>typeof maplibregl!=='undefined' && typeof WebGL2RenderingContext!=='undefined',
+  addVector:()=>{
+    const layer=L.maplibreGL({style:${JSON.stringify(createBasemapStyle())},attributionControl:false,interactive:false,maxZoom:20,fadeDuration:180});
+    (${guardVectorLayerRemoval.toString()})(layer);
+    try{layer.addTo(map);}catch(error){try{layer.remove();}catch{layer.getContainer()?.remove();}throw error;}
+    const container=layer.getContainer(),gl=layer.getMaplibreMap();container.style.opacity='0';container.style.pointerEvents='none';
+    return {remove:()=>layer.remove(),show:()=>{container.style.opacity='1';},onReady:callback=>gl.once('load',callback),onError:callback=>{gl.on('error',()=>callback());gl.getCanvas().addEventListener('webglcontextlost',()=>callback(true));}};
+  }
+},${Boolean(process.env.EXPO_PUBLIC_TILE_URL)});
+window.addEventListener('pagehide',disposeBasemap);
 const group = L.layerGroup().addTo(map);
 const layerCache = (${createLayerCache.toString()})(layer=>layer.addTo(group),layer=>group.removeLayer(layer),layer=>layer.off());
 let userDot = null, userAccuracy = null;
@@ -55,7 +73,10 @@ function position(){if(current && current.selectedId && current.selectedAnchor){
 map.on('moveend',()=>{cameraMoving=false;const p=map.getCenter();send({type:'center',latitude:p.lat,longitude:p.lng});position();});
 map.on('zoomend',()=>send({type:'zoom',zoom:map.getZoom()}));
 map.on('click',event=>{if(current && current.picking)send({type:'pick',latitude:event.latlng.lat,longitude:event.latlng.lng});else send({type:'blank'});});
+function zoneInteractive(zone) { return current.picking || !zone.pocSector || map.getZoom()<16; }
 function select(id,latlng) {
+  const zone=current.zones?.find(zone=>zone.id===id)||current.zoneLabels?.find(zone=>zone.id===id);
+  if(zone&&!zoneInteractive(zone))return;
   if(current.picking)send({type:'pick',latitude:latlng.lat,longitude:latlng.lng});
   else if(current.selectionEnabled!==false)send({type:'select',id,latitude:latlng.lat,longitude:latlng.lng});
 }
@@ -75,14 +96,16 @@ window.renderParking = function(next) {
       .on('click',event=>{L.DomEvent.stopPropagation(event);select(area.id,event.latlng);}));
   });
   next.zones.forEach(zone=>{
-    retain('zone:'+zone.id,zone,()=> { const polygon = L.polygon(zone.rings,{color:'#527FBA',weight:1,dashArray:'5 5',fillOpacity:0.035});
-    polygon.on('click',event=>{L.DomEvent.stopPropagation(event);select(zone.id,event.latlng);});
+    const interactive=zoneInteractive(zone);
+    retain('zone:'+zone.id,[zone,interactive],()=> { const polygon = L.polygon(zone.rings,{interactive,color:'#527FBA',weight:1,dashArray:'5 5',fillOpacity:0.035});
+    polygon.on('click',event=>{if(!zoneInteractive(zone))return;L.DomEvent.stopPropagation(event);select(zone.id,event.latlng);});
     return polygon; });
   });
   (next.zoneLabels || []).forEach(zone=>{
     const label=document.createElement('span');label.textContent=zone.label;
     label.style.cssText='background:#fff;color:#392c25;border:1px '+(zone.approximate?'dashed':'solid')+' #527FBA;border-radius:6px;padding:3px 6px;font:600 12px system-ui;white-space:nowrap';
-    retain('zone-label:'+zone.id,zone,()=>L.marker(zone.point,{autoPanOnFocus:false,icon:L.divIcon({className:'zone-label',html:label,iconSize:[50,26]}),title:zone.title}).on('click',()=>select(zone.id,{lat:zone.point[0],lng:zone.point[1]})));
+    const interactive=zoneInteractive(zone);
+    retain('zone-label:'+zone.id,[zone,interactive],()=>L.marker(zone.point,{interactive,keyboard:interactive,autoPanOnFocus:false,icon:L.divIcon({className:'zone-label',html:label,iconSize:[50,26]}),title:zone.title}).on('click',()=>select(zone.id,{lat:zone.point[0],lng:zone.point[1]})));
   });
   next.pins.forEach(pin=>{
     retain('pin:'+pin.id,pin,()=> { const icon=L.divIcon({className:'parking-pin'+(pin.selected?' selected':'')+(pin.cluster?' cluster':'')+(pin.spaces?' spaces':''),html:pin.html,iconSize:[60,48],iconAnchor:[30,24]});
@@ -117,7 +140,7 @@ window.renderParking = function(next) {
   const key=next.destination.join(',')+':'+(next.cameraRevision||0);
   const selected=next.selectedId&&next.selectedAnchor?next.selectedId+':'+next.selectedAnchor.join(','):'';
   if(key!==destinationKey){const initial=!destinationKey;destinationKey=key;moveCamera(next.destination,15,!initial&&!next.drawing);}
-  else if(selected && selected!==selectionKey && !next.drawing && !next.picking)moveCamera(next.selectedAnchor,Math.max(16,map.getZoom()),false);
+  else if(selected && selected!==selectionKey && !next.drawing && !next.picking)moveCamera(next.selectedAnchor,parkingSelectionZoom(map.getZoom(),Boolean(next.selectedPocSector)),false);
   selectionKey=selected;
   position();
 };

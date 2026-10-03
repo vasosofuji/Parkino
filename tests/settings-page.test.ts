@@ -60,7 +60,7 @@ function sheet() {
 
 function settings(guest = false, platform = "android") {
   const runtime = hooks(), exports = {} as { default: Component };
-  let pathname = "/";
+  let pathname = "/settings";
   let visible = true, mode = "system", language = "en", navigation = "default", closes = 0, refreshes = 0, gps = 0, permissions = 0;
   const preferenceCalls: string[][] = [], routeEvents: string[] = [];
   const navigationWrites: { value: string; resolve: () => void; reject: () => void }[] = [];
@@ -73,6 +73,7 @@ function settings(guest = false, platform = "android") {
     if (name === "../state/ParkingContext") return { useParking: () => ({ language, t: (en: string, mk: string) => translate(language as Language, en, mk), setLanguage(value: string) { preferenceCalls.push(["language", value]); language = value; } }) };
     if (name === "../state/AccountContext") return { useAccount: () => ({ profile: { id: "profile-one", username: "driver", points: 125, guest, secured: true }, refresh }) };
     if (name === "./ui") return { Button: "Button", Icon: "Icon", Sheet: "Sheet", RevealSection: "RevealSection" };
+    if (name === "./SettingsFrame") return { __esModule: true, default: "SettingsFrame" };
     if (name === "./BackgroundArrivalSettings") return { __esModule: true, default: "BackgroundArrivalSettings" };
     if (name === "../domain/language") return { LANGUAGES };
     if (name === "./LanguagePicker") {
@@ -98,7 +99,7 @@ function settings(guest = false, platform = "android") {
     const value = elements(tree, true).find(element => (element.type === "Pressable" || element.type === "Button") && [element.props.accessibilityLabel, element.props.title].some(text => typeof text === "string" && (text === label || text.startsWith(label + ","))));
     assert.ok(value, `Missing settings action: ${label}`); return value;
   };
-  return { render, actionable, tap(tree: Element, label: string) { const node = actionable(tree, label); assert.notEqual(node.props.disabled, true, `${label} disabled`); invoke(node); }, preferenceCalls, navigationWrites, routeEvents, returnToMap: () => { pathname = "/"; }, reopen: () => { visible = true; }, stats: () => ({ closes, refreshes, gps, permissions }) };
+  return { render, actionable, tap(tree: Element, label: string) { const node = actionable(tree, label); assert.notEqual(node.props.disabled, true, `${label} disabled`); invoke(node); }, preferenceCalls, navigationWrites, routeEvents, returnToSettings: () => { pathname = "/settings"; }, reopen: () => { visible = true; }, stats: () => ({ closes, refreshes, gps, permissions }) };
 }
 
 test("full-page Sheet applies every safe edge and Android Back honors its current action/disabled state", () => {
@@ -131,15 +132,15 @@ test("ordinary Sheet keeps backdrop/Android close and compact header Back behavi
   assert.deepEqual([shows, dismisses], [1, 1], "ordinary iOS source/review dismissal callbacks remain forwarded");
 });
 
-test("settings sections use header Back and Android returns to Settings before closing", () => {
-  const view = settings(), presentation = sheet(); let tree = view.render();
-  assert.equal(tree.props.fullPage, true); assert.equal(tree.props.title, "Settings");
+test("settings sections use header Back before closing the settings route", () => {
+  const view = settings(); let tree = view.render();
+  assert.equal(tree.type, "SettingsFrame"); assert.equal(tree.props.title, "Settings");
   view.tap(tree, "Appearance"); tree = view.render(); assert.equal(tree.props.title, "Appearance");
   assert.ok(!elements(tree, true).some(node => node.props.title === "Back to settings"));
-  invoke(find(presentation.render(tree.props), "Modal"), "onRequestClose"); tree = view.render();
+  invoke(tree, "onBack"); tree = view.render();
   assert.equal(tree.props.title, "Settings"); assert.equal(view.stats().closes, 0);
-  invoke(find(presentation.render(tree.props), "Modal"), "onRequestClose"); tree = view.render();
-  assert.equal(tree.props.visible, false); assert.equal(view.stats().closes, 1);
+  invoke(tree, "onBack"); tree = view.render();
+  assert.equal(view.stats().closes, 1);
   view.reopen(); tree = view.render(); assert.equal(tree.props.title, "Settings");
 });
 
@@ -181,13 +182,14 @@ test("navigation waits for persistence, locks choices while saving and keeps a f
   assert.notEqual(view.actionable(tree, "Google Maps").props.disabled, true);
 });
 
-test("profile and legal routes preserve settings so returning restores the menu", () => {
+test("profile and legal routes retain the opaque settings screen while child routes are above it", () => {
   for (const [label, path] of [["Manage account", "/account"], ["Rewards & appearance", "/rewards"], ["Privacy & data", "/privacy"], ["Zones & sources", "/coverage"], ["Terms of service", "/terms"]]) {
     const view = settings(); let tree = view.render(); view.tap(tree, label); tree = view.render();
-    assert.deepEqual(view.routeEvents, [path]); assert.equal(tree.props.visible, false);
+    assert.deepEqual(view.routeEvents, [path]); assert.equal(tree.type, "SettingsFrame");
+    assert.equal(tree.props.title, "Settings");
     assert.ok(existsSync(`src/app${path}.tsx`));
-    view.returnToMap(); tree = view.render(); assert.equal(tree.props.title, "Settings");
-    assert.equal(tree.props.visible, true); assert.equal(view.stats().closes, 0);
+    view.returnToSettings(); tree = view.render(); assert.equal(tree.props.title, "Settings");
+    assert.equal(tree.type, "SettingsFrame"); assert.equal(view.stats().closes, 0);
   }
 });
 

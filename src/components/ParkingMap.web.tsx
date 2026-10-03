@@ -1,11 +1,13 @@
 import { translate } from "../domain/language";
 import React, { useEffect, useRef, useState } from "react";
+import { parkingSelectionZoom } from "../domain/map-selection-camera";
 import L from "leaflet";
 import "./leaflet.css";
 import "./map.css";
 import type { ParkingMapProps } from "./mapTypes";
 import { createLayerCache } from "../domain/layer-cache";
 import { SKOPJE } from "../domain/parking";
+import { canInteractWithZone, isPocSector } from "../domain/zone-interaction";
 import { groupParking } from "../domain/clusters";
 import { parkingMarker, parkingMarkerHtml } from "../domain/marker-appearance";
 
@@ -37,8 +39,9 @@ export default function ParkingMap(props: ParkingMapProps) {
       attributionControl: false,
       scrollWheelZoom: "center",
       minZoom: 3,
+      zoomSnap: 0.5,
     }).setView([SKOPJE.latitude, SKOPJE.longitude], 15);
-    L.tileLayer(
+    const raster = L.tileLayer(
       process.env.EXPO_PUBLIC_TILE_URL ??
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
@@ -50,6 +53,10 @@ export default function ParkingMap(props: ParkingMapProps) {
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       },
     ).addTo(instance);
+    let basemapCleanup = () => { raster.remove(); };
+    void import("../services/leaflet-basemap.web").then(({ addBasemap }) => {
+      if (map.current === instance) basemapCleanup = addBasemap(instance, raster);
+    }).catch(error => { console.warn("Vector basemap module unavailable; keeping raster map.", error); });
     layers.current = L.layerGroup().addTo(instance);
     layerCache.current = createLayerCache(layer => layer.addTo(layers.current!), layer => layers.current?.removeLayer(layer), layer => layer.off());
     draftLayer.current = L.layerGroup().addTo(instance);
@@ -85,6 +92,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     return () => {
       motion?.removeEventListener("change", motionChanged);
       resize.disconnect();
+      basemapCleanup();
       layerCache.current?.clear(); layerCache.current = null;
       instance.remove();
       map.current = null;
@@ -110,6 +118,7 @@ export default function ParkingMap(props: ParkingMapProps) {
       place: ParkingMapProps["places"][number],
       point = place.coordinate,
     ) => {
+      if (!canInteractWithZone(place, instance.getZoom(), callbacks.current.picking)) return;
       if (props.picking) callbacks.current.onPick(point);
       else if (props.selectionEnabled !== false)
         callbacks.current.onSelect(place, point);
@@ -117,12 +126,14 @@ export default function ParkingMap(props: ParkingMapProps) {
     if (!props.drawing && props.showZones) {
       for (const place of props.places.filter((p) => p.kind === "zone")) {
         const selected = place.id === props.selectedId;
+        const interactive = canInteractWithZone(place, zoom, props.picking);
         if (place.geometry) {
-          retain(`zone:${place.id}`, [place, selected], () => L.polygon(
+          retain(`zone:${place.id}`, [place, selected, interactive], () => L.polygon(
             place.geometry!.coordinates.map((ring) =>
               ring.map(([lon, lat]) => [lat, lon] as L.LatLngTuple),
             ),
             {
+              interactive,
               color: selected ? "#962e2b" : "#527FBA",
               weight: selected ? 2.5 : 1,
               dashArray: "5 5",
@@ -130,6 +141,7 @@ export default function ParkingMap(props: ParkingMapProps) {
             },
           )
             .on("click", (event: L.LeafletMouseEvent) => {
+              if (!canInteractWithZone(place, instance.getZoom(), callbacks.current.picking)) return;
               L.DomEvent.stopPropagation(event);
               select(place, {
                 latitude: event.latlng.lat,
@@ -141,7 +153,8 @@ export default function ParkingMap(props: ParkingMapProps) {
         if (zoom >= 17 || selected) {
           const label = document.createElement("span");
           label.textContent = place.zoneCode ?? place.name;
-          retain(`zone-label:${place.id}`, [place, selected], () => L.marker([place.coordinate.latitude, place.coordinate.longitude], {
+          retain(`zone-label:${place.id}`, [place, selected, interactive], () => L.marker([place.coordinate.latitude, place.coordinate.longitude], {
+            interactive, keyboard: interactive,
             autoPanOnFocus: false,
             icon: L.divIcon({
               className: "zone-label" + (!place.geometry ? " approximate" : ""),
@@ -385,7 +398,8 @@ export default function ParkingMap(props: ParkingMapProps) {
       destinationKey.current = key;
       moveCamera(instance, [props.destination.latitude, props.destination.longitude], 15, !initial && !props.drawing);
     } else if (selected && selected !== selectionKey.current && !props.picking && !props.drawing) {
-      moveCamera(instance, [props.selectedAnchor!.latitude, props.selectedAnchor!.longitude], Math.max(16, instance.getZoom()), false);
+      const place = props.places.find(place => place.id === props.selectedId);
+      moveCamera(instance, [props.selectedAnchor!.latitude, props.selectedAnchor!.longitude], parkingSelectionZoom(instance.getZoom(), Boolean(place && isPocSector(place))), false);
     }
     selectionKey.current = selected;
   }, [
@@ -394,6 +408,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     props.cameraRevision,
     props.selectedId,
     props.selectedAnchor,
+    props.places,
     props.picking,
     props.drawing,
   ]);

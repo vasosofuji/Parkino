@@ -3,6 +3,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { SKOPJE } from "../domain/parking";
+import { canInteractWithZone, isPocSector } from "../domain/zone-interaction";
 import { groupParking } from "../domain/clusters";
 import { parkingMarker, parkingMarkerHtml } from "../domain/marker-appearance";
 import type { ParkingMapProps } from "./mapTypes";
@@ -18,6 +19,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
   useLayoutEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [ready, setReady] = useState(false);
   const [zoom, setZoom] = useState(15);
+  const liveZoom = useRef(15);
   const [failed, setFailed] = useState(false);
   const payload = useMemo(() => {
     const longitudeStep = zoom < 18 ? (120 * 360) / (256 * 2 ** zoom) : 0;
@@ -67,6 +69,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
               )
               .map((p) => ({
                 id: p.id,
+                pocSector: isPocSector(p),
                 point: [p.coordinate.latitude, p.coordinate.longitude],
                 label: p.zoneCode ?? p.name,
                 title: p.name,
@@ -92,6 +95,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
               .filter((p) => p.kind === "zone" && p.geometry)
               .map((p) => ({
                 id: p.id,
+                pocSector: isPocSector(p),
                 rings: p.geometry!.coordinates.map((ring) =>
                   ring.map(([lng, lat]) => [lat, lng]),
                 ),
@@ -100,6 +104,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       destination: [props.destination.latitude, props.destination.longitude],
       cameraRevision: props.cameraRevision,
       selectedId: props.selectedId,
+      selectedPocSector: props.places.some(place => place.id === props.selectedId && isPocSector(place)),
       selectedAnchor: props.selectedAnchor
         ? [props.selectedAnchor.latitude, props.selectedAnchor.longitude]
         : null,
@@ -161,8 +166,10 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       Number.isFinite(message.zoom) &&
       message.zoom >= 3 &&
       message.zoom <= 19
-    )
+    ) {
+      liveZoom.current = message.zoom;
       setZoom(message.zoom);
+    }
     // Dragging can retain RN search focus. Record camera intent immediately so
     // a late initial GPS fix cannot recenter; a drag need not dismiss that IME.
     if (message.type === "pan" && isCurrent()) callbacks.current.onPan?.();
@@ -193,7 +200,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
         interact(current => {
           if (current.selectionEnabled === false) return;
           const latest = current.places.find(p => p.id === place.id);
-          if (!latest) return;
+          if (!latest || !canInteractWithZone(latest, liveZoom.current, current.picking)) return;
           current.onSelect(
             latest,
             Number.isFinite(message.latitude) && Number.isFinite(message.longitude)

@@ -2,12 +2,15 @@
   "name": "parkskopje",
   "version": "1.0.0",
   "main": "expo-router/entry",
-  "engines": { "node": "24.x" },
+  "engines": {
+    "node": "24.x"
+  },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
     "@expo/vector-icons": "^15.0.2",
     "@fastify/cors": "^11.3.0",
     "@fastify/rate-limit": "^11.2.0",
+    "@maplibre/maplibre-gl-leaflet": "0.1.4",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@vercel/functions": "^3.9.11",
     "decode-uri-component": "file:vendor/decode-uri-component",
@@ -29,6 +32,7 @@
     "expo-task-manager": "~57.0.21",
     "fastify": "^5.12.5",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "5.24.0",
     "pg": "^8.23.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
