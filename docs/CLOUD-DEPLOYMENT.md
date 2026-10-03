@@ -30,7 +30,7 @@ The GitHub repository is connected. CLI deploys include the working directory; c
 
 ## Sign processing and limits
 
-Uploads and durable job leases remain in Supabase. Each response registers up to two queued readings with Vercel `waitUntil` instead of a permanent interval. The response returns promptly; the function has a 180-second limit and each AI fallback chain has a 30-second budget. Concurrent requests share a drain within one instance; PostgreSQL `SKIP LOCKED` leases coordinate separate instances. Interrupted leases recover on later requests.
+Uploads and durable job leases remain in Supabase. Each response registers up to two queued readings with Vercel `waitUntil` instead of a permanent interval. The response returns promptly; the function has a 180-second limit and each AI fallback chain has a 75-second budget, with up to 45 seconds per model. Concurrent requests share a drain within one instance; PostgreSQL `SKIP LOCKED` leases coordinate separate instances. Interrupted leases recover on later requests.
 
 Retries run on later API traffic while the app polls. A protected daily cron at 03:00 UTC drains a small batch and prunes expired counters. This Hobby-compatible fallback does not guarantee immediate unattended processing of a large backlog; a dedicated queue or more frequent scheduler is needed for that requirement. Missing/invalid provider keys leave photos available for manual review.
 

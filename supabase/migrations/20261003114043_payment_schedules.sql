@@ -14,4 +14,8 @@ DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
     REVOKE ALL ON parkskopje.payment_schedules FROM authenticated;
   END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='parkino_api') THEN
+    GRANT SELECT,INSERT,UPDATE,DELETE ON parkskopje.payment_schedules TO parkino_api;
+    CREATE POLICY api_access ON parkskopje.payment_schedules FOR ALL TO parkino_api USING (true) WITH CHECK (true);
+  END IF;
 END $$;
