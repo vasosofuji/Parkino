@@ -1754,5 +1754,61 @@
   "No parking matches this filter": {
     "tr": "Bu filtreye uyan otopark yok",
     "sq": "Asnjë parking nuk përputhet me këtë filtër"
+  },
+  "System default": {
+    "tr": "Sistem varsayılanı",
+    "sq": "Parazgjedhja e sistemit"
+  },
+  "Location & notifications": {
+    "tr": "Konum ve bildirimler",
+    "sq": "Vendndodhja dhe njoftimet"
+  },
+  "Notification permissions": {
+    "tr": "Bildirim izinleri",
+    "sq": "Lejet e njoftimeve"
+  },
+  "Parking types": {
+    "tr": "Otopark türleri",
+    "sq": "Llojet e parkingut"
+  },
+  "Filters": {
+    "tr": "Filtreler",
+    "sq": "Filtrat"
+  },
+  "Phone app": {
+    "tr": "Telefon uygulaması",
+    "sq": "Aplikacioni në telefon"
+  },
+  "Parking perimeter": {
+    "tr": "Otopark sınırı",
+    "sq": "Perimetri i parkingut"
+  },
+  "Added": {
+    "tr": "Eklendi",
+    "sq": "U shtua"
+  },
+  "Draw the perimeter again.": {
+    "tr": "Sınırı yeniden çizin.",
+    "sq": "Vizato përsëri perimetrin."
+  },
+  "Allow location in your browser’s site settings.": {
+    "tr": "Tarayıcınızın site ayarlarında konuma izin verin.",
+    "sq": "Lejo vendndodhjen te cilësimet e faqes në shfletues."
+  },
+  "Manage location and notifications in your phone’s app settings.": {
+    "tr": "Telefonunuzun uygulama ayarlarında konumu ve bildirimleri yönetin.",
+    "sq": "Menaxho vendndodhjen dhe njoftimet te cilësimet e aplikacionit në telefon."
+  },
+  "Price": {
+    "tr": "Fiyat",
+    "sq": "Çmimi"
+  },
+  "MKD": {
+    "tr": "MKD",
+    "sq": "MKD"
+  },
+  "Simple or detailed entry": {
+    "tr": "Basit veya ayrıntılı giriş",
+    "sq": "Shtim i thjeshtë ose i hollësishëm"
   }
 }

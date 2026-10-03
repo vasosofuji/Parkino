@@ -115,7 +115,7 @@ window.renderParking = function(next) {
   const key=next.destination.join(',')+':'+(next.cameraRevision||0);
   const selected=next.selectedId&&next.selectedAnchor?next.selectedId+':'+next.selectedAnchor.join(','):'';
   if(key!==destinationKey){const initial=!destinationKey;destinationKey=key;moveCamera(next.destination,15,!initial&&!next.drawing);}
-  else if(selected && selected!==selectionKey && !next.drawing && !next.picking)moveCamera(next.selectedAnchor,Math.max(16,map.getZoom()));
+  else if(selected && selected!==selectionKey && !next.drawing && !next.picking)moveCamera(next.selectedAnchor,Math.max(16,map.getZoom()),false);
   selectionKey=selected;
   position();
 };

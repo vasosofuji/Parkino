@@ -81,7 +81,7 @@ export default function ParkingMap(props: ParkingMapProps) {
       destinationKey.current = key;
       moveCamera({ ...props.destination, latitudeDelta: 0.022, longitudeDelta: 0.022 }, !initial && !props.drawing);
     } else if (selected && selected !== selectionKey.current && !props.picking && !props.drawing) {
-      moveCamera({ ...props.selectedAnchor!, latitudeDelta: Math.min(0.011, currentRegion.current.latitudeDelta), longitudeDelta: Math.min(0.011, currentRegion.current.longitudeDelta) });
+      moveCamera({ ...props.selectedAnchor!, latitudeDelta: Math.min(0.011, currentRegion.current.latitudeDelta), longitudeDelta: Math.min(0.011, currentRegion.current.longitudeDelta) }, false);
     }
     selectionKey.current = selected;
   }, [
@@ -113,6 +113,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     step,
     props.selectedId,
     props.now,
+    props.filtered,
   );
   return (
     <MapView

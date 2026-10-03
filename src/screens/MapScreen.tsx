@@ -1,4 +1,4 @@
-import { matchesParkingFilter, filteredParkingRows, type ParkingFilter } from "../domain/parking-filters";
+import { matchesParkingFilter, matchesParkingFilters, toggleParkingFilter, filteredParkingRows, type ActiveParkingFilter } from "../domain/parking-filters";
 import React, {
   useCallback,
   useEffect,
@@ -88,7 +88,9 @@ export default function MapScreen() {
   const [detailsEditing, setDetailsEditing] = useState(false);
   const [menu, setMenu] = useState(false),
     [locationHelp, setLocationHelp] = useState(false);
-  const [parkingFilter, setParkingFilter] = useState<ParkingFilter>("all");
+  const [parkingFilters, setParkingFilters] = useState<ActiveParkingFilter[]>([]);
+  const [parkingTypesExpanded, setParkingTypesExpanded] = useState(false);
+  const hasFilters = parkingFilters.length > 0;
   const [visibleMatches, setVisibleMatches] = useState(30);
   const [expandResults, setExpandResults] = useState(0);
   const [legend, setLegend] = useState(false);
@@ -113,8 +115,7 @@ export default function MapScreen() {
     gps.location,
     Math.max(now, gps.location?.timestamp ?? now),
   );
-  const filterOptions: { id: ParkingFilter; color: string; symbol: string; label: string }[] = [
-    { id: "all", color: MARKER_COLORS.normal, symbol: "P", label: t("All parking", "Сите паркинзи") },
+  const filterOptions: { id: ActiveParkingFilter; color: string; symbol: string; label: string }[] = [
     { id: "free", color: MARKER_COLORS.free, symbol: "0", label: t("Free of charge", "Бесплатно") },
     { id: "reviewed", color: MARKER_COLORS.normal, symbol: "P", label: t("Reviewed parking", "Проверени паркинзи") },
     { id: "unreviewed", color: MARKER_COLORS.needsInfo, symbol: "?", label: t("Unreviewed parking", "Непроверени паркинзи") },
@@ -126,12 +127,12 @@ export default function MapScreen() {
     { id: "street", color: MARKER_COLORS.normal, symbol: "P", label: t("Street parking", "Уличен паркинг") },
     { id: "zone", color: MARKER_COLORS.normal, symbol: "P", label: t("Parking zones", "Паркинг зони") },
   ];
-  const filteredPlaces = useMemo(() => catalog.places.filter(place => matchesParkingFilter(place, parkingFilter, now)), [catalog.places, parkingFilter, now]);
+  const filteredPlaces = useMemo(() => catalog.places.filter(place => matchesParkingFilters(place, parkingFilters, now)), [catalog.places, parkingFilters, now]);
   const filterCounts = useMemo(() => Object.fromEntries((["all", "free", "reviewed", "unreviewed", "spaces", "full", "surface", "garage", "underground", "street", "zone"] as const).map(filter => [filter, catalog.places.filter(place => matchesParkingFilter(place, filter, now)).length])), [catalog.places, now]);
   const rows = useMemo(
     () =>
-      parkingFilter !== "all" ? filteredParkingRows(filteredPlaces, target ?? center, now) : target ? rankParking(catalog.places, target, 60, 1500, sort, now) : [],
-    [catalog.places, filteredPlaces, parkingFilter, target, center, sort, now],
+      hasFilters ? filteredParkingRows(filteredPlaces, target ?? center, now) : target ? rankParking(catalog.places, target, 60, 1500, sort, now) : [],
+    [catalog.places, filteredPlaces, hasFilters, target, center, sort, now],
   );
   const selectedPlace = catalog.places.find((place) => place.id === selected);
   const followupPlace = catalog.places.find((place) => place.id === followupId);
@@ -457,6 +458,7 @@ export default function MapScreen() {
           now={now}
           cameraRevision={cameraRevision}
           places={filteredPlaces}
+          filtered={hasFilters}
           selectedId={selected}
           selectedAnchor={anchor}
           onSelectedPosition={projectSelection}
@@ -655,17 +657,17 @@ export default function MapScreen() {
                 setPicking("zone");
               }}
             >
-              {target || parkingFilter !== "all" ? (
+              {target || hasFilters ? (
                 <>
                   <Text style={s.caption}>
-                    {parkingFilter !== "all" ? `${filterOptions.find(option => option.id === parkingFilter)?.label} · ${rows.length}` : destination
+                    {hasFilters ? `${filterOptions.filter(option => parkingFilters.includes(option.id)).map(option => option.label).join(" · ")} · ${rows.length}` : destination
                       ? t(
                           "Parking near destination",
                           "Паркинг до дестинацијата",
                         )
                       : t("Parking near you", "Паркинг во близина")}
                   </Text>
-                  {parkingFilter !== "all" ? <Button title={t("Change filter", "Промени филтер")} variant="secondary" onPress={() => setLegend(true)} /> : <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16 }}>
+                  {hasFilters ? <Button title={t("Change filter", "Промени филтер")} variant="secondary" onPress={() => setLegend(true)} /> : <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16 }}>
                     {(["nearest", "cheapest"] as const).map(value => (
                       <Pressable
                         key={value}
@@ -680,11 +682,11 @@ export default function MapScreen() {
                       </Pressable>
                     ))}
                   </View>}
-                  {parkingFilter === "all" && sort === "cheapest" ? <Text style={s.caption}>{t(
+                  {!hasFilters && sort === "cheapest" ? <Text style={s.caption}>{t(
                     "Public parking · first-hour estimates · unknown prices last. Check signs for restrictions.",
                     "Јавен паркинг · процена за првиот час · непознати цени на крај. Проверете ги знаците за ограничувања.",
                   )}</Text> : null}
-                  {rows.slice(0, parkingFilter === "all" ? 3 : visibleMatches).map((row) => (
+                  {rows.slice(0, !hasFilters ? 3 : visibleMatches).map((row) => (
                     <ParkingRow
                       key={row.place.id}
                       place={row.place}
@@ -699,10 +701,10 @@ export default function MapScreen() {
                       }}
                     />
                   ))}
-                  {parkingFilter !== "all" && rows.length > visibleMatches ? <Button title={t("Show more", "Прикажи повеќе")} variant="secondary" onPress={() => setVisibleMatches(value => value + 30)} /> : null}
+                  {hasFilters && rows.length > visibleMatches ? <Button title={t("Show more", "Прикажи повеќе")} variant="secondary" onPress={() => setVisibleMatches(value => value + 30)} /> : null}
                   {!rows.length ? (
                     <Note>
-                      {parkingFilter !== "all" ? t("No parking matches this filter", "Нема паркинзи за избраниот филтер") : t(
+                      {hasFilters ? t("No parking matches this filter", "Нема паркинзи за избраниот филтер") : t(
                         "No parking mapped nearby",
                         "Нема означен паркинг во близина",
                       )}
@@ -841,6 +843,7 @@ export default function MapScreen() {
         }}
       />
       <LocationHelp
+        permissions={menu}
         visible={locationHelp && !suspendSheets}
         issue={gps.issue}
         onClose={() => setLocationHelp(false)}
@@ -881,23 +884,27 @@ export default function MapScreen() {
         />
       ) : null}
       <SettingsSheet
-        visible={menu && !suspendSheets}
+        visible={menu && !locationHelp && !suspendSheets}
         onClose={() => setMenu(false)}
         locationStatus={locationStatus}
         onRefreshLocation={() => {
-          setMenu(false);
           retryLocation();
         }}
         onPermissions={() => {
-          setMenu(false);
           setLocationHelp(true);
         }}
       />
       <Sheet visible={legend && !suspendSheets} title={t("Map legend", "Легенда на мапата")} onClose={() => setLegend(false)}>
-        {filterOptions.map(item => <Pressable key={item.id} accessibilityRole="radio" accessibilityState={{ checked: parkingFilter === item.id }} onPress={() => { setParkingFilter(item.id); setVisibleMatches(30); clearSelection(); clearSearch(); setLegend(false); setExpandResults(value => value + 1); }} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: parkingFilter === item.id ? colors.accentText : colors.line, backgroundColor: parkingFilter === item.id ? colors.mint : colors.paper }}>
-          <View style={{ width: 30, height: 30, backgroundColor: item.color, borderRadius: 15, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontWeight: "800" }}>{item.symbol}</Text></View>
-          <Text style={{ flex: 1, color: colors.ink }}>{item.label}</Text><Text style={{ color: colors.muted }}>{filterCounts[item.id]}</Text><Icon name={parkingFilter === item.id ? "check-circle" : "circle"} size={18} color={colors.accentText} />
-        </Pressable>)}
+        {filterOptions.filter((_, index) => index < 5 || parkingTypesExpanded).map((item, index) => (
+          <React.Fragment key={item.id}>
+            <Pressable accessibilityRole="checkbox" accessibilityLabel={item.label} aria-label={item.label} aria-checked={parkingFilters.includes(item.id)} accessibilityState={{ checked: parkingFilters.includes(item.id) }} onPress={() => { setParkingFilters(filters => toggleParkingFilter(filters, item.id)); setVisibleMatches(30); clearSelection(); clearSearch(); }} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: parkingFilters.includes(item.id) ? colors.accentText : colors.line, backgroundColor: parkingFilters.includes(item.id) ? colors.mint : colors.paper }}>
+              <View style={{ width: 30, height: 30, backgroundColor: item.color, borderRadius: 15, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontWeight: "800" }}>{item.symbol}</Text></View>
+              <Text style={{ flex: 1, color: colors.ink }}>{item.label}</Text><Text style={{ color: colors.muted }}>{filterCounts[item.id]}</Text><Icon name={parkingFilters.includes(item.id) ? "check-square" : "square"} size={18} color={colors.accentText} />
+            </Pressable>
+            {index === 4 ? <Pressable accessibilityRole="button" accessibilityLabel={t("Parking types", "Видови паркинг")} aria-label={t("Parking types", "Видови паркинг")} aria-expanded={parkingTypesExpanded} accessibilityState={{ expanded: parkingTypesExpanded }} onPress={() => setParkingTypesExpanded(value => !value)} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, minHeight: 56 }}><Text style={{ flex: 1, color: colors.ink, fontWeight: "700" }}>{t("Parking types", "Видови паркинг")}</Text><Icon name={parkingTypesExpanded ? "chevron-up" : "chevron-down"} size={20} /></Pressable> : null}
+          </React.Fragment>
+        ))}
+        <Button title={t("Done", "Готово")} onPress={() => { setLegend(false); setExpandResults(value => value + 1); }} />
       </Sheet>
       <Sheet
         visible={arrivalVisible}
@@ -1041,7 +1048,7 @@ const styles = (colors: ThemeColors) =>
       color: colors.red,
       fontWeight: "600",
     },
-    locate: { position: "absolute", zIndex: 1000, left: 14 },
+    locate: { position: "absolute", zIndex: 1000, left: 14, gap: 12 },
     pickTop: {
       position: "absolute",
       top: 12,

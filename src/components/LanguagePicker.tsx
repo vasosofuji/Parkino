@@ -19,7 +19,7 @@ export default function LanguagePicker() {
       {LANGUAGES.map(({ code, name, englishName, flag }) => {
         const selected = language === code;
         return <Pressable key={code} accessibilityRole="radio" accessibilityLabel={name}
-          accessibilityState={{ checked: selected }} onPress={() => setLanguage(code)}
+          accessibilityState={{ checked: selected }} aria-checked={selected} onPress={() => setLanguage(code)}
           style={({ pressed }) => ({ minHeight: 76, paddingHorizontal: 18, paddingVertical: 14,
             flexDirection: "row", alignItems: "center", gap: 16, borderRadius: 12, borderWidth: 1,
             borderColor: selected ? colors.accentText : colors.line,

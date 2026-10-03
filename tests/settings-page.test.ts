@@ -55,16 +55,17 @@ function sheet() {
   return { render(props: Record<string, unknown>) { runtime.start(); const tree = exports.Sheet({ visible: true, title: "Settings", children: null, ...props }); runtime.finish(); return tree; }, icon: exports.IconButton };
 }
 
-function settings(guest = false) {
+function settings(guest = false, platform = "android") {
   const runtime = hooks(), exports = {} as { default: Component };
+  let pathname = "/";
   let visible = true, mode = "system", language = "en", navigation = "default", closes = 0, refreshes = 0, gps = 0, permissions = 0;
   const preferenceCalls: string[][] = [], routeEvents: string[] = [];
   const navigationWrites: { value: string; resolve: () => void; reject: () => void }[] = [];
   const refresh = async () => { refreshes++; };
   vm.runInNewContext(transpile("src/components/SettingsSheet.tsx"), { exports, require(name: string) {
     if (name === "react") return { ...runtime.react, default: runtime.react, __esModule: true };
-    if (name === "react-native") return { Pressable: "Pressable", Text: "Text", View: "View", StyleSheet: { create: (value: unknown) => value } };
-    if (name === "expo-router") return { router: { push(path: string) { routeEvents.push(path); } } };
+    if (name === "react-native") return { Pressable: "Pressable", Text: "Text", View: "View", Platform: { OS: platform }, Linking: { openSettings: async () => {} }, StyleSheet: { create: (value: unknown) => value } };
+    if (name === "expo-router") return { usePathname: () => pathname, router: { push(path: string) { pathname = path; routeEvents.push(path); } } };
     if (name === "../state/ThemeContext") return { useTheme: () => ({ colors: palette, mode, setMode(value: string) { preferenceCalls.push(["theme", value]); mode = value; } }) };
     if (name === "../state/ParkingContext") return { useParking: () => ({ language, t: (en: string, mk: string) => translate(language as Language, en, mk), setLanguage(value: string) { preferenceCalls.push(["language", value]); language = value; } }) };
     if (name === "../state/AccountContext") return { useAccount: () => ({ profile: { id: "profile-one", username: "driver", points: 125, guest, secured: true }, refresh }) };
@@ -94,7 +95,7 @@ function settings(guest = false) {
     const value = elements(tree, true).find(element => (element.type === "Pressable" || element.type === "Button") && [element.props.accessibilityLabel, element.props.title].some(text => typeof text === "string" && (text === label || text.startsWith(label + ","))));
     assert.ok(value, `Missing settings action: ${label}`); return value;
   };
-  return { render, actionable, tap(tree: Element, label: string) { const node = actionable(tree, label); assert.notEqual(node.props.disabled, true, `${label} disabled`); invoke(node); }, preferenceCalls, navigationWrites, routeEvents, reopen: () => { visible = true; }, stats: () => ({ closes, refreshes, gps, permissions }) };
+  return { render, actionable, tap(tree: Element, label: string) { const node = actionable(tree, label); assert.notEqual(node.props.disabled, true, `${label} disabled`); invoke(node); }, preferenceCalls, navigationWrites, routeEvents, returnToMap: () => { pathname = "/"; }, reopen: () => { visible = true; }, stats: () => ({ closes, refreshes, gps, permissions }) };
 }
 
 test("full-page Sheet applies every safe edge and Android Back honors its current action/disabled state", () => {
@@ -177,12 +178,13 @@ test("navigation waits for persistence, locks choices while saving and keeps a f
   assert.notEqual(view.actionable(tree, "Google Maps").props.disabled, true);
 });
 
-test("profile and legal rows close first and navigate only to existing screens", () => {
+test("profile and legal routes preserve settings so returning restores the menu", () => {
   for (const [label, path] of [["Manage account", "/account"], ["Rewards & appearance", "/rewards"], ["Privacy & data", "/privacy"], ["Zones & sources", "/coverage"], ["Terms of service", "/terms"]]) {
     const view = settings(); let tree = view.render(); view.tap(tree, label); tree = view.render();
-    assert.deepEqual(view.routeEvents, ["close", path]); assert.equal(tree.props.visible, false);
+    assert.deepEqual(view.routeEvents, [path]); assert.equal(tree.props.visible, false);
     assert.ok(existsSync(`src/app${path}.tsx`));
-    view.reopen(); tree = view.render(); assert.equal(tree.props.title, "Settings");
+    view.returnToMap(); tree = view.render(); assert.equal(tree.props.title, "Settings");
+    assert.equal(tree.props.visible, true); assert.equal(view.stats().closes, 0);
   }
 });
 
@@ -193,15 +195,26 @@ test("profile summary uses the real identity and points while guests retain acco
     assert.ok(text.includes(guest ? "Guest" : "@driver"));
     assert.ok(text.includes(125)); assert.ok(text.includes("points"));
     if (guest) assert.ok(!text.includes("@driver"));
-    view.tap(tree, "Manage account"); assert.deepEqual(view.routeEvents, ["close", "/account"]);
+    view.tap(tree, "Manage account"); assert.deepEqual(view.routeEvents, ["/account"]);
   }
 });
 
-test("location actions remain available and reminder information returns through the header", () => {
-  const view = settings(true); let tree = view.render(); view.tap(tree, "Location & reminders"); tree = view.render();
-  view.tap(tree, "Refresh GPS"); view.tap(tree, "Location permissions");
+test("location and notification permissions share a section without a reminder info page", () => {
+  const view = settings(true); let tree = view.render(); view.tap(tree, "Location & notifications"); tree = view.render();
+  view.tap(tree, "Refresh GPS"); view.tap(tree, "Location permissions"); view.tap(tree, "Notification permissions");
+  assert.ok(!elements(tree, true).some(node => node.props.title === "About reminders"));
   const reminders = elements(tree).find(node => node.type === "BackgroundArrivalSettings")!;
-  invoke(reminders, "onInfo"); tree = view.render(); assert.equal(tree.props.title, "About reminders");
+  assert.equal(reminders.props.onInfo, undefined);
   invoke(tree, "onBack"); tree = view.render(); assert.equal(tree.props.title, "Settings");
-  assert.deepEqual([view.stats().gps, view.stats().permissions, view.stats().closes], [1, 1, 0]);
+  assert.deepEqual([view.stats().gps, view.stats().permissions, view.stats().closes], [1, 2, 0]);
+});
+
+test("web keeps notification permissions visibly unavailable without invoking a native settings action", () => {
+  const view = settings(false, "web"); let tree = view.render();
+  view.tap(tree, "Location & notifications"); tree = view.render();
+  const notification = view.actionable(tree, "Notification permissions");
+  assert.equal(notification.props.disabled, true);
+  assert.equal(notification.props.accessibilityLabel, "Notification permissions, Phone app");
+  view.tap(tree, "Location permissions");
+  assert.equal(view.stats().permissions, 1);
 });

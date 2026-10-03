@@ -12,7 +12,7 @@ import {
   observeBackgroundArrivalSettings,
 } from "../services/backgroundArrival";
 
-export default function BackgroundArrivalSettings({ onInfo }: { onInfo: () => void }) {
+export default function BackgroundArrivalSettings() {
   const { colors } = useTheme();
   const { t, catalog } = useParking();
   const [status, setStatus] = useState({ supported: false, enabled: false, running: false });
@@ -55,7 +55,6 @@ export default function BackgroundArrivalSettings({ onInfo }: { onInfo: () => vo
     </> : <Text style={{ color: colors.muted, fontSize: 12 }}>
       {Platform.OS === "web" ? t("Background reminders are available in the phone app.", "Потсетниците во заднина се достапни во мобилната апликација.") : t("Install the updated Parking build to use background reminders.", "Инсталирајте ја ажурираната Parking апликација за потсетници во заднина.")}
     </Text>}
-    <Button title={t("About reminders", "За потсетниците")} icon="info" variant="secondary" onPress={onInfo} />
     {error ? <>
       <Text accessibilityRole="alert" style={{ color: colors.red, fontSize: 12 }}>{error}</Text>
       <Button title={t("Open phone settings", "Отвори поставки на телефонот")} variant="secondary" onPress={() => { void Linking.openSettings().catch(() => {}); }} />

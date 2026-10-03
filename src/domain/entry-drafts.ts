@@ -1,7 +1,7 @@
 import type { Geometry, PaymentSchedule } from "./types";
 import type { EntrySnapshot } from "./progressive-entry";
 
-export type EntryStep = "choose" | "zone" | "price" | "schedule" | "spaces" | "perimeter" | "done";
+export type EntryStep = "choose" | "details" | "zone" | "price" | "schedule" | "spaces" | "perimeter" | "done";
 export type EntryOperation = { type: "schedule"; value: PaymentSchedule } | { type: "label"; code: string } | { type: "price"; first: number; next: number } | { type: "spaces"; total: number | null; available: number | null; observedAt?: number } | { type: "boundary"; geometry: Geometry } | { type: "ensure" };
 export type EntryDraft = {
   version: 1; updatedAt: number; requestId: string; step: EntryStep; detailed: boolean; originalKey?: string;
@@ -21,7 +21,7 @@ export async function readEntryDraft(storage: DraftStorage, key: string, now = D
     const raw = await storage.getItem(key);
     if (!raw) return null;
     const value = JSON.parse(raw) as EntryDraft;
-    if (value.version !== 1 || typeof value.requestId !== "string" || !["choose", "zone", "price", "schedule", "spaces", "perimeter", "done"].includes(value.step) || ![value.code, value.first, value.next, value.capacity, value.freeSpaces].every(item => typeof item === "string")) return null;
+    if (value.version !== 1 || typeof value.requestId !== "string" || !["choose", "details", "zone", "price", "schedule", "spaces", "perimeter", "done"].includes(value.step) || ![value.code, value.first, value.next, value.capacity, value.freeSpaces].every(item => typeof item === "string")) return null;
     // A previous visit's availability estimate must never be posted as current.
     if (!availabilityIsFresh(value.freeObservedAt, now)) {
       value.freeSpaces = "";

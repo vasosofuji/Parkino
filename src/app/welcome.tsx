@@ -70,7 +70,7 @@ export default function Welcome() {
     void AsyncStorage.setItem(PREFERENCES_SETUP_KEY, "1").catch(() => {});
     setStep("account");
   }
-  const title = step === "language" ? t("Select language", "Изберете јазик") : step === "theme" ? t("Choose your appearance", "Изберете изглед") : mode === "choice" ? t("Welcome to Parkino", "Добредојдовте во Parkino") : mode === "create" ? t("Create account", "Создај сметка") : t("Sign in", "Најава");
+  const title = step === "language" ? t("Select language", "Изберете јазик") : step === "theme" ? t("Choose your appearance", "Изберете изглед") : mode === "choice" ? t("Welcome to Parkino", "Добредојдовте во Parkino") : mode === "create" ? t("Create account", "Создај профил") : t("Sign in", "Најава");
   return <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, padding: 24, maxWidth: 440, width: "100%", alignSelf: "center" }}>
@@ -85,10 +85,10 @@ export default function Welcome() {
               <LanguagePicker />
             </> : step === "theme" ? <>
               <View style={{ gap: 10 }}>
-                {(["system", "light", "dark"] as const).map((value) => <Button key={value} icon={theme === value ? "check" : value === "system" ? "smartphone" : value === "light" ? "sun" : "moon"} title={value === "system" ? t("Use phone setting", "Како на телефонот") : value === "light" ? t("Light", "Светло") : t("Dark", "Темно")} variant={theme === value ? "primary" : "secondary"} onPress={() => setTheme(value)} />)}
+                {(["system", "light", "dark"] as const).map((value) => <Button key={value} icon={theme === value ? "check" : value === "system" ? "smartphone" : value === "light" ? "sun" : "moon"} title={value === "system" ? t("System default", "Системски стандард") : value === "light" ? t("Light", "Светло") : t("Dark", "Темно")} variant={theme === value ? "primary" : "secondary"} onPress={() => setTheme(value)} />)}
               </View>
             </> : mode === "choice" ? <>
-              <Button title={t("Create account", "Создај сметка")} onPress={() => chooseAccount("create")} />
+              <Button title={t("Create account", "Создај профил")} onPress={() => chooseAccount("create")} />
               <Button title={t("Sign in", "Најави се")} variant="secondary" onPress={() => chooseAccount("login")} />
             </> : <>
               <View style={{ gap: 8 }}>

@@ -15,7 +15,7 @@ export default function PaymentScheduleFields({ value, onChange, disabled = fals
       placeholder={t("e.g. Mon–Fri 07:00–23:00; Sat 07:00–15:00", "пр. пон–пет 07:00–23:00; саб 07:00–15:00")} placeholderTextColor={colors.muted}
       style={{ minHeight: 64, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 13, color: colors.ink, backgroundColor: colors.input, textAlignVertical: "top" }} />
     <Text style={{ color: colors.ink, fontWeight: "600" }}>{t("Free weekends", "Бесплатни викенди")}</Text>
-    {(["both", "sunday", "neither", null] as const).map(option => <Pressable key={option ?? "unknown"} accessibilityRole="radio" accessibilityState={{ checked: value.freeWeekends === option, disabled }} disabled={disabled} onPress={() => onChange({ ...value, freeWeekends: option })}
+    {(["both", "sunday", "neither", null] as const).map(option => <Pressable key={option ?? "unknown"} accessibilityRole="radio" accessibilityState={{ checked: value.freeWeekends === option, disabled }} aria-checked={value.freeWeekends === option} disabled={disabled} onPress={() => onChange({ ...value, freeWeekends: option })}
       style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: value.freeWeekends === option ? colors.accentText : colors.line, backgroundColor: value.freeWeekends === option ? colors.mint : colors.paper, borderRadius: 12, padding: 12 }}>
       <Icon name={value.freeWeekends === option ? "check-circle" : "circle"} size={18} color={colors.accentText} /><Text style={{ flex: 1, color: colors.ink }}>{weekendLabel(option, t)}</Text>
     </Pressable>)}

@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { router, type Href } from "expo-router";
+import { Platform, Pressable, Text, View } from "react-native";
+import { router, usePathname, type Href } from "expo-router";
 import { useTheme } from "../state/ThemeContext";
 import { useParking } from "../state/ParkingContext";
 import { useAccount } from "../state/AccountContext";
-import { Button, Icon, Sheet, type IconName } from "./ui";
+import { Icon, Sheet, type IconName } from "./ui";
 import BackgroundArrivalSettings from "./BackgroundArrivalSettings";
 import { setNavigationPreference, useNavigationPreference } from "../services/navigation";
 import { NAVIGATION_APPS, type NavigationApp } from "../domain/navigation";
 import { LANGUAGES } from "../domain/language";
 import LanguagePicker from "./LanguagePicker";
 
-type Section = "appearance" | "language" | "navigation" | "location" | "reminders";
+type Section = "appearance" | "language" | "navigation" | "location";
 function SettingsCard({ title, children }: { title?: string; children: React.ReactNode }) {
   const { colors } = useTheme();
   return <View style={{ backgroundColor: colors.input, borderRadius: 20, borderWidth: 1, borderColor: colors.line, overflow: "hidden" }}>
@@ -25,7 +25,7 @@ function SettingsRow({ title, value, icon, onPress, last = false, selected, disa
   const { colors } = useTheme();
   const choice = selected !== undefined;
   return <Pressable accessibilityRole={choice ? "radio" : "button"} accessibilityLabel={value ? `${title}, ${value}` : title}
-    accessibilityState={choice ? { checked: selected, disabled } : { disabled }} disabled={disabled} onPress={onPress}
+    accessibilityState={choice ? { checked: selected, disabled } : { disabled }} aria-checked={choice ? selected : undefined} disabled={disabled} onPress={onPress}
     style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 64, paddingVertical: 15, paddingHorizontal: 18, backgroundColor: pressed ? colors.mint : colors.input, opacity: disabled ? 0.5 : 1 })}>
     <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 24, alignItems: "center" }}><Icon name={icon} size={19} color={colors.accentText} /></View>
     <Text style={{ flex: 1, color: colors.ink, fontSize: 15, fontWeight: "500" }}>{title}</Text>
@@ -44,6 +44,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
   onPermissions: () => void;
 }) {
   const { colors, mode, setMode } = useTheme();
+  const pathname = usePathname();
   const { t, language } = useParking();
   const { profile, refresh } = useAccount();
   const [section, setSection] = useState<Section | null>(null);
@@ -54,11 +55,10 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
     appearance: t("Appearance", "Изглед"),
     language: t("Language", "Јазик"),
     navigation: t("Navigation app", "Апликација за навигација"),
-    location: t("Location & reminders", "Локација и потсетници"),
-    reminders: t("About reminders", "За потсетниците"),
+    location: t("Location & notifications", "Локација и известувања"),
   };
-  const themeName = mode === "light" ? t("Light", "Светло") : mode === "dark" ? t("Dark", "Темно") : t("System", "Систем");
-  const accountName = profile?.guest ? t("Guest", "Гостин") : profile ? `@${profile.username}` : t("Your account", "Вашата сметка");
+  const themeName = mode === "light" ? t("Light", "Светло") : mode === "dark" ? t("Dark", "Темно") : t("System default", "Системски стандард");
+  const accountName = profile?.guest ? t("Guest", "Гостин") : profile ? `@${profile.username}` : t("Your account", "Вашиот профил");
   const initial = profile && !profile.guest ? profile.username.slice(0, 1).toUpperCase() : null;
   const navigationNames: Record<NavigationApp, string> = { default: t("Phone default", "Стандардна на телефонот"), google: "Google Maps", waze: "Waze" };
   async function chooseNavigation(value: NavigationApp) {
@@ -70,8 +70,9 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
   }
   const close = () => { setSection(null); onClose(); };
   const back = () => { if (section) setSection(null); else close(); };
-  const go = (path: Href) => { close(); router.push(path); };
-  return <Sheet fullPage visible={visible} title={section ? titles[section] : t("Settings", "Поставки")} onClose={close} onBack={back}
+  // Keep this sheet in the navigation history so Back returns to settings.
+  const go = (path: Href) => { router.push(path); };
+  return <Sheet fullPage visible={visible && pathname === "/"} title={section ? titles[section] : t("Settings", "Поставки")} onClose={close} onBack={back}
     backLabel={section ? t("Back to settings", "Назад кон поставки") : t("Back to map", "Назад кон мапата")}>
     {!section ? <View style={{ gap: 18 }}>
       <SettingsCard>
@@ -83,7 +84,7 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
             <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 18, fontWeight: "700" }}>{accountName}</Text>
             <Text style={{ color: colors.muted, fontSize: 13 }}>{profile?.points ?? 0} {t("points", "поени")}</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={t("Manage account", "Управувај со сметката")} onPress={() => go("/account")}
+          <Pressable accessibilityRole="button" accessibilityLabel={t("Manage account", "Управувај со профилот")} onPress={() => go("/account")}
             style={({ pressed }) => ({ minHeight: 44, paddingHorizontal: 14, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.green, opacity: pressed ? 0.8 : 1 })}>
             <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{t("Manage", "Управувај")}</Text>
           </Pressable>
@@ -95,18 +96,17 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
         <SettingsRow title={titles.navigation} value={navigationNames[navigationApp]} icon="navigation" onPress={() => setSection("navigation")} />
         <SettingsRow title={titles.location} icon="map-pin" last onPress={() => setSection("location")} />
       </SettingsCard>
-      <SettingsCard title={t("Account", "Сметка")}>
+      <SettingsCard title={t("Account", "Профил")}>
         <SettingsRow title={t("Rewards & appearance", "Награди и изглед")} icon="gift" onPress={() => go("/rewards")} />
         <SettingsRow title={t("Privacy & data", "Приватност и податоци")} icon="shield" last onPress={() => go("/privacy")} />
       </SettingsCard>
       <SettingsCard title={t("Support", "Поддршка")}>
         <SettingsRow title={t("Zones & sources", "Зони и извори")} icon="map" onPress={() => go("/coverage")} />
-        <SettingsRow title={titles.reminders} icon="info" onPress={() => setSection("reminders")} />
         <SettingsRow title={t("Terms of service", "Услови за користење")} icon="file-text" last onPress={() => go("/terms")} />
       </SettingsCard>
     </View> : null}
     {section === "appearance" ? <SettingsCard>
-      {(["light", "dark", "system"] as const).map((value, index) => <SettingsRow key={value} title={value === "light" ? t("Light", "Светло") : value === "dark" ? t("Dark", "Темно") : t("Use phone setting", "Како на телефонот")} icon={value === "light" ? "sun" : value === "dark" ? "moon" : "smartphone"} selected={mode === value} last={index === 2} onPress={() => setMode(value)} />)}
+      {(["light", "dark", "system"] as const).map((value, index) => <SettingsRow key={value} title={value === "light" ? t("Light", "Светло") : value === "dark" ? t("Dark", "Темно") : t("System default", "Системски стандард")} icon={value === "light" ? "sun" : value === "dark" ? "moon" : "smartphone"} selected={mode === value} last={index === 2} onPress={() => setMode(value)} />)}
     </SettingsCard> : null}
     {section === "language" ? <LanguagePicker /> : null}
     {section === "navigation" ? <View style={{ gap: 16 }}>
@@ -118,15 +118,10 @@ export default function SettingsSheet({ visible, onClose, locationStatus, onRefr
       <SettingsCard title={t("Location", "Локација")}>
         <Text accessibilityLiveRegion="polite" style={{ paddingHorizontal: 18, paddingTop: 8, paddingBottom: 4, color: colors.muted, fontSize: 13, lineHeight: 20 }}>{locationStatus}</Text>
         <SettingsRow icon="refresh-cw" title={t("Refresh GPS", "Обнови GPS")} onPress={onRefreshLocation} />
-        <SettingsRow icon="settings" title={t("Location permissions", "Дозволи за локација")} last onPress={onPermissions} />
+        <SettingsRow icon="settings" title={t("Location permissions", "Дозволи за локација")} onPress={onPermissions} />
+        <SettingsRow icon="bell" title={t("Notification permissions", "Дозволи за известувања")} value={Platform.OS === "web" ? t("Phone app", "Мобилна апликација") : undefined} disabled={Platform.OS === "web"} last onPress={onPermissions} />
       </SettingsCard>
-      <SettingsCard><View style={{ padding: 18 }}><BackgroundArrivalSettings onInfo={() => setSection("reminders")} /></View></SettingsCard>
+      <SettingsCard><View style={{ padding: 18 }}><BackgroundArrivalSettings /></View></SettingsCard>
     </View> : null}
-    {section === "reminders" ? <SettingsCard><View style={{ padding: 18, gap: 16 }}>
-      <Text style={{ color: colors.ink, fontSize: 15, lineHeight: 23 }}>{t("After you stop in a parking area, the app can ask if spaces are available. You can also add missing prices with a quick answer.", "Кога ќе застанете на паркинг, апликацијата може да праша дали има слободни места. Можете и брзо да додадете цена што недостасува.")}</Text>
-      <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 22 }}>{t("Optional reminders work while the app is in the background. They use location on this phone and notifications. Your GPS history is not uploaded.", "Потсетниците по избор работат и во заднина. Користат локација на овој телефон и известувања. GPS историјата не се испраќа.")}</Text>
-      <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 22 }}>{t("Allow location all the time and notifications when enabling them. This uses extra battery; timing depends on your phone, and force-closing can stop reminders.", "При вклучување дозволете локација „Секогаш“ и известувања. Ова троши дополнителна батерија; времето зависи од телефонот, а присилното затворање може да ги запре потсетниците.")}</Text>
-      <Button title={t("Reminder settings", "Поставки за потсетници")} variant="secondary" onPress={() => setSection("location")} />
-    </View></SettingsCard> : null}
   </Sheet>;
 }

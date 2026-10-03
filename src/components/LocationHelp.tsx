@@ -8,8 +8,10 @@ export default function LocationHelp({
   issue,
   onClose,
   onRetry,
+  permissions = false,
 }: {
   visible: boolean;
+  permissions?: boolean;
   issue: LocationIssue | null;
   onClose: () => void;
   onRetry: () => void;
@@ -48,10 +50,14 @@ export default function LocationHelp({
   return (
     <Sheet
       visible={visible}
-      title={t("Your location", "Вашата локација")}
+      title={permissions ? t("Location & notifications", "Локација и известувања") : t("Your location", "Вашата локација")}
       onClose={onClose}
+      onBack={permissions ? onClose : undefined}
+      backLabel={permissions ? t("Back", "Назад") : undefined}
     >
-      <Note>{message}</Note>
+      <Note>{permissions ? Platform.OS === "web"
+        ? t("Allow location in your browser’s site settings.", "Дозволете локација во поставките за страницата.")
+        : t("Manage location and notifications in your phone’s app settings.", "Управувајте со локацијата и известувањата во поставките на апликацијата.") : message}</Note>
       {Platform.OS !== "web" ? (
         <Button
           title={t("Open settings", "Отвори поставки")}
@@ -62,7 +68,7 @@ export default function LocationHelp({
         />
       ) : null}
       <Button
-        title={t("Try again", "Обиди се повторно")}
+        title={permissions ? t("Done", "Готово") : t("Try again", "Обиди се повторно")}
         onPress={() => {
           onClose();
           onRetry();

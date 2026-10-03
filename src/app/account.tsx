@@ -54,7 +54,7 @@ export default function Account() {
       else if (guest) await account.register(cleanUsername(username), true, password);
       else await account.secure(password);
       setPassword(""); setUsername("");
-      setMessage(signingIn ? t("Signed in", "Најавени сте") : t("Account saved", "Сметката е зачувана"));
+      setMessage(signingIn ? t("Signed in", "Најавени сте") : t("Account saved", "Профилот е зачуван"));
     } catch (error) { setMessage(error instanceof Error ? error.message : t("Could not save. Try again.", "Неуспешно зачувување. Обидете се повторно.")); }
     finally { setBusy(false); }
   }
@@ -65,7 +65,7 @@ export default function Account() {
     catch (error) { setMessage(error instanceof Error ? error.message : t("Could not sign out. Try again.", "Неуспешна одјава. Обидете се повторно.")); }
     finally { setBusy(false); }
   }
-  return <Page title={t("Your account", "Вашата сметка")}>
+  return <Page title={t("Your account", "Вашиот профил")}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, gap: 22, maxWidth: 580, width: "100%", alignSelf: "center" }}>
         <View style={{ gap: 6 }}>
@@ -73,13 +73,13 @@ export default function Account() {
           <Text style={{ fontSize: 42, fontWeight: "800", color: colors.accentText }}>{rewards?.total ?? account.profile?.points ?? 0} <Text style={{ fontSize: 18 }}>{t("points", "поени")}</Text></Text>
         </View>
         {!account.profile?.secured ? <View style={{ gap: 12, padding: 16, borderWidth: 1, borderColor: colors.line, borderRadius: 16, backgroundColor: colors.input }}>
-          <Text style={{ fontSize: 19, fontWeight: "700", color: colors.ink }}>{signingIn ? t("Sign in", "Најави се") : guest ? t("Create account", "Создај сметка") : t("Add a password", "Додај лозинка")}</Text>
-          <Note>{signingIn ? t("Guest points won't transfer to an existing account.", "Поените како гостин нема да се пренесат на постојна сметка.") : t("Keep your points when you change phones.", "Зачувајте ги поените кога менувате телефон.")}</Note>
+          <Text style={{ fontSize: 19, fontWeight: "700", color: colors.ink }}>{signingIn ? t("Sign in", "Најави се") : guest ? t("Create account", "Создај профил") : t("Add a password", "Додај лозинка")}</Text>
+          <Note>{signingIn ? t("Guest points won't transfer to an existing account.", "Поените како гостин нема да се пренесат на постоен профил.") : t("Keep your points when you change phones.", "Зачувајте ги поените кога менувате телефон.")}</Note>
           {guest ? <TextInput accessibilityLabel={t("Username", "Корисничко име")} value={username} editable={!busy} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} autoComplete="username" textContentType="username" maxLength={20} placeholder={t("Username", "Корисничко име")} placeholderTextColor={colors.muted} style={{ minHeight: 52, padding: 14, fontSize: 17, borderRadius: 12, borderWidth: 1, borderColor: colors.line, color: colors.ink, backgroundColor: colors.input }} /> : null}
           <PasswordField value={password} onChange={setPassword} creating={!signingIn} disabled={busy} />
           {!signingIn ? <Note>{t("At least 10 characters · Save your password", "Најмалку 10 знаци · Зачувајте ја лозинката")}</Note> : null}
-          <Button title={busy ? t("Please wait…", "Почекајте…") : signingIn ? t("Sign in", "Најави се") : t("Save account", "Зачувај сметка")} disabled={busy || (signingIn ? !password : !validPassword(password)) || (guest && !validUsername(username))} onPress={() => void secure()} />
-          {guest ? <Button title={signingIn ? t("Create a new account instead", "Создај нова сметка") : t("Sign in to an existing account", "Најави се на постојна сметка")} variant="secondary" disabled={busy} onPress={() => { setAccountMode(signingIn ? "create" : "login"); setPassword(""); setMessage(""); }} /> : null}
+          <Button title={busy ? t("Please wait…", "Почекајте…") : signingIn ? t("Sign in", "Најави се") : t("Save account", "Зачувај профил")} disabled={busy || (signingIn ? !password : !validPassword(password)) || (guest && !validUsername(username))} onPress={() => void secure()} />
+          {guest ? <Button title={signingIn ? t("Create a new account instead", "Создај нов профил") : t("Sign in to an existing account", "Најави се на постоен профил")} variant="secondary" disabled={busy} onPress={() => { setAccountMode(signingIn ? "create" : "login"); setPassword(""); setMessage(""); }} /> : null}
         </View> : null}
         <Button title={t("Rewards & appearance", "Награди и изглед")} icon="gift" variant="secondary" disabled={busy} onPress={() => router.push("/rewards")} />
         {message ? <Text accessibilityLiveRegion="polite" style={{ color: colors.ink }}>{message}</Text> : null}
@@ -101,7 +101,7 @@ export default function Account() {
           </View> : null}
         </View>
         {account.profile?.secured ? <Button title={t("Sign out", "Одјави се")} icon="log-out" variant="secondary" disabled={busy} onPress={() => void logout()} /> : null}
-        <Button title={t("Privacy & delete account", "Приватност и бришење сметка")} variant="secondary" disabled={busy} onPress={() => router.push("/privacy")} />
+        <Button title={t("Privacy & delete account", "Приватност и бришење профил")} variant="secondary" disabled={busy} onPress={() => router.push("/privacy")} />
       </ScrollView>
     </KeyboardAvoidingView>
   </Page>;

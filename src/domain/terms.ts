@@ -22,7 +22,7 @@ export function termsParagraphs(t: (en: string, mk: string) => string) {
     ),
     t(
       "Guest contributions and points stay with this device until you create an account. Your username, contributions and points belong to your account. Save your password to sign in after reinstalling; email password reset is not available yet. Existing device accounts need to add a password in Account first. You can delete your account, photos and reports in Privacy. Published parking locations and boundaries remain on the shared map. Contribution points have no monetary value.",
-      "Придонесите и поените на гостите остануваат на овој уред додека не создадете сметка. Корисничкото име, придонесите и поените ѝ припаѓаат на вашата сметка. Зачувајте ја лозинката за најава по повторна инсталација; обновување преку е-пошта сè уште нема. Постојните сметки прво треба да додадат лозинка во Сметка. Сметката, сликите и пријавите може да ги избришете во Приватност. Објавените паркинзи и граници остануваат на мапата. Поените немаат парична вредност.",
+      "Придонесите и поените на гостите остануваат на овој уред додека не создадете профил. Корисничкото име, придонесите и поените ѝ припаѓаат на вашиот профил. Зачувајте ја лозинката за најава по повторна инсталација; обновување преку е-пошта сè уште нема. Постојните профили прво треба да додадат лозинка во Профил. Профилот, сликите и пријавите може да ги избришете во Приватност. Објавените паркинзи и граници остануваат на мапата. Поените немаат парична вредност.",
     ),
   ];
 }

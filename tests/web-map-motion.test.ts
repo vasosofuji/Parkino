@@ -42,9 +42,9 @@ test("web camera transitions run once per intent, hide moving projections, cance
   let props: ParkingMapProps = { now: 0, places: [], selectedId: null, destination: SKOPJE, destinationMarker: null, userLocation: null, picking: false, showZones: true, onSelect() {}, onPick() {}, onSelectedPosition: point => positions.push(point), language: "en" };
   render(props); assert.equal(calls.filter(call => call === "flight").length, 0);
   props = { ...props, selectedId: "one", selectedAnchor: SKOPJE }; render(props);
-  assert.equal(calls.at(-1), "flight"); assert.equal(positions.at(-1), null);
+  assert.equal(calls.at(-1), "immediate");
   render({ ...props, now: 30_000, places: [] });
-  assert.equal(calls.filter(call => call === "flight").length, 1); assert.equal(positions.at(-1), null);
+  assert.equal(calls.filter(call => call === "flight").length, 0);
   events.get("moveend")?.(); render(props);
   assert.equal((positions.at(-1) as { x: number }).x, 100);
   assert.equal((positions.at(-1) as { y: number }).y, 200);

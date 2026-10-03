@@ -74,7 +74,7 @@ export default function ProposalSheet({ coordinate, geometry, visible = true, on
       </> : afterSign === "details" && followupPlace ? <ManualParkingWizard place={followupPlace} coordinate={followupPlace.coordinate} geometry={followupPlace.geometry} returnedGeometry={geometry} kind={followupPlace.kind} initialStep="spaces" onDrawBoundary={onDrawBoundary} onDone={finish} onBack={() => setAfterSign("offer")} /> : !mode ? <>
         {locationAccuracy !== undefined ? <Note>{t("Current location", "Тековна локација")} · ±{Math.ceil(locationAccuracy)} m</Note> : null}
         {choice("photo", t("Photograph a sign", "Фотографирај табла"), t("Check the digital sign after the photo", "Проверете ја дигиталната табла по сликањето"), "camera")}
-        {choice("manual", t("Enter manually", "Внеси рачно"), t("Simple or detailed, one step at a time", "Брзо или детално, чекор по чекор"), "edit-2")}
+        {choice("manual", t("Enter manually", "Внеси рачно"), t("Simple or detailed entry", "Брз или детален внес"), "edit-2")}
       </> : mode === "manual" ? <ManualParkingWizard place={followupPlace ?? undefined} existingPlaceId={savedId ?? undefined} coordinate={followupPlace?.coordinate ?? coordinate} geometry={followupPlace?.geometry} returnedGeometry={geometry} initialZone={initial?.zoneCode} kind={followupPlace?.kind ?? initial?.kind} onDrawBoundary={onDrawBoundary} onSaved={saved} onDone={finish} onBack={() => setMode(null)} /> : <>
         <PhotoPicker value={photo} onChange={setPhoto} disabled={busy} onBusyChange={setPhotoBusy} onCancel={() => setMode(null)} />
         {message ? <Note>{message}</Note> : null}

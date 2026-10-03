@@ -89,26 +89,18 @@ test("cluster and destination taps send explicit interaction events, while progr
   assert.equal(view.messages.filter(message => message.type === "interaction").length, 2);
 });
 
-test("camera flights focus new selections, keep projections hidden until settled, and never replay on catalog/GPS updates", () => {
+test("pin selection projects immediately while destination flights remain animated", () => {
   const view = bridge();
   view.window.renderParking({ ...payload, selectedId: null, selectedAnchor: null });
-  assert.equal(view.transitions.at(-1)?.kind, "setView", "initial destination is immediate");
   view.window.renderParking(payload);
-  assert.equal(view.transitions.at(-1)?.kind, "flyTo");
+  assert.equal(view.transitions.at(-1)?.kind, "setView");
   assert.equal(view.transitions.at(-1)?.zoom, 16);
-  assert.equal(view.transitions.at(-1)?.options?.duration, 0.45);
-  assert.equal(view.messages.at(-1)?.point, null);
+  assert.notEqual(view.messages.at(-1)?.point, null);
   const count = view.transitions.length;
   view.window.renderParking({ ...payload, dark: true }); view.window.updateUserLocation([42, 21], 5);
   assert.equal(view.transitions.length, count);
-  assert.equal(view.messages.at(-1)?.point, null, "routine renders cannot project a moving pin");
-  const replacingFrom = view.messages.length;
   view.window.renderParking({ ...payload, selectedId: "two", selectedAnchor: [42.01, 21.01] });
   assert.equal(view.transitions.length, count + 1);
-  assert.equal(view.messages.at(-1)?.selectionId, "two");
-  assert.equal(view.messages.at(-1)?.point, null);
-  assert.ok(view.messages.slice(replacingFrom).filter(message => message.type === "position").every(message => message.point === null), "stop-triggered old moveend cannot reveal the new anchor before the new flight settles");
-  view.finishFlight();
   assert.equal(view.messages.at(-1)?.selectionId, "two");
   assert.notEqual(view.messages.at(-1)?.point, null);
   view.window.renderParking({ ...payload, selectedId: null, selectedAnchor: null, destination: [42.02, 21.02] });
@@ -119,7 +111,7 @@ test("camera flights focus new selections, keep projections hidden until settled
 test("reduced motion uses immediate camera movement and entering drawing cancels a pending flight", () => {
   const view = bridge();
   view.window.renderParking({ ...payload, selectedId: null, selectedAnchor: null });
-  view.window.renderParking(payload); assert.equal(view.counts().flying, true);
+  view.window.renderParking({ ...payload, destination: [42.02, 21.02] }); assert.equal(view.counts().flying, true);
   view.window.renderParking({ ...payload, drawing: true, picking: true });
   assert.equal(view.counts().flying, false); assert.equal(view.doubleClickZoom.enabled(), false);
   const count = view.transitions.length;

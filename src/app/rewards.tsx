@@ -68,7 +68,7 @@ export default function RewardsScreen() {
       </View>
       {message ? <Text accessibilityLiveRegion="polite" style={{ color: colors.ink }}>{message}</Text> : null}
       <Button title={busy ? t("Saving…", "Се зачувува…") : t("Restore classic appearance", "Врати класичен изглед")} variant="secondary" disabled={busy || selected.palette === "default" && selected.accent === "default"} onPress={() => void choose({ palette: "default", accent: "default" })} />
-      {profile?.guest ? <Note>{t("Create an account in your profile to keep your rewards when you change phones.", "Создајте сметка во профилот за да ги зачувате наградите кога менувате телефон.")}</Note> : null}
+      {profile?.guest ? <Note>{t("Create an account in your profile to keep your rewards when you change phones.", "Создајте профил за да ги зачувате наградите кога менувате телефон.")}</Note> : null}
     </ScrollView>
   </Page>;
 }

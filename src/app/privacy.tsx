@@ -24,7 +24,7 @@ export default function Privacy() {
       setMessage(
         t(
           "Your account, points, reports and confirmations were deleted.",
-          "Вашата сметка, поени, пријави и потврди се избришани.",
+          "Вашиот профил, поени, пријави и потврди се избришани.",
         ),
       );
     } catch {
@@ -71,7 +71,7 @@ export default function Privacy() {
         <Note>
           {t(
             "Deleting removes your username, password, all sign-in sessions, points, uploaded photos, zone-label edits, price and availability reports and confirmations. Published parking locations and boundaries remain on the shared map. To keep your account and use it later, sign out from Your account instead.",
-            "Бришењето ги отстранува името, лозинката, сите сесии, поените, сликите, измените на ознаки, пријавите и потврдите. Објавените паркинзи и граници остануваат на заедничката мапа. За да ја зачувате сметката за подоцна, одјавете се преку Вашата сметка.",
+            "Бришењето ги отстранува името, лозинката, сите сесии, поените, сликите, измените на ознаки, пријавите и потврдите. Објавените паркинзи и граници остануваат на заедничката мапа. За да го зачувате профилот за подоцна, одјавете се преку Вашиот профил.",
           )}
         </Note>
         <Button
@@ -86,10 +86,10 @@ export default function Privacy() {
         />
         {message ? <Note>{message}</Note> : null}
       </ScrollView>
-      <Sheet visible={confirmDelete} title={t("Delete your account?", "Да се избрише сметката?")} onClose={() => { if (!busy) setConfirmDelete(false); }}>
-        <Note>{t("Your username, points and private account data will be permanently removed. You cannot sign back in to this account after deletion.", "Вашето име, поени и приватни податоци трајно ќе се избришат. По бришењето нема да можете повторно да се најавите на оваа сметка.")}</Note>
-        <Button title={busy ? t("Deleting…", "Се брише…") : t("Delete account permanently", "Трајно избриши сметка")} variant="danger" disabled={busy} onPress={() => void remove()} />
-        <Button title={t("Keep my account", "Задржи ја сметката")} variant="secondary" disabled={busy} onPress={() => setConfirmDelete(false)} />
+      <Sheet visible={confirmDelete} title={t("Delete your account?", "Да се избрише профилот?")} onClose={() => { if (!busy) setConfirmDelete(false); }}>
+        <Note>{t("Your username, points and private account data will be permanently removed. You cannot sign back in to this account after deletion.", "Вашето име, поени и приватни податоци трајно ќе се избришат. По бришењето нема да можете повторно да се најавите на овој профил.")}</Note>
+        <Button title={busy ? t("Deleting…", "Се брише…") : t("Delete account permanently", "Трајно избриши профил")} variant="danger" disabled={busy} onPress={() => void remove()} />
+        <Button title={t("Keep my account", "Задржи го профилот")} variant="secondary" disabled={busy} onPress={() => setConfirmDelete(false)} />
       </Sheet>
     </Page>
   );

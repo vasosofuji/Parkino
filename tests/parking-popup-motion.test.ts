@@ -76,22 +76,20 @@ function popup(platform = "android") {
 const style = (tree: Element) => Object.assign({}, ...(tree.props.style as object[]).filter(Boolean)) as { opacity: number | { value: number }; transform: unknown[] };
 const progress = (tree: Element) => (tree.props.style as { opacity?: { value: number } }[])[1].opacity!.value;
 
-test("popup waits for layout and motion preference, then enters once without replaying on coordinate/projection updates", async () => {
+test("popup appears after layout even while motion preference is pending, without replaying on projection updates", async () => {
   const view = popup();
   let tree = view.render();
   assert.equal(tree.props.pointerEvents, "none"); assert.equal(tree.props.accessibilityElementsHidden, true);
   view.measure(tree); tree = view.render();
-  assert.equal(style(tree).opacity, 0); assert.equal(view.animations.length, 0, "a pending accessibility read cannot flash a static card");
+  assert.equal(tree.props.pointerEvents, "auto"); assert.equal(progress(tree), 1); assert.equal(view.animations.length, 0);
   view.resolve(false); await flush(); tree = view.render();
-  assert.equal(tree.type, "AnimatedView"); assert.equal(tree.props.pointerEvents, "auto"); assert.equal(view.animations.length, 1);
-  assert.equal(view.animations[0].config.duration, 200); assert.equal(view.animations[0].config.useNativeDriver, true); assert.equal(view.animations[0].config.isInteraction, false);
+  assert.equal(tree.type, "AnimatedView"); assert.equal(tree.props.pointerEvents, "auto"); assert.equal(view.animations.length, 0);
   view.render({ x: 180, y: 410 }); view.render({ x: 210, y: 420 });
-  assert.equal(view.animations.length, 1);
+  assert.equal(view.animations.length, 0);
   tree = view.render(null);
   assert.equal(tree.props.pointerEvents, "none"); assert.equal(tree.props.importantForAccessibility, "no-hide-descendants"); assert.equal(style(tree).opacity, 0);
-  assert.equal(view.animations[0].stops, 1);
   tree = view.render({ x: 205, y: 430 });
-  assert.equal(view.animations.length, 1); assert.equal(progress(tree), 1); assert.equal(tree.props.pointerEvents, "auto");
+  assert.equal(view.animations.length, 0); assert.equal(progress(tree), 1); assert.equal(tree.props.pointerEvents, "auto");
   view.unmount(); assert.equal(view.stats().removed, 1);
 });
 
@@ -100,6 +98,7 @@ test("an early accessibility result still waits for the first visible projection
   view.resolve(false); await flush(); tree = view.render(null); view.measure(tree); view.render(null);
   assert.equal(view.animations.length, 0);
   view.render(); assert.equal(view.animations.length, 1);
+  assert.equal(view.animations[0].config.duration, 100); assert.equal(view.animations[0].config.useNativeDriver, true); assert.equal(view.animations[0].config.isInteraction, false);
   view.unmount(); assert.equal(view.animations[0].stops, 1);
 });
 

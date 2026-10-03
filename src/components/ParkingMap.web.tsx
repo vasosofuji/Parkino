@@ -170,6 +170,7 @@ export default function ParkingMap(props: ParkingMapProps) {
       longitudeStep,
       props.selectedId,
       props.now,
+      props.filtered,
     )) {
       const place = members[0],
         selected = place.id === props.selectedId,
@@ -257,6 +258,7 @@ export default function ParkingMap(props: ParkingMapProps) {
     };
   }, [
     props.places,
+    props.filtered,
     props.now,
     props.selectedId,
     props.selectedAnchor,
@@ -376,7 +378,7 @@ export default function ParkingMap(props: ParkingMapProps) {
       destinationKey.current = key;
       moveCamera(instance, [props.destination.latitude, props.destination.longitude], 15, !initial && !props.drawing);
     } else if (selected && selected !== selectionKey.current && !props.picking && !props.drawing) {
-      moveCamera(instance, [props.selectedAnchor!.latitude, props.selectedAnchor!.longitude], Math.max(16, instance.getZoom()));
+      moveCamera(instance, [props.selectedAnchor!.latitude, props.selectedAnchor!.longitude], Math.max(16, instance.getZoom()), false);
     }
     selectionKey.current = selected;
   }, [

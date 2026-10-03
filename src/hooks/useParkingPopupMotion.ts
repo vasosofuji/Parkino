@@ -18,18 +18,20 @@ export function useParkingPopupMotion(visible: boolean) {
     return () => { mounted = false; subscription.remove(); };
   }, []);
   useEffect(() => {
-    if (!visible || reduceMotion === null) {
+    if (!visible) {
       if (entered.current) progress.setValue(1);
       return;
     }
-    if (entered.current || reduceMotion) {
+    // Show immediately without movement while the preference is still loading.
+    // An accessibility lookup must never delay parking information.
+    if (entered.current || reduceMotion !== false) {
       entered.current = true;
       progress.setValue(1);
       return;
     }
     entered.current = true;
     const animation = Animated.timing(progress, {
-      toValue: 1, duration: 200, easing: Easing.out(Easing.cubic),
+      toValue: 1, duration: 100, easing: Easing.out(Easing.cubic),
       useNativeDriver: Platform.OS !== "web", isInteraction: false,
     });
     animation.start();
@@ -42,5 +44,5 @@ export function useParkingPopupMotion(visible: boolean) {
       { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) },
     ],
   }), [progress]);
-  return { ready: reduceMotion !== null, style };
+  return { ready: true, style };
 }

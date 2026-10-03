@@ -29,6 +29,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
       longitudeStep,
       props.selectedId,
       props.now,
+      props.filtered,
     ).map((members) => {
       const place = members[0];
       const cluster = members.length > 1;
@@ -113,6 +114,7 @@ export default function OpenStreetParkingMap(props: ParkingMapProps) {
     props.draftCoordinates,
     props.destinationMarker,
     props.places,
+    props.filtered,
     props.selectedId,
     props.selectedAnchor,
     props.selectionEnabled,

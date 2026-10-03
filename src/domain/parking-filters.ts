@@ -2,6 +2,18 @@ import { distanceMeters, estimateCost, parkingPrice } from "./parking";
 import { parkingMarker, parkingReviewEvidence } from "./marker-appearance";
 import type { ParkingPlace, Coordinate } from "./types";
 export type ParkingFilter = "all" | "free" | "reviewed" | "unreviewed" | "spaces" | "full" | "surface" | "garage" | "underground" | "street" | "zone";
+export type ActiveParkingFilter = Exclude<ParkingFilter, "all">;
+const filterGroups: ActiveParkingFilter[][] = [["free"], ["reviewed", "unreviewed"], ["spaces", "full"], ["surface", "garage", "underground", "street", "zone"]];
+export function toggleParkingFilter(filters: ActiveParkingFilter[], filter: ActiveParkingFilter): ActiveParkingFilter[] {
+  return filters.includes(filter) ? filters.filter(value => value !== filter) : [...filters, filter];
+}
+/** Combine distinct criteria, allowing alternatives within each criterion. Empty means all. */
+export function matchesParkingFilters(place: ParkingPlace, filters: ActiveParkingFilter[], now = Date.now()) {
+  return filterGroups.every(group => {
+    const selected = group.filter(filter => filters.includes(filter));
+    return !selected.length || selected.some(filter => matchesParkingFilter(place, filter, now));
+  });
+}
 export function matchesParkingFilter(place: ParkingPlace, filter: ParkingFilter, now = Date.now()) {
   if (filter === "all") return true;
   if (filter === "reviewed") return Boolean(parkingReviewEvidence(place, now));

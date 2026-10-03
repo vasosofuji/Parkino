@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -35,15 +36,20 @@ export default function MapDrawer({
   const [dragging, setDragging] = useState(false);
   const [level, setLevel] = useState(1);
   const [visible] = useState(() => new Animated.Value(actions));
+  const [expandedHeight] = useState(() => new Animated.Value(expanded));
+  // Keep one attached animation graph while catalog updates re-render the map.
+  // Replacing a subtraction node mid-spring can leave the web drawer stranded.
+  const translateY = useMemo(() => Animated.subtract(expandedHeight, visible), [expandedHeight, visible]);
   const previousExpanded = useRef(expanded);
   const locateVisible = useRef(true);
   useEffect(() => {
+    expandedHeight.setValue(expanded);
     if (previousExpanded.current !== expanded && level === 2) {
       visible.setValue(expanded);
       onHeightChange?.(expanded);
     }
     previousExpanded.current = expanded;
-  }, [expanded, level, visible, onHeightChange]);
+  }, [expanded, expandedHeight, level, visible, onHeightChange]);
   const gesture = useRef({ start: actions, current: actions });
   const snap = useCallback(
     (value: number, nextLevel: number) => {
@@ -53,7 +59,7 @@ export default function MapDrawer({
       onHeightChange?.(value);
       Animated.spring(visible, {
         toValue: value,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
         tension: 120,
         friction: 22,
       }).start();
@@ -89,7 +95,7 @@ export default function MapDrawer({
     snap(snapPoints[next], next);
   }, [expanded, snap]);
   return (
-    <View pointerEvents="box-none" style={[s.frame, { height: expanded }]}>
+    <View nativeID="parking-drawer-frame" pointerEvents="box-none" style={[s.frame, { height: expanded }]}>
       <Animated.View
         style={[
           s.drawer,
@@ -97,7 +103,7 @@ export default function MapDrawer({
             height: expanded,
             backgroundColor: colors.paper,
             borderColor: colors.line,
-            transform: [{ translateY: Animated.subtract(expanded, visible) }],
+            transform: [{ translateY }],
           },
         ]}
       >

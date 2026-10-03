@@ -3,6 +3,7 @@ import type { Language } from "../domain/language";
 export type ParkingMapProps = {
   now: number;
   places: ParkingPlace[];
+  filtered?: boolean;
   selectedId: string | null;
   selectedAnchor?: Coordinate | null;
   onSelectedPosition?: (point: { x: number; y: number } | null) => void;
