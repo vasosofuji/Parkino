@@ -80,7 +80,6 @@ export default function Welcome() {
             <View style={{ gap: 12, alignItems: step === "language" ? "center" : "stretch" }}>
               {step === "language" ? <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.mint, alignItems: "center", justifyContent: "center", marginBottom: 6 }}><Icon name="globe" size={28} color={colors.accentText} /></View> : null}
               <Text accessibilityRole="header" style={{ color: colors.ink, fontSize: 30, fontWeight: "700", textAlign: step === "language" ? "center" : "left" }}>{title}</Text>
-              {step === "language" ? <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22, textAlign: "center" }}>{t("Choose your preferred language to continue", "Изберете го саканиот јазик за да продолжите")}</Text> : null}
             </View>
             {step === "language" ? <>
               <LanguagePicker />
