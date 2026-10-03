@@ -30,7 +30,7 @@ import { canAddAtLocation, nearbyOrigin } from "../domain/location";
 import ParkingRow from "../components/ParkingRow";
 import ParkingDetails from "../components/ParkingDetails";
 import ProposalSheet from "../components/ProposalSheet";
-import { Button, Icon, IconButton, Note, Sheet } from "../components/ui";
+import { Button, Icon, IconButton, Note, RevealSection, Sheet } from "../components/ui";
 import {
   normalizeZoneCode,
   rankParking,
@@ -460,6 +460,33 @@ export default function MapScreen() {
       setSending(false);
     }
   }
+
+  const renderFilter = (item: (typeof filterOptions)[number]) => (
+    <Pressable
+      key={item.id}
+      accessibilityRole="checkbox"
+      accessibilityLabel={item.label}
+      aria-label={item.label}
+      aria-checked={parkingFilters.includes(item.id)}
+      accessibilityState={{ checked: parkingFilters.includes(item.id) }}
+      onPress={() => {
+        setParkingFilters(filters => toggleParkingFilter(filters, item.id));
+        setVisibleMatches(30);
+        clearSelection();
+        // This runs only on press; the extracted renderer never reads search refs.
+        // eslint-disable-next-line react-hooks/refs
+        clearSearch();
+      }}
+      style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: parkingFilters.includes(item.id) ? colors.accentText : colors.line, backgroundColor: parkingFilters.includes(item.id) ? colors.mint : colors.paper }}
+    >
+      <View style={{ width: 30, height: 30, backgroundColor: item.color, borderRadius: 15, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: "#fff", fontWeight: "800" }}>{item.symbol}</Text>
+      </View>
+      <Text style={{ flex: 1, color: colors.ink }}>{item.label}</Text>
+      <Text style={{ color: colors.muted }}>{filterCounts[item.id]}</Text>
+      <Icon name={parkingFilters.includes(item.id) ? "check-square" : "square"} size={18} color={colors.accentText} />
+    </Pressable>
+  );
 
   return (
     <SafeAreaView style={s.root} edges={["top", "bottom"]}>
@@ -908,15 +935,11 @@ export default function MapScreen() {
         }}
       />
       <Sheet visible={legend && !suspendSheets} title={t("Map legend", "Легенда на мапата")} onClose={() => setLegend(false)}>
-        {filterOptions.filter((_, index) => index < 5 || parkingTypesExpanded).map((item, index) => (
-          <React.Fragment key={item.id}>
-            <Pressable accessibilityRole="checkbox" accessibilityLabel={item.label} aria-label={item.label} aria-checked={parkingFilters.includes(item.id)} accessibilityState={{ checked: parkingFilters.includes(item.id) }} onPress={() => { setParkingFilters(filters => toggleParkingFilter(filters, item.id)); setVisibleMatches(30); clearSelection(); clearSearch(); }} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: parkingFilters.includes(item.id) ? colors.accentText : colors.line, backgroundColor: parkingFilters.includes(item.id) ? colors.mint : colors.paper }}>
-              <View style={{ width: 30, height: 30, backgroundColor: item.color, borderRadius: 15, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontWeight: "800" }}>{item.symbol}</Text></View>
-              <Text style={{ flex: 1, color: colors.ink }}>{item.label}</Text><Text style={{ color: colors.muted }}>{filterCounts[item.id]}</Text><Icon name={parkingFilters.includes(item.id) ? "check-square" : "square"} size={18} color={colors.accentText} />
-            </Pressable>
-            {index === 4 ? <Pressable accessibilityRole="button" accessibilityLabel={t("Parking types", "Видови паркинг")} aria-label={t("Parking types", "Видови паркинг")} aria-expanded={parkingTypesExpanded} accessibilityState={{ expanded: parkingTypesExpanded }} onPress={() => setParkingTypesExpanded(value => !value)} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, minHeight: 56 }}><Text style={{ flex: 1, color: colors.ink, fontWeight: "700" }}>{t("Parking types", "Видови паркинг")}</Text><Icon name={parkingTypesExpanded ? "chevron-up" : "chevron-down"} size={20} /></Pressable> : null}
-          </React.Fragment>
-        ))}
+        {filterOptions.slice(0, 5).map(renderFilter)}
+        <RevealSection active={parkingTypesExpanded} style={{ gap: 10 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("Parking types", "Видови паркинг")} aria-label={t("Parking types", "Видови паркинг")} aria-expanded={parkingTypesExpanded} accessibilityState={{ expanded: parkingTypesExpanded }} onPress={() => setParkingTypesExpanded(value => !value)} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, minHeight: 56 }}><Text style={{ flex: 1, color: colors.ink, fontWeight: "700" }}>{t("Parking types", "Видови паркинг")}</Text><Icon name={parkingTypesExpanded ? "chevron-up" : "chevron-down"} size={20} /></Pressable>
+          {parkingTypesExpanded ? filterOptions.slice(5).map(renderFilter) : null}
+        </RevealSection>
         <Button title={t("Done", "Готово")} onPress={() => { setLegend(false); setExpandResults(value => value + 1); }} />
       </Sheet>
       <Sheet
